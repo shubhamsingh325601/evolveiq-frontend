@@ -1,0 +1,29 @@
+{
+  "name": "@evolveiq/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@evolveiq/config": "workspace:*",
+    "@types/react": "^18.3.12",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "eslint": "^9.14.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

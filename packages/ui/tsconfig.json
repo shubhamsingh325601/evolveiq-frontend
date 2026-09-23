@@ -1,0 +1,4 @@
+{
+  "extends": "@evolveiq/config/tsconfig.base.json",
+  "include": ["src"]
+}

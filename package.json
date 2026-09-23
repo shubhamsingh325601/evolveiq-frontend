@@ -1,0 +1,28 @@
+{
+  "name": "evolveiq-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.3",
+  "scripts": {
+    "dev": "pnpm --filter @evolveiq/dev-shell dev",
+    "dev:family": "pnpm --filter @evolveiq/family-web dev",
+    "dev:school": "pnpm --filter @evolveiq/school-web dev",
+    "dev:admin": "pnpm --filter @evolveiq/admin-panel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

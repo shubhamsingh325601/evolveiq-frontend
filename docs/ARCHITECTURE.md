@@ -33,6 +33,8 @@ evolveiq-frontend/
     api-client/         # Typed fetch layer + TanStack Query hooks
     auth/               # Auth context, role guards, session handling
     config/             # eslint, tsconfig, tailwind presets shared across packages
+  tools/
+    dev-shell/          # dev-only launcher: pick a role, run all three apps on one port
   .claude/
   docs/ (this file, SCOPE_OF_WORK.md, etc.)
 ```
@@ -68,6 +70,13 @@ new roles or permission changes are made there, not per-screen.
 Per the PRD's Scope Boundaries: no charts/graphs, no permission editor/audit
 log UI, no parent–teacher chat, no drag-and-drop activity builder, no
 native mobile shell. Don't build abstractions to anticipate these.
+
+## Running all three at once
+`tools/dev-shell` is a development-only launcher that serves a role picker on a
+single port and mounts one product app's route tree at a time, chosen by the
+signed-in role. It exists so the whole product can be walked through in one
+browser tab. It is never built or deployed, and the three apps remain
+independently buildable — they do not import it or know it exists.
 
 ## Environments
 - `local` — Vite dev server against a local backend (see evolveiq-backend)

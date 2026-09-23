@@ -1,0 +1,266 @@
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Button, cn, EmptyState, Input, LoadingState } from '@evolveiq/ui';
+
+/**
+ * One table for every list screen in the product — students, teachers,
+ * classes, parents, schools, the activity library and the review queue.
+ *
+ * Sorting, searching and paging live here so that a management screen is only
+ * a column definition plus a data hook.
+ */
+
+export interface RecordsTableColumn<TRow> {
+  id: string;
+  header: string;
+  cell: (row: TRow) => ReactNode;
+  /** Supplying this makes the column sortable. */
+  sortValue?: (row: TRow) => string | number;
+  align?: 'left' | 'right';
+  /** Hidden on narrow screens, where only the essential columns fit. */
+  isSecondary?: boolean;
+  className?: string;
+}
+
+export interface RecordsTableProps<TRow> {
+  rows: TRow[];
+  columns: RecordsTableColumn<TRow>[];
+  getRowId: (row: TRow) => string;
+  /** Free-text search runs against this string. Omit to hide the search box. */
+  searchableText?: (row: TRow) => string;
+  searchPlaceholder?: string;
+  /** Extra controls shown beside the search box. */
+  toolbar?: ReactNode;
+  onRowClick?: (row: TRow) => void;
+  rowActions?: (row: TRow) => ReactNode;
+  pageSize?: number;
+  isLoading?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  emptyAction?: ReactNode;
+  caption: string;
+  className?: string;
+}
+
+type SortState = { columnId: string; direction: 'asc' | 'desc' } | null;
+
+export function RecordsTable<TRow>({
+  rows,
+  columns,
+  getRowId,
+  searchableText,
+  searchPlaceholder = 'Search',
+  toolbar,
+  onRowClick,
+  rowActions,
+  pageSize = 10,
+  isLoading = false,
+  emptyTitle = 'Nothing here yet',
+  emptyDescription,
+  emptyAction,
+  caption,
+  className,
+}: RecordsTableProps<TRow>) {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortState>(null);
+  const [page, setPage] = useState(0);
+
+  const filteredRows = useMemo(() => {
+    if (!searchableText || search.trim() === '') return rows;
+    const needle = search.trim().toLowerCase();
+    return rows.filter((row) => searchableText(row).toLowerCase().includes(needle));
+  }, [rows, search, searchableText]);
+
+  const sortedRows = useMemo(() => {
+    if (!sort) return filteredRows;
+    const column = columns.find((candidate) => candidate.id === sort.columnId);
+    if (!column?.sortValue) return filteredRows;
+    const direction = sort.direction === 'asc' ? 1 : -1;
+    return [...filteredRows].sort((a, b) => {
+      const left = column.sortValue!(a);
+      const right = column.sortValue!(b);
+      if (typeof left === 'number' && typeof right === 'number') {
+        return (left - right) * direction;
+      }
+      return String(left).localeCompare(String(right)) * direction;
+    });
+  }, [filteredRows, sort, columns]);
+
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+
+  // A filter that shortens the list must not strand the reader on a page
+  // that no longer exists.
+  useEffect(() => {
+    setPage((current) => Math.min(current, pageCount - 1));
+  }, [pageCount]);
+
+  const visibleRows = sortedRows.slice(page * pageSize, page * pageSize + pageSize);
+
+  const toggleSort = (columnId: string) => {
+    setSort((current) => {
+      if (current?.columnId !== columnId) return { columnId, direction: 'asc' };
+      if (current.direction === 'asc') return { columnId, direction: 'desc' };
+      return null;
+    });
+  };
+
+  const hasToolbar = Boolean(searchableText) || Boolean(toolbar);
+
+  return (
+    <div className={cn('flex flex-col gap-4', className)}>
+      {hasToolbar ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {searchableText ? (
+            <div className="sm:max-w-xs sm:flex-1">
+              <label className="sr-only" htmlFor={`${caption}-search`}>
+                {searchPlaceholder}
+              </label>
+              <Input
+                id={`${caption}-search`}
+                type="search"
+                value={search}
+                placeholder={searchPlaceholder}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(0);
+                }}
+              />
+            </div>
+          ) : (
+            <span />
+          )}
+          {toolbar ? <div className="flex items-center gap-2">{toolbar}</div> : null}
+        </div>
+      ) : null}
+
+      {isLoading ? <LoadingState label="Loading records" /> : null}
+
+      {!isLoading && sortedRows.length === 0 ? (
+        <EmptyState
+          title={search ? `Nothing matches “${search}”` : emptyTitle}
+          description={
+            search ? 'Try a shorter search, or clear it to see everything.' : emptyDescription
+          }
+          action={search ? null : emptyAction}
+        />
+      ) : null}
+
+      {!isLoading && sortedRows.length > 0 ? (
+        <>
+          <div className="overflow-x-auto rounded-md border border-line bg-surface">
+            <table className="w-full border-collapse text-sm">
+              <caption className="sr-only">{caption}</caption>
+              <thead>
+                <tr className="border-b border-line bg-surface-sunk">
+                  {columns.map((column) => {
+                    const isSorted = sort?.columnId === column.id;
+                    return (
+                      <th
+                        key={column.id}
+                        scope="col"
+                        aria-sort={
+                          isSorted
+                            ? sort.direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : undefined
+                        }
+                        className={cn(
+                          'px-4 py-2.5 font-medium text-ink-muted',
+                          column.align === 'right' ? 'text-right' : 'text-left',
+                          column.isSecondary && 'hidden md:table-cell',
+                        )}
+                      >
+                        {column.sortValue ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(column.id)}
+                            className="inline-flex items-center gap-1.5 rounded text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+                          >
+                            {column.header}
+                            <span aria-hidden="true" className="text-xs">
+                              {isSorted ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}
+                            </span>
+                          </button>
+                        ) : (
+                          column.header
+                        )}
+                      </th>
+                    );
+                  })}
+                  {rowActions ? (
+                    <th scope="col" className="px-4 py-2.5 text-right font-medium text-ink-muted">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.map((row) => (
+                  <tr
+                    key={getRowId(row)}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={cn(
+                      'border-b border-line-soft last:border-b-0',
+                      onRowClick && 'cursor-pointer hover:bg-teal-50/60',
+                    )}
+                  >
+                    {columns.map((column) => (
+                      <td
+                        key={column.id}
+                        className={cn(
+                          'px-4 py-3 align-middle text-ink',
+                          column.align === 'right' ? 'text-right' : 'text-left',
+                          column.isSecondary && 'hidden md:table-cell',
+                          column.className,
+                        )}
+                      >
+                        {column.cell(row)}
+                      </td>
+                    ))}
+                    {rowActions ? (
+                      <td
+                        className="px-4 py-3 text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {rowActions(row)}
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {pageCount > 1 ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-ink-muted">
+                Showing {page * pageSize + 1} to{' '}
+                {Math.min((page + 1) * pageSize, sortedRows.length)} of {sortedRows.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={page >= pageCount - 1}
+                  onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}

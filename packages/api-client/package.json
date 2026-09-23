@@ -1,0 +1,29 @@
+{
+  "name": "@evolveiq/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.16"
+  },
+  "devDependencies": {
+    "@evolveiq/config": "workspace:*",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4",
+    "eslint": "^9.14.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

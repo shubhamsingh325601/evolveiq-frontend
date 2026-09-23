@@ -1,0 +1,26 @@
+{
+  "name": "@evolveiq/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tailwind-preset": "./tailwind-preset.js",
+    "./eslint-preset": "./eslint-preset.js",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  },
+  "files": [
+    "tailwind-preset.js",
+    "eslint-preset.js",
+    "tsconfig.base.json"
+  ],
+  "dependencies": {
+    "@eslint/js": "^9.14.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.12.0",
+    "typescript-eslint": "^8.13.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.14.0"
+  }
+}
