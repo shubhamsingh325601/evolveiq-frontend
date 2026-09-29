@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Button, cn, EmptyState, Input, LoadingState } from '@evolveiq/ui';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Button,
+  ChevronLeft,
+  ChevronRight,
+  cn,
+  EmptyState,
+  Input,
+  LoadingState,
+  Search,
+} from '@evolveiq/ui';
 
 /**
  * One table for every list screen in the product — students, teachers,
@@ -16,7 +28,11 @@ export interface RecordsTableColumn<TRow> {
   /** Supplying this makes the column sortable. */
   sortValue?: (row: TRow) => string | number;
   align?: 'left' | 'right';
-  /** Hidden on narrow screens, where only the essential columns fit. */
+  /**
+   * Hidden while the table itself is narrow, where only the essential columns
+   * fit. Measured on the table, not the screen: the same phone-shell tablet has
+   * more room than a desktop with the rail open.
+   */
   isSecondary?: boolean;
   className?: string;
 }
@@ -42,6 +58,8 @@ export interface RecordsTableProps<TRow> {
 }
 
 type SortState = { columnId: string; direction: 'asc' | 'desc' } | null;
+
+const SECONDARY_COLUMN_CLASSES = 'hidden [@container(min-width:56rem)]:table-cell';
 
 export function RecordsTable<TRow>({
   rows,
@@ -106,7 +124,7 @@ export function RecordsTable<TRow>({
   const hasToolbar = Boolean(searchableText) || Boolean(toolbar);
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn('flex flex-col gap-4 [container-type:inline-size]', className)}>
       {hasToolbar ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {searchableText ? (
@@ -117,6 +135,7 @@ export function RecordsTable<TRow>({
               <Input
                 id={`${caption}-search`}
                 type="search"
+                leadingIcon={Search}
                 value={search}
                 placeholder={searchPlaceholder}
                 onChange={(event) => {
@@ -136,6 +155,7 @@ export function RecordsTable<TRow>({
 
       {!isLoading && sortedRows.length === 0 ? (
         <EmptyState
+          icon={search ? Search : undefined}
           title={search ? `Nothing matches “${search}”` : emptyTitle}
           description={
             search ? 'Try a shorter search, or clear it to see everything.' : emptyDescription
@@ -146,89 +166,100 @@ export function RecordsTable<TRow>({
 
       {!isLoading && sortedRows.length > 0 ? (
         <>
-          <div className="overflow-x-auto rounded-md border border-line bg-surface">
-            <table className="w-full border-collapse text-sm">
-              <caption className="sr-only">{caption}</caption>
-              <thead>
-                <tr className="border-b border-line bg-surface-sunk">
-                  {columns.map((column) => {
-                    const isSorted = sort?.columnId === column.id;
-                    return (
-                      <th
-                        key={column.id}
-                        scope="col"
-                        aria-sort={
-                          isSorted
-                            ? sort.direction === 'asc'
-                              ? 'ascending'
-                              : 'descending'
-                            : undefined
-                        }
-                        className={cn(
-                          'px-4 py-2.5 font-medium text-ink-muted',
-                          column.align === 'right' ? 'text-right' : 'text-left',
-                          column.isSecondary && 'hidden md:table-cell',
-                        )}
-                      >
-                        {column.sortValue ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleSort(column.id)}
-                            className="inline-flex items-center gap-1.5 rounded text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
-                          >
-                            {column.header}
-                            <span aria-hidden="true" className="text-xs">
-                              {isSorted ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}
-                            </span>
-                          </button>
-                        ) : (
-                          column.header
-                        )}
-                      </th>
-                    );
-                  })}
-                  {rowActions ? (
-                    <th scope="col" className="px-4 py-2.5 text-right font-medium text-ink-muted">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleRows.map((row) => (
-                  <tr
-                    key={getRowId(row)}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={cn(
-                      'border-b border-line-soft last:border-b-0',
-                      onRowClick && 'cursor-pointer hover:bg-teal-50/60',
-                    )}
-                  >
-                    {columns.map((column) => (
-                      <td
-                        key={column.id}
-                        className={cn(
-                          'px-4 py-3 align-middle text-ink',
-                          column.align === 'right' ? 'text-right' : 'text-left',
-                          column.isSecondary && 'hidden md:table-cell',
-                          column.className,
-                        )}
-                      >
-                        {column.cell(row)}
-                      </td>
-                    ))}
+          <div className="overflow-hidden rounded-2xl border border-white/80 bg-white/75 shadow-card">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <caption className="sr-only">{caption}</caption>
+                <thead>
+                  <tr className="border-b border-line-soft bg-iris-50/40">
+                    {columns.map((column) => {
+                      const isSorted = sort?.columnId === column.id;
+                      const SortIcon = isSorted
+                        ? sort.direction === 'asc'
+                          ? ArrowUp
+                          : ArrowDown
+                        : ArrowUpDown;
+                      return (
+                        <th
+                          key={column.id}
+                          scope="col"
+                          aria-sort={
+                            isSorted
+                              ? sort.direction === 'asc'
+                                ? 'ascending'
+                                : 'descending'
+                              : undefined
+                          }
+                          className={cn(
+                            'whitespace-nowrap px-4 py-3 text-xs font-medium text-ink-muted first:pl-5 last:pr-5',
+                            column.align === 'right' ? 'text-right' : 'text-left',
+                            column.isSecondary && SECONDARY_COLUMN_CLASSES,
+                          )}
+                        >
+                          {column.sortValue ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleSort(column.id)}
+                              className={cn(
+                                'inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-ink',
+                                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
+                                isSorted && 'text-iris-700',
+                              )}
+                            >
+                              {column.header}
+                              <SortIcon
+                                className={cn('size-3.5', isSorted ? 'opacity-100' : 'opacity-50')}
+                              />
+                            </button>
+                          ) : (
+                            column.header
+                          )}
+                        </th>
+                      );
+                    })}
                     {rowActions ? (
-                      <td
-                        className="px-4 py-3 text-right"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {rowActions(row)}
-                      </td>
+                      <th scope="col" className="px-4 py-3 pr-5 text-right">
+                        <span className="sr-only">Actions</span>
+                      </th>
                     ) : null}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {visibleRows.map((row) => (
+                    <tr
+                      key={getRowId(row)}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                      className={cn(
+                        'border-b border-line-soft transition-colors last:border-b-0',
+                        onRowClick && 'cursor-pointer hover:bg-iris-50/60',
+                      )}
+                    >
+                      {columns.map((column) => (
+                        <td
+                          key={column.id}
+                          className={cn(
+                            'px-4 py-3.5 align-middle text-ink first:pl-5 last:pr-5',
+                            column.align === 'right' ? 'text-right' : 'text-left',
+                            column.isSecondary && SECONDARY_COLUMN_CLASSES,
+                            column.className,
+                          )}
+                        >
+                          {column.cell(row)}
+                        </td>
+                      ))}
+                      {rowActions ? (
+                        <td
+                          className="px-4 py-3 pr-5 text-right"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {rowActions(row)}
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {pageCount > 1 ? (
@@ -242,6 +273,7 @@ export function RecordsTable<TRow>({
                   type="button"
                   variant="secondary"
                   size="sm"
+                  icon={ChevronLeft}
                   disabled={page === 0}
                   onClick={() => setPage((current) => Math.max(0, current - 1))}
                 >
@@ -255,6 +287,7 @@ export function RecordsTable<TRow>({
                   onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
                 >
                   Next
+                  <ChevronRight />
                 </Button>
               </div>
             </div>

@@ -19,7 +19,7 @@ export function RoleGuard({ allow, signInPath = '/sign-in' }: RoleGuardProps) {
 
   if (isRestoring) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-paper text-ink-muted">
+      <div className="flex min-h-dvh items-center justify-center bg-mist text-ink-muted">
         <p className="text-sm">Checking your sign-in…</p>
       </div>
     );

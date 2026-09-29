@@ -6,7 +6,7 @@ export function TextRenderer({ step, value, onChange }: ActivityStepRendererProp
   return (
     <Textarea
       rows={5}
-      className="rounded-lg text-lg"
+      className="rounded-2xl px-4 py-3.5 text-lg leading-8"
       placeholder={step.placeholder ?? 'Type your answer'}
       value={typeof value === 'string' ? value : ''}
       onChange={(event) => onChange(event.target.value)}

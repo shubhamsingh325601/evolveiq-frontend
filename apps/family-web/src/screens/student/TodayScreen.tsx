@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useActivities, useActivityQueue, useStreak } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
 import { ActivityCard, StreakIndicator } from '@evolveiq/domain';
-import { Card, EmptyState, ErrorState, LoadingState } from '@evolveiq/ui';
+import { EmptyState, ErrorState, HeroPanel, LoadingState, Sun } from '@evolveiq/ui';
 
 /** A student sees only their own work — the api-client scopes it to them. */
 export function TodayScreen() {
@@ -26,32 +26,30 @@ export function TodayScreen() {
   const firstName = user?.name.split(' ')[0] ?? 'there';
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="font-serif text-4xl text-ink">Hello, {firstName}</h1>
-        <p className="mt-2 text-base text-ink-muted">
-          {todo.length === 0
+    <div className="flex flex-col gap-10">
+      <HeroPanel
+        isPlayful
+        title={`Hello, ${firstName}`}
+        description={
+          todo.length === 0
             ? 'Nothing is waiting for you today.'
-            : `You have ${todo.length} ${todo.length === 1 ? 'thing' : 'things'} to do.`}
-        </p>
-      </header>
-
-      {streak.data ? (
-        <Card isPlayful className="px-5 py-5">
-          <StreakIndicator streak={streak.data} />
-        </Card>
-      ) : null}
+            : `You have ${todo.length} ${todo.length === 1 ? 'thing' : 'things'} to do.`
+        }
+      >
+        {streak.data ? <StreakIndicator isInverse streak={streak.data} /> : null}
+      </HeroPanel>
 
       <section>
-        <h2 className="text-xl font-semibold text-ink">To do</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">To do</h2>
         {todo.length === 0 ? (
           <EmptyState
             className="mt-4"
+            icon={Sun}
             title="All done for now"
             description="When your teacher sets something new, it will show up here."
           />
         ) : (
-          <ul className="mt-4 flex flex-col gap-3">
+          <ul className="mt-4 flex flex-col gap-4">
             {todo.map((assignment) => {
               const activity = activityById.get(assignment.activityId);
               if (!activity) return null;
@@ -71,8 +69,8 @@ export function TodayScreen() {
 
       {done.length > 0 ? (
         <section>
-          <h2 className="text-xl font-semibold text-ink">Finished</h2>
-          <ul className="mt-4 flex flex-col gap-3">
+          <h2 className="text-2xl font-semibold tracking-tight text-ink">Finished</h2>
+          <ul className="mt-4 flex flex-col gap-4">
             {done.map((assignment) => {
               const activity = activityById.get(assignment.activityId);
               if (!activity) return null;

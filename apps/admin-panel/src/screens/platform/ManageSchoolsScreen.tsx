@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useCreateSchool, useSchools, useUpdateSchool } from '@evolveiq/api-client';
 import type { School } from '@evolveiq/api-client';
 import { RecordsTable, formatDay, type RecordsTableColumn } from '@evolveiq/domain';
-import { Button, ErrorState, PageHeader } from '@evolveiq/ui';
+import { Button, ErrorState, PageHeader, Plus, School as SchoolIcon } from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 export function ManageSchoolsScreen() {
@@ -35,7 +35,14 @@ export function ManageSchoolsScreen() {
       id: 'name',
       header: 'School',
       sortValue: (school) => school.name,
-      cell: (school) => <span className="font-medium text-ink">{school.name}</span>,
+      cell: (school) => (
+        <span className="flex items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-iris-50 text-iris-600">
+            <SchoolIcon className="size-4" />
+          </span>
+          <span className="font-medium text-ink">{school.name}</span>
+        </span>
+      ),
     },
     {
       id: 'city',
@@ -74,7 +81,7 @@ export function ManageSchoolsScreen() {
         title="Schools"
         subtitle="Every school using EvolvIQ."
         actions={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a school
           </Button>
         }
@@ -94,7 +101,7 @@ export function ManageSchoolsScreen() {
         emptyTitle="No schools yet"
         emptyDescription="Add the first school, then create its admin account."
         emptyAction={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a school
           </Button>
         }

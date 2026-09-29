@@ -3,12 +3,13 @@ import { useActivities } from '@evolveiq/api-client';
 import type { Activity } from '@evolveiq/api-client';
 import {
   ACTIVITY_STEP_LABELS,
+  DEVELOPMENT_AREA_ICONS,
   DEVELOPMENT_AREA_LABELS,
   RecordsTable,
   formatDay,
   type RecordsTableColumn,
 } from '@evolveiq/domain';
-import { Badge, buttonClasses, ErrorState, PageHeader } from '@evolveiq/ui';
+import { Badge, buttonClasses, ErrorState, PageHeader, Plus } from '@evolveiq/ui';
 
 export function ActivityLibraryScreen() {
   const activities = useActivities();
@@ -21,7 +22,7 @@ export function ActivityLibraryScreen() {
       header: 'Activity',
       sortValue: (activity) => activity.title,
       cell: (activity) => (
-        <span>
+        <span className="block min-w-[14rem]">
           <span className="block font-medium text-ink">{activity.title}</span>
           <span className="mt-0.5 block max-w-sm text-ink-muted">{activity.description}</span>
         </span>
@@ -31,7 +32,11 @@ export function ActivityLibraryScreen() {
       id: 'area',
       header: 'Area',
       sortValue: (activity) => DEVELOPMENT_AREA_LABELS[activity.area],
-      cell: (activity) => <Badge tone="neutral">{DEVELOPMENT_AREA_LABELS[activity.area]}</Badge>,
+      cell: (activity) => (
+        <Badge icon={DEVELOPMENT_AREA_ICONS[activity.area]}>
+          {DEVELOPMENT_AREA_LABELS[activity.area]}
+        </Badge>
+      ),
     },
     {
       id: 'steps',
@@ -49,7 +54,7 @@ export function ActivityLibraryScreen() {
       header: 'Ages',
       isSecondary: true,
       sortValue: (activity) => activity.ageRange,
-      cell: (activity) => activity.ageRange,
+      cell: (activity) => <span className="whitespace-nowrap">{activity.ageRange}</span>,
     },
     {
       id: 'minutes',
@@ -64,20 +69,23 @@ export function ActivityLibraryScreen() {
       align: 'right',
       isSecondary: true,
       sortValue: (activity) => activity.createdAt,
-      cell: (activity) => formatDay(activity.createdAt),
+      cell: (activity) => <span className="whitespace-nowrap">{formatDay(activity.createdAt)}</span>,
     },
   ];
+
+  const newActivityLink = (
+    <Link to="/activities/new" className={buttonClasses({ size: 'sm' })}>
+      <Plus />
+      New activity
+    </Link>
+  );
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Activity library"
         subtitle="Everything that can be assigned to a student."
-        actions={
-          <Link to="/activities/new" className={buttonClasses({ size: 'sm' })}>
-            New activity
-          </Link>
-        }
+        actions={newActivityLink}
       />
 
       <RecordsTable
@@ -90,11 +98,7 @@ export function ActivityLibraryScreen() {
         isLoading={activities.isLoading}
         emptyTitle="The library is empty"
         emptyDescription="Write the first activity and teachers can start assigning it."
-        emptyAction={
-          <Link to="/activities/new" className={buttonClasses({ size: 'sm' })}>
-            New activity
-          </Link>
-        }
+        emptyAction={newActivityLink}
       />
     </div>
   );

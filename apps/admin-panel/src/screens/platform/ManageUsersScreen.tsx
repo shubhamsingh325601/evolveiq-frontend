@@ -9,7 +9,15 @@ import {
 import type { Role, User } from '@evolveiq/api-client';
 import { ROLE_LABELS } from '@evolveiq/auth';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
-import { Avatar, Badge, Button, ErrorState, PageHeader, SegmentedControl } from '@evolveiq/ui';
+import {
+  Avatar,
+  Badge,
+  Button,
+  ErrorState,
+  PageHeader,
+  Plus,
+  SegmentedControl,
+} from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 const ALL_ROLES: Role[] = [
@@ -102,7 +110,7 @@ export function ManageUsersScreen() {
         title="People"
         subtitle="Every account across every school."
         actions={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add an account
           </Button>
         }
@@ -135,7 +143,7 @@ export function ManageUsersScreen() {
         onRowClick={(person) => setEditing(person)}
         rowActions={(person) => (
           <Button
-            variant="quiet"
+            variant="danger-quiet"
             size="sm"
             onClick={() => void deleteUser.mutateAsync(person.id)}
           >

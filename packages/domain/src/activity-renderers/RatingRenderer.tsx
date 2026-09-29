@@ -11,7 +11,7 @@ export function RatingRenderer({
 }: ActivityStepRendererProps<RatingStep>) {
   return (
     <div>
-      <div role="radiogroup" aria-label={step.prompt} className="flex gap-2">
+      <div role="radiogroup" aria-label={step.prompt} className="flex gap-2 sm:gap-3">
         {SCALE.map((point) => {
           const isSelected = value === point;
           return (
@@ -23,11 +23,11 @@ export function RatingRenderer({
               aria-label={`${point} out of 5`}
               onClick={() => onChange(point)}
               className={cn(
-                'h-14 flex-1 rounded-lg border-2 text-xl font-semibold tabular-nums transition-colors',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500',
+                'h-16 flex-1 rounded-2xl text-2xl font-semibold tabular-nums transition-[background-color,box-shadow,color,transform] duration-150',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
                 isSelected
-                  ? 'border-teal-500 bg-teal-500 text-ink-inverse'
-                  : 'border-line bg-surface text-ink hover:border-line-strong',
+                  ? 'scale-105 bg-iris-500 text-white shadow-glow'
+                  : 'bg-white/80 text-ink ring-1 ring-inset ring-line hover:bg-white hover:ring-iris-200',
               )}
             >
               {point}
@@ -35,7 +35,7 @@ export function RatingRenderer({
           );
         })}
       </div>
-      <div className="mt-2 flex justify-between text-sm text-ink-muted">
+      <div className="mt-3 flex justify-between text-sm font-medium text-ink-muted">
         <span>{step.lowLabel}</span>
         <span>{step.highLabel}</span>
       </div>

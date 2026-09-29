@@ -14,6 +14,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Monorepo scaffold (pnpm workspaces, apps/, packages/) | Done | | pnpm workspaces, 3 apps + 5 packages |
 | Shared config (eslint, tsconfig, tailwind preset) | Done | | `packages/config`; tokens defined once |
 | `packages/ui` design system baseline | Done | | 19 primitives incl. Quote, RuledList |
+| Visual redesign ("Dawn" design system) | Done | | Tokens, primitives, shell and every screen; curated lucide icons; see README |
 | `packages/auth` — session + role guards | Done | | `RoleGuard` is the only role check |
 | `packages/api-client` — typed fetch + TanStack Query setup | Done | | Mock transport until the API URL lands |
 | CI: lint + typecheck + test on PR | Done | | `.github/workflows/ci.yml`, also builds |
@@ -24,7 +25,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | `ObservationForm` (parent/teacher variants) | Done | | 4 tests |
 | `ActivityPlayer` shell + 5 type renderers | Done | | 3 tests |
 | `RecordsTable` | Done | | 5 tests |
-| `AppSidebar` (role-based menu config) | Done | | 3 tests |
+| `AppSidebar` (role-based menu config) | Done | | 3 tests; same config drives `AppBottomNav` on phones (3 tests) |
 
 ## Family Web App
 | Item | Status | Owner | Notes |
@@ -59,4 +60,4 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Playwright e2e: full Observe→Review→Assign→Do→See path | Not Started | | Vitest/RTL covers each app separately |
-| Responsive QA pass (mobile/tablet/desktop) | Not Started | | Built responsive; not yet verified on devices |
+| Responsive QA pass (mobile/tablet/desktop) | Not Started | | Redesign screenshot-checked at 390, 820 and 1440px in headless Chrome; not yet verified on devices |

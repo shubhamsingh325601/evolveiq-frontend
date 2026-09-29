@@ -8,7 +8,7 @@ import {
 } from '@evolveiq/api-client';
 import type { ClassGroup } from '@evolveiq/api-client';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
-import { Button, ErrorState, PageHeader } from '@evolveiq/ui';
+import { Button, ErrorState, LayoutGrid, PageHeader, Plus } from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 export function ManageClassesScreen() {
@@ -55,7 +55,14 @@ export function ManageClassesScreen() {
       id: 'name',
       header: 'Class',
       sortValue: (group) => group.name,
-      cell: (group) => <span className="font-medium text-ink">{group.name}</span>,
+      cell: (group) => (
+        <span className="flex items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-iris-50 text-iris-600">
+            <LayoutGrid className="size-4" />
+          </span>
+          <span className="font-medium text-ink">{group.name}</span>
+        </span>
+      ),
     },
     {
       id: 'year',
@@ -84,7 +91,7 @@ export function ManageClassesScreen() {
         title="Classes"
         subtitle="Class groups and the teacher responsible for each."
         actions={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a class
           </Button>
         }
@@ -102,14 +109,18 @@ export function ManageClassesScreen() {
         isLoading={classes.isLoading}
         onRowClick={(group) => setEditing(group)}
         rowActions={(group) => (
-          <Button variant="quiet" size="sm" onClick={() => void deleteClass.mutateAsync(group.id)}>
+          <Button
+            variant="danger-quiet"
+            size="sm"
+            onClick={() => void deleteClass.mutateAsync(group.id)}
+          >
             Remove
           </Button>
         )}
         emptyTitle="No classes yet"
         emptyDescription="Add a class, then place students in it."
         emptyAction={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a class
           </Button>
         }

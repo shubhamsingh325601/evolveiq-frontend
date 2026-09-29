@@ -15,7 +15,8 @@ consumed three times.
 - **Routing**: React Router v6, per-app route trees, role-guarded routes
 - **Server state**: TanStack Query (all API reads/writes go through it)
 - **Client/UI state**: React Context + small Zustand stores where Context isn't enough
-- **Styling**: Tailwind CSS + a shared token set (colors, spacing, type scale)
+- **Styling**: Tailwind CSS + a shared token set (colors, spacing, type scale) — the "Dawn" design system, described in README.md
+- **Icons**: lucide-react, re-exported as a curated set from `packages/ui`; apps never import it directly
 - **Forms**: React Hook Form + Zod schemas (schemas shared with backend contracts where practical)
 - **Package management**: pnpm workspaces
 - **Testing**: Vitest + React Testing Library; Playwright for critical-path e2e (login, observe→assign→do→see)
@@ -50,7 +51,8 @@ not be reimplemented per app:
   across every management/list screen (students, teachers, classes, parents,
   schools, activity library, review queue).
 - `AppSidebar` — one sidebar shell; each app passes a role-based menu config
-  rather than forking the component.
+  rather than forking the component. On phones, `AppBottomNav` renders the
+  same config as a tab bar, so the two never disagree.
 
 ## Role-based access
 Each app has one entry point but the menu, routes, and visible data are

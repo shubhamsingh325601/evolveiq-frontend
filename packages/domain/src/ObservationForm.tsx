@@ -4,12 +4,14 @@ import { z } from 'zod';
 import type { NewObservation } from '@evolveiq/api-client';
 import {
   Button,
+  Card,
   Checkbox,
   Fieldset,
   FormField,
   Input,
   RadioCardGroup,
   Select,
+  Send,
   Textarea,
 } from '@evolveiq/ui';
 import {
@@ -224,7 +226,14 @@ export function ObservationForm({
       </Fieldset>
 
       {isTeacher ? (
-        <div className="grid gap-5 border-t border-line pt-6 sm:grid-cols-2">
+        <Card as="section" tone="tinted" className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+          <div className="sm:col-span-2">
+            <h3 className="text-base font-medium text-ink">For the school team</h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              Parents never see these fields or the flag.
+            </p>
+          </div>
+
           <FormField
             label="Level"
             hint="How much support was needed."
@@ -243,6 +252,7 @@ export function ObservationForm({
 
           <FormField
             label="Learning-behaviour area"
+            hint="The behaviour this shows most clearly."
             isOptional
             error={errors.learningBehaviourArea?.message}
           >
@@ -262,6 +272,7 @@ export function ObservationForm({
               name="isSignificant"
               render={({ field }) => (
                 <Checkbox
+                  variant="chip"
                   label="Flag this for a psychologist to look at sooner"
                   checked={field.value ?? false}
                   onChange={(event) => field.onChange(event.target.checked)}
@@ -269,21 +280,21 @@ export function ObservationForm({
               )}
             />
           </div>
-        </div>
+        </Card>
       ) : null}
 
       {submitError ? (
-        <p role="alert" className="text-sm text-raspberry-700">
+        <p role="alert" className="text-sm text-coral-700">
           {submitError}
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
-        <Button type="submit" isLoading={isSubmitting}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line-soft pt-6">
+        <Button type="submit" size="lg" icon={Send} isLoading={isSubmitting}>
           Send observation
         </Button>
         {onCancel ? (
-          <Button type="button" variant="quiet" onClick={onCancel}>
+          <Button type="button" variant="quiet" size="lg" onClick={onCancel}>
             Cancel
           </Button>
         ) : null}

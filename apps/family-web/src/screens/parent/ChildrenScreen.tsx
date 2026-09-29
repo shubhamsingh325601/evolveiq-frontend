@@ -1,53 +1,71 @@
 import { Link } from 'react-router-dom';
 import { useStudents } from '@evolveiq/api-client';
-import { ageFromDateOfBirth } from '@evolveiq/domain';
-import { Avatar, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '@evolveiq/ui';
+import { useAuth } from '@evolveiq/auth';
+import { greetingFor } from '@evolveiq/domain';
+import {
+  buttonClasses,
+  EmptyState,
+  ErrorState,
+  HeroPanel,
+  LoadingState,
+  Plus,
+  UsersRound,
+} from '@evolveiq/ui';
+import { ChildCard } from '../../components/ChildCard';
+
+const NAME_LIST = new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' });
 
 export function ChildrenScreen() {
+  const { user } = useAuth();
   const students = useStudents();
 
   if (students.isLoading) return <LoadingState label="Loading your children" />;
   if (students.isError) return <ErrorState onRetry={() => void students.refetch()} />;
 
   const children = students.data ?? [];
+  const firstName = user?.name.split(' ')[0] ?? '';
+  const childNames = NAME_LIST.format(
+    children.map((child) => child.name.split(' ')[0] ?? child.name),
+  );
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title="My children"
-        subtitle="Open a child to see what their school has noticed and what they are working on."
+    <div className="flex flex-col gap-10">
+      <HeroPanel
+        title={firstName ? `${greetingFor()}, ${firstName}` : greetingFor()}
+        description={
+          children.length === 0
+            ? 'Once your school links your children to your account, they will appear here.'
+            : `Here is what ${childNames} ${children.length === 1 ? 'is' : 'are'} working on, and what the people around them have noticed.`
+        }
+        actions={
+          <Link to="/parent/observations/new" className={buttonClasses({ variant: 'inverse' })}>
+            <Plus />
+            Add an observation
+          </Link>
+        }
       />
 
-      {children.length === 0 ? (
-        <EmptyState
-          title="No children linked to your account yet"
-          description="Your school adds this link. Ask the school office if you were expecting to see someone here."
-        />
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {children.map((child) => (
-            <Card as="li" key={child.id}>
-              <Link
-                to={`/parent/children/${child.id}`}
-                className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-teal-500"
-              >
-                <Avatar name={child.name} size="lg" />
-                <span className="min-w-0 flex-1">
-                  <span className="block font-serif text-xl text-ink">{child.name}</span>
-                  <span className="mt-0.5 block text-sm text-ink-muted">
-                    {ageFromDateOfBirth(child.dateOfBirth)} years old,{' '}
-                    {child.growthAreaIds.length === 0
-                      ? 'no growth areas open'
-                      : `${child.growthAreaIds.length} growth ${
-                          child.growthAreaIds.length === 1 ? 'area' : 'areas'
-                        } being worked on`}
-                  </span>
-                </span>
-              </Link>
-            </Card>
-          ))}
-        </ul>
-      )}
+      <section>
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">My children</h2>
+        <p className="mt-1 max-w-prose text-sm text-ink-muted">
+          Open a child to see what their school has noticed and what they are working on.
+        </p>
+
+        {children.length === 0 ? (
+          <EmptyState
+            className="mt-5"
+            icon={UsersRound}
+            title="No children linked to your account yet"
+            description="Your school adds this link. Ask the school office if you were expecting to see someone here."
+          />
+        ) : (
+          <ul className="mt-5 grid gap-4 md:grid-cols-2">
+            {children.map((child) => (
+              <ChildCard key={child.id} child={child} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

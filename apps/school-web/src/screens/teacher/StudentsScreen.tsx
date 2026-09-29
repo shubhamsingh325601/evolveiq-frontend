@@ -1,7 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useClasses, useObservations, useStudents } from '@evolveiq/api-client';
 import { RecordsTable, ageFromDateOfBirth, type RecordsTableColumn } from '@evolveiq/domain';
-import { Badge, buttonClasses, ErrorState, PageHeader } from '@evolveiq/ui';
+import {
+  Avatar,
+  Badge,
+  buttonClasses,
+  ClipboardList,
+  ErrorState,
+  PageHeader,
+  Plus,
+} from '@evolveiq/ui';
 import type { Student } from '@evolveiq/api-client';
 
 export function StudentsScreen() {
@@ -27,7 +35,12 @@ export function StudentsScreen() {
       id: 'name',
       header: 'Student',
       sortValue: (student) => student.name,
-      cell: (student) => <span className="font-medium text-ink">{student.name}</span>,
+      cell: (student) => (
+        <span className="flex items-center gap-3">
+          <Avatar name={student.name} size="sm" />
+          <span className="font-medium text-ink">{student.name}</span>
+        </span>
+      ),
     },
     {
       id: 'class',
@@ -76,9 +89,19 @@ export function StudentsScreen() {
         title="My students"
         subtitle="Everyone in the classes you teach."
         actions={
-          <Link to="/teacher/observations/new" className={buttonClasses({ size: 'sm' })}>
-            New observation
-          </Link>
+          <>
+            <Link
+              to="/teacher/assign"
+              className={buttonClasses({ variant: 'secondary', size: 'sm' })}
+            >
+              <ClipboardList />
+              Assign an activity
+            </Link>
+            <Link to="/teacher/observations/new" className={buttonClasses({ size: 'sm' })}>
+              <Plus />
+              New observation
+            </Link>
+          </>
         }
       />
 

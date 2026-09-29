@@ -10,6 +10,7 @@ import {
   type RecordsTableColumn,
 } from '@evolveiq/domain';
 import {
+  Avatar,
   Badge,
   ErrorState,
   PageHeader,
@@ -53,18 +54,24 @@ export function ReviewQueueScreen() {
       id: 'student',
       header: 'Student',
       sortValue: (observation) => nameById.get(observation.studentId) ?? '',
-      cell: (observation) => (
-        <span className="font-medium text-ink">
-          {nameById.get(observation.studentId) ?? 'Unknown student'}
-        </span>
-      ),
+      cell: (observation) => {
+        const name = nameById.get(observation.studentId) ?? 'Unknown student';
+        return (
+          <span className="flex items-center gap-3">
+            <Avatar name={name} size="sm" />
+            <span className="font-medium text-ink">{name}</span>
+          </span>
+        );
+      },
     },
     {
       id: 'body',
       header: 'What was noticed',
-      className: 'max-w-md',
+      className: 'min-w-[10rem] max-w-md md:min-w-[16rem]',
       cell: (observation) => (
-        <span className="line-clamp-2 font-serif text-base text-ink">{observation.body}</span>
+        <span className="line-clamp-2 font-serif text-[0.9375rem] leading-6 text-ink">
+          {observation.body}
+        </span>
       ),
     },
     {
@@ -80,7 +87,7 @@ export function ReviewQueueScreen() {
       isSecondary: true,
       sortValue: (observation) => observation.authorName,
       cell: (observation) => (
-        <span>
+        <span className="whitespace-nowrap">
           {observation.authorName}
           <span className="block text-ink-faint">
             {observation.authorRole === 'parent' ? 'Parent' : 'Teacher'}
@@ -91,8 +98,11 @@ export function ReviewQueueScreen() {
     {
       id: 'observed',
       header: 'Seen',
+      isSecondary: true,
       sortValue: (observation) => observation.observedAt,
-      cell: (observation) => formatRelativeDay(observation.observedAt),
+      cell: (observation) => (
+        <span className="whitespace-nowrap">{formatRelativeDay(observation.observedAt)}</span>
+      ),
     },
     {
       id: 'status',
@@ -117,7 +127,7 @@ export function ReviewQueueScreen() {
         subtitle="Observations waiting on you, newest first."
       />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <SegmentedControl
           label="Filter the queue"
           value={filter}
@@ -147,7 +157,7 @@ export function ReviewQueueScreen() {
           ]}
         />
 
-        <div className="lg:w-56">
+        <div className="shrink-0 lg:w-56">
           <label className="sr-only" htmlFor="school-filter">
             School
           </label>

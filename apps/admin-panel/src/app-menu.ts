@@ -1,17 +1,18 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
+import { Backpack, Contact, HeartHandshake, LayoutGrid, Presentation, School } from '@evolveiq/ui';
 
-/** The admin panel's menu, by role. Consumed by the shared `AppSidebar`. */
+/** The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`. */
 export function menuForRole(role: Role): SidebarMenuSection[] {
   if (role === 'school-admin') {
     return [
       {
         title: 'My school',
         items: [
-          { label: 'Students', to: '/school/students' },
-          { label: 'Teachers', to: '/school/teachers' },
-          { label: 'Classes', to: '/school/classes' },
-          { label: 'Parents', to: '/school/parents' },
+          { label: 'Students', to: '/school/students', icon: Backpack },
+          { label: 'Teachers', to: '/school/teachers', icon: Presentation },
+          { label: 'Classes', to: '/school/classes', icon: LayoutGrid },
+          { label: 'Parents', to: '/school/parents', icon: HeartHandshake },
         ],
       },
     ];
@@ -22,8 +23,8 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
       {
         title: 'Platform',
         items: [
-          { label: 'Schools', to: '/platform/schools' },
-          { label: 'People', to: '/platform/users' },
+          { label: 'Schools', to: '/platform/schools', icon: School },
+          { label: 'People', to: '/platform/users', icon: Contact },
         ],
       },
     ];

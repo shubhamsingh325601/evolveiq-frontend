@@ -4,12 +4,12 @@ import {
   useActivity,
   useActivityQueue,
   useCompleteAssignment,
+  useStreak,
   type ActivityResponse,
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
 import { ActivityPlayer, StreakIndicator } from '@evolveiq/domain';
-import { useStreak } from '@evolveiq/api-client';
-import { Button, Card, ErrorState, LoadingState } from '@evolveiq/ui';
+import { Button, Card, ErrorState, LoadingState, PageHeader, Star } from '@evolveiq/ui';
 
 export function ActivityScreen() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -41,34 +41,40 @@ export function ActivityScreen() {
   };
 
   if (isFinished) {
+    // The product's one celebration: it only ever plays here, in answer to a
+    // child finishing something.
     return (
-      <div className="flex flex-col gap-8">
-        <header>
-          <h1 className="font-serif text-4xl text-ink">Finished</h1>
-          <p className="mt-2 max-w-prose text-base text-ink-muted">
+      <div className="flex flex-col items-center gap-8 py-6 text-center sm:py-10">
+        <div className="relative">
+          <span className="flex size-28 animate-celebrate items-center justify-center rounded-[2rem] bg-hero text-white shadow-raised">
+            <Star className="size-12" fill="currentColor" strokeWidth={1.5} />
+          </span>
+          <span aria-hidden="true" className="absolute inset-0 animate-halo rounded-[2rem]" />
+        </div>
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">Finished</h1>
+          <p className="mx-auto mt-3 max-w-prose text-lg text-ink-muted">
             You have finished {activity.data.title}. Your teacher will see it.
           </p>
-        </header>
+        </div>
         {streak.data ? (
-          <Card isPlayful className="px-5 py-5">
+          <Card isPlayful className="px-6 py-5">
             <StreakIndicator streak={streak.data} />
           </Card>
         ) : null}
-        <div>
-          <Button size="lg" isPlayful onClick={() => navigate('/student/today')}>
-            Back to today
-          </Button>
-        </div>
+        <Button size="lg" isPlayful onClick={() => navigate('/student/today')}>
+          Back to today
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-2xl font-semibold text-ink">{activity.data.title}</h1>
-        <p className="mt-1 text-sm text-ink-muted">Set by {assignment.assignedByName}</p>
-      </header>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+      <PageHeader
+        title={activity.data.title}
+        subtitle={`Set by ${assignment.assignedByName}`}
+      />
 
       <ActivityPlayer
         activity={activity.data}

@@ -1,4 +1,5 @@
 import { ROLE_APP, useAuth } from '@evolveiq/auth';
+import { DawnBackdrop, LoadingState } from '@evolveiq/ui';
 import { App as FamilyApp } from '@family-web/App';
 import { App as SchoolApp } from '@school-web/App';
 import { App as AdminApp } from '@admin-panel/App';
@@ -23,8 +24,9 @@ export function DevShell() {
 
   if (isRestoring) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-paper text-ink-muted">
-        <p className="text-sm">Starting up…</p>
+      <div className="relative flex min-h-dvh items-center justify-center">
+        <DawnBackdrop />
+        <LoadingState label="Starting up" />
       </div>
     );
   }

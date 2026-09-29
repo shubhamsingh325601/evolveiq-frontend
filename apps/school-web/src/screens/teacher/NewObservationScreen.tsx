@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCreateObservation, useStudents, type NewObservation } from '@evolveiq/api-client';
-import { ObservationForm } from '@evolveiq/domain';
-import { ErrorState, LoadingState, PageHeader } from '@evolveiq/ui';
+import { BackLink, ObservationForm } from '@evolveiq/domain';
+import { Card, ErrorState, LoadingState, PageHeader } from '@evolveiq/ui';
 
 /**
  * Same `ObservationForm` the parent app uses — `variant="teacher"` adds Level,
@@ -33,19 +33,22 @@ export function NewObservationScreen() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
+        back={<BackLink to="/teacher/students">My students</BackLink>}
         title="New observation"
         subtitle="What you record goes to the psychologist's review queue."
       />
 
-      <ObservationForm
-        variant="teacher"
-        students={students.data ?? []}
-        {...(defaultStudentId ? { defaultStudentId } : {})}
-        onSubmit={handleSubmit}
-        onCancel={() => navigate('/teacher/students')}
-        isSubmitting={createObservation.isPending}
-        {...(submitError ? { submitError } : {})}
-      />
+      <Card className="max-w-4xl p-6 sm:p-8">
+        <ObservationForm
+          variant="teacher"
+          students={students.data ?? []}
+          {...(defaultStudentId ? { defaultStudentId } : {})}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate('/teacher/students')}
+          isSubmitting={createObservation.isPending}
+          {...(submitError ? { submitError } : {})}
+        />
+      </Card>
     </div>
   );
 }

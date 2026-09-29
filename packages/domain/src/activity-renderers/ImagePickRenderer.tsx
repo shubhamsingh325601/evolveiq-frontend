@@ -1,5 +1,5 @@
 import type { ImagePickStep } from '@evolveiq/api-client';
-import { cn } from '@evolveiq/ui';
+import { Check, cn } from '@evolveiq/ui';
 import type { ActivityStepRendererProps } from './renderer-types';
 
 export function ImagePickRenderer({
@@ -19,19 +19,20 @@ export function ImagePickRenderer({
             aria-checked={isSelected}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-colors',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500',
+              'relative flex flex-col items-center gap-3 rounded-2xl border-2 bg-white/80 p-3 transition-[border-color,background-color,box-shadow] duration-150',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
               isSelected
-                ? 'border-teal-500 bg-teal-50'
-                : 'border-line bg-surface hover:border-line-strong',
+                ? 'border-iris-500 bg-iris-50 shadow-[0_0_0_4px_rgba(85,88,230,0.14)]'
+                : 'border-line hover:border-iris-200 hover:bg-white',
             )}
           >
-            <img
-              src={option.imageUrl}
-              alt=""
-              className="aspect-[4/3] w-full rounded object-cover"
-            />
+            <img src={option.imageUrl} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" />
             <span className="text-base font-medium text-ink">{option.label}</span>
+            {isSelected ? (
+              <span className="absolute right-2 top-2 flex size-7 animate-streak-mark items-center justify-center rounded-full bg-iris-500 text-white shadow-glow">
+                <Check className="size-4" strokeWidth={3} />
+              </span>
+            ) : null}
           </button>
         );
       })}

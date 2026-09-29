@@ -18,7 +18,11 @@ export interface RadioCardGroupProps<T extends string> {
   className?: string;
 }
 
-/** Selectable options with a visible chosen state, used for radios and MCQs. */
+/**
+ * Selectable options with a visible chosen state, used for radios and MCQs.
+ * The native radio stays in the DOM for keyboard and screen-reader use; the
+ * drawn dot beside it is the visible control.
+ */
 export function RadioCardGroup<T extends string>({
   name,
   options,
@@ -34,7 +38,7 @@ export function RadioCardGroup<T extends string>({
   return (
     <div
       className={cn(
-        'grid gap-2',
+        'grid gap-2.5',
         columns === 2 && 'sm:grid-cols-2',
         columns === 3 && 'sm:grid-cols-3',
         className,
@@ -46,12 +50,12 @@ export function RadioCardGroup<T extends string>({
           <label
             key={option.value}
             className={cn(
-              'flex cursor-pointer items-start gap-3 border transition-colors',
-              isPlayful ? 'rounded-lg px-4 py-4' : 'rounded px-3.5 py-3',
+              'flex cursor-pointer items-center gap-3.5 border transition-[border-color,background-color,box-shadow] duration-150',
+              isPlayful ? 'rounded-2xl px-5 py-4' : 'rounded-xl px-4 py-3',
               isSelected
-                ? 'border-teal-500 bg-teal-50'
-                : 'border-line bg-surface hover:border-line-strong',
-              'focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal-500',
+                ? 'border-iris-400 bg-iris-50/90 shadow-[0_0_0_3px_rgba(85,88,230,0.12)]'
+                : 'border-line bg-white/80 hover:border-iris-200 hover:bg-white',
+              'has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-iris-500',
             )}
           >
             <input
@@ -60,13 +64,30 @@ export function RadioCardGroup<T extends string>({
               value={option.value}
               checked={isSelected}
               onChange={() => onChange(option.value)}
-              className="mt-0.5 size-4 shrink-0 border-line text-teal-500 focus:outline-none"
+              className="sr-only"
             />
+            <span
+              aria-hidden="true"
+              className={cn(
+                'flex shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                isPlayful ? 'size-6' : 'size-5',
+                isSelected ? 'border-iris-500 bg-iris-500' : 'border-line-strong bg-white',
+              )}
+            >
+              <span
+                className={cn(
+                  'rounded-full bg-white transition-transform',
+                  isPlayful ? 'size-2.5' : 'size-2',
+                  isSelected ? 'scale-100' : 'scale-0',
+                )}
+              />
+            </span>
             <span className="min-w-0">
               <span
                 className={cn(
-                  'block text-ink',
-                  isPlayful ? 'text-base font-medium' : 'text-sm',
+                  'block',
+                  isSelected ? 'text-iris-900' : 'text-ink',
+                  isPlayful ? 'text-lg font-medium' : 'text-sm',
                 )}
               >
                 {option.label}

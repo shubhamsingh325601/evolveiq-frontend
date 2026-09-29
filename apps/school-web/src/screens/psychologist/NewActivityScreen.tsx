@@ -4,6 +4,7 @@ import { useCreateActivity } from '@evolveiq/api-client';
 import type { ActivityStep, ActivityStepKind, DevelopmentArea } from '@evolveiq/api-client';
 import {
   ACTIVITY_STEP_LABELS,
+  BackLink,
   DEVELOPMENT_AREA_LABELS,
   DEVELOPMENT_AREAS,
 } from '@evolveiq/domain';
@@ -14,8 +15,10 @@ import {
   FormField,
   Input,
   PageHeader,
+  Plus,
   Select,
   Textarea,
+  X,
 } from '@evolveiq/ui';
 
 /**
@@ -167,11 +170,15 @@ export function NewActivityScreen() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
+        back={<BackLink to="/activities">Activity library</BackLink>}
         title="New activity"
         subtitle="Write the questions a student will work through, in order."
       />
 
-      <section className="grid gap-5 sm:grid-cols-2">
+      <Card as="section" className="grid gap-5 p-6 sm:grid-cols-2 sm:p-8">
+        <h2 className="text-lg font-semibold tracking-tight text-ink sm:col-span-2">
+          About the activity
+        </h2>
         <FormField label="Title" className="sm:col-span-2">
           <Input
             value={title}
@@ -220,23 +227,35 @@ export function NewActivityScreen() {
             />
           </FormField>
         </div>
-      </section>
+      </Card>
 
       <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-line pt-6">
-          <h2 className="text-xl font-semibold text-ink">Steps</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xl font-semibold tracking-tight text-ink">Steps</h2>
           <p className="text-sm text-ink-muted">Students work through these in order.</p>
         </div>
 
         {drafts.map((draft, index) => (
-          <Card key={draft.key} className="flex flex-col gap-5 px-5 py-5">
+          <Card key={draft.key} className="flex flex-col gap-5 p-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-ink">Step {index + 1}</p>
+              <p className="flex items-center gap-3 text-base font-medium text-ink">
+                <span
+                  aria-hidden="true"
+                  className="flex size-8 items-center justify-center rounded-full bg-iris-50 text-sm font-semibold tabular-nums text-iris-700 ring-1 ring-iris-100"
+                >
+                  {index + 1}
+                </span>
+                <span>
+                  <span className="sr-only">Step {index + 1}: </span>
+                  {ACTIVITY_STEP_LABELS[draft.kind]}
+                </span>
+              </p>
               {drafts.length > 1 ? (
                 <Button
                   type="button"
                   variant="quiet"
                   size="sm"
+                  icon={X}
                   onClick={() =>
                     setDrafts((current) =>
                       current.filter((candidate) => candidate.key !== draft.key),
@@ -379,6 +398,7 @@ export function NewActivityScreen() {
           <Button
             type="button"
             variant="secondary"
+            icon={Plus}
             onClick={() => setDrafts((current) => [...current, newDraftStep()])}
           >
             Add another step
@@ -388,11 +408,11 @@ export function NewActivityScreen() {
 
       {error ? <ErrorState title="Check the activity" description={error} /> : null}
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
-        <Button onClick={() => void save()} isLoading={createActivity.isPending}>
+      <div className="flex flex-wrap items-center gap-3 border-t border-line-soft pt-6">
+        <Button size="lg" onClick={() => void save()} isLoading={createActivity.isPending}>
           Save activity
         </Button>
-        <Button variant="quiet" onClick={() => navigate('/activities')}>
+        <Button variant="quiet" size="lg" onClick={() => navigate('/activities')}>
           Cancel
         </Button>
       </div>

@@ -1,13 +1,25 @@
 import { Link, useParams } from 'react-router-dom';
 import { useGrowthAreas, useObservations, useStudent } from '@evolveiq/api-client';
-import { GrowthAreaList, ObservationEntry, ageFromDateOfBirth } from '@evolveiq/domain';
 import {
+  BackLink,
+  GrowthAreaList,
+  ObservationEntry,
+  ageFromDateOfBirth,
+} from '@evolveiq/domain';
+import {
+  Avatar,
   buttonClasses,
+  CalendarDays,
+  Card,
   EmptyState,
   ErrorState,
   LoadingState,
+  MessageCircle,
+  NotebookPen,
+  Plus,
   RuledList,
   RuledListItem,
+  Sprout,
 } from '@evolveiq/ui';
 
 /**
@@ -33,80 +45,104 @@ export function ChildDetailScreen() {
   }
 
   const child = student.data;
+  const openAreas = growthAreas.data ?? [];
+  const entries = observations.data ?? [];
+  const newObservationPath = `/parent/observations/new?childId=${child.id}`;
 
   return (
-    <div className="flex flex-col gap-9">
-      <header className="border-b border-line pb-6">
-        <h1 className="font-serif text-4xl text-ink">{child.name}</h1>
-        <p className="mt-2 text-base text-ink-muted">
-          {ageFromDateOfBirth(child.dateOfBirth)} years old
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
+    <div className="flex flex-col gap-8">
+      <BackLink to="/parent/children" className="self-start">
+        My children
+      </BackLink>
+
+      <Card isPlayful className="flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-5">
+          <Avatar name={child.name} size="xl" className="size-20 text-2xl" />
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              {child.name}
+            </h1>
+            <p className="mt-1.5 text-base text-ink-muted">
+              {ageFromDateOfBirth(child.dateOfBirth)} years old
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Link
             to={`/parent/children/${child.id}/notes`}
             className={buttonClasses({ variant: 'secondary', size: 'sm' })}
           >
+            <MessageCircle />
             Teacher notes
           </Link>
           <Link
             to={`/parent/children/${child.id}/summary`}
             className={buttonClasses({ variant: 'secondary', size: 'sm' })}
           >
+            <CalendarDays />
             This month
           </Link>
-          <Link to="/parent/observations/new" className={buttonClasses({ size: 'sm' })}>
+          <Link to={newObservationPath} className={buttonClasses({ size: 'sm' })}>
+            <Plus />
             Add an observation
           </Link>
         </div>
-      </header>
+      </Card>
 
-      <section>
-        <h2 className="text-xl font-semibold text-ink">What we are working on</h2>
-        <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          Growth areas are chosen by the school after reviewing what teachers and
-          you have noticed.
-        </p>
-        {(growthAreas.data ?? []).length === 0 ? (
-          <EmptyState
-            className="mt-4"
-            title="No growth areas open"
-            description="The school opens one when a pattern shows up across several observations."
-          />
-        ) : (
-          <GrowthAreaList className="mt-4" growthAreas={growthAreas.data ?? []} />
-        )}
-      </section>
+      <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
+        <section className="lg:col-span-5">
+          <h2 className="text-xl font-semibold tracking-tight text-ink">What we are working on</h2>
+          <p className="mt-1 max-w-prose text-sm text-ink-muted">
+            Growth areas are chosen by the school after reviewing what teachers and
+            you have noticed.
+          </p>
+          {openAreas.length === 0 ? (
+            <EmptyState
+              className="mt-4"
+              icon={Sprout}
+              title="No growth areas open"
+              description="The school opens one when a pattern shows up across several observations."
+            />
+          ) : (
+            <GrowthAreaList className="mt-4" growthAreas={openAreas} />
+          )}
+        </section>
 
-      <section>
-        <h2 className="text-xl font-semibold text-ink">What has been noticed</h2>
-        {observations.isLoading ? <LoadingState /> : null}
-        {(observations.data ?? []).length === 0 && !observations.isLoading ? (
-          <EmptyState
-            className="mt-4"
-            title="Nothing recorded yet"
-            description="Add the first observation and the school will see it."
-            action={
-              <Link
-                to="/parent/observations/new"
-                className="text-sm font-medium text-teal-600 underline underline-offset-4"
-              >
-                Add an observation
-              </Link>
-            }
-          />
-        ) : (
-          <RuledList className="mt-5">
-            {(observations.data ?? []).map((observation) => (
-              <RuledListItem
-                key={observation.id}
-                tone={observation.status === 'pending' ? 'pending' : 'default'}
-              >
-                <ObservationEntry observation={observation} />
-              </RuledListItem>
-            ))}
-          </RuledList>
-        )}
-      </section>
+        <section className="lg:col-span-7">
+          <h2 className="text-xl font-semibold tracking-tight text-ink">What has been noticed</h2>
+          <p className="mt-1 max-w-prose text-sm text-ink-muted">
+            Everything you and the school have written down, newest first.
+          </p>
+          {observations.isLoading ? <LoadingState /> : null}
+          {entries.length === 0 && !observations.isLoading ? (
+            <EmptyState
+              className="mt-4"
+              icon={NotebookPen}
+              title="Nothing recorded yet"
+              description="Add the first observation and the school will see it."
+              action={
+                <Link to={newObservationPath} className={buttonClasses({ size: 'sm' })}>
+                  <Plus />
+                  Add an observation
+                </Link>
+              }
+            />
+          ) : (
+            <Card className="mt-4 p-6 sm:p-7">
+              <RuledList>
+                {entries.map((observation) => (
+                  <RuledListItem
+                    key={observation.id}
+                    tone={observation.status === 'pending' ? 'pending' : 'default'}
+                  >
+                    <ObservationEntry observation={observation} />
+                  </RuledListItem>
+                ))}
+              </RuledList>
+            </Card>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

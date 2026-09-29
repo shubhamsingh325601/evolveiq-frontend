@@ -3,7 +3,7 @@ import { useCreateUser, useDeleteUser, useUpdateUser, useUsers } from '@evolveiq
 import type { Role, User } from '@evolveiq/api-client';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
 import { ROLE_LABELS } from '@evolveiq/auth';
-import { Avatar, Button, ErrorState, PageHeader } from '@evolveiq/ui';
+import { Avatar, Button, ErrorState, PageHeader, Plus } from '@evolveiq/ui';
 import { RecordEditor, type RecordEditorField, type RecordValues } from './RecordEditor';
 
 /**
@@ -99,7 +99,7 @@ export function ManagePeopleScreen({
         title={title}
         subtitle={subtitle}
         actions={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             {addLabel}
           </Button>
         }
@@ -118,7 +118,7 @@ export function ManagePeopleScreen({
         onRowClick={(person) => setEditing(person)}
         rowActions={(person) => (
           <Button
-            variant="quiet"
+            variant="danger-quiet"
             size="sm"
             onClick={() => void deleteUser.mutateAsync(person.id)}
           >
@@ -128,7 +128,7 @@ export function ManagePeopleScreen({
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         emptyAction={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             {addLabel}
           </Button>
         }

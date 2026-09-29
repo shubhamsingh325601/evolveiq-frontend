@@ -23,7 +23,7 @@ screen — for example `priya@family.test` (parent), `rao@school.test` (teacher)
 ```bash
 pnpm lint        # eslint across every workspace
 pnpm typecheck   # tsc --noEmit across every workspace
-pnpm test        # vitest, 46 tests
+pnpm test        # vitest, 51 tests
 pnpm build       # production build of all three apps
 ```
 
@@ -80,14 +80,32 @@ screens never check roles themselves.
 
 ## Design
 
-Tokens live only in `packages/config/tailwind-preset.js`. Colour is semantic:
-teal is action, moss is growth and completion, amber is awaiting review,
-raspberry is flagged significant. Nothing is coloured for decoration.
+The design system is called **Dawn**. Tokens live only in
+`packages/config/tailwind-preset.js`; icons come from `packages/ui` (a curated
+lucide set), never from `lucide-react` directly.
 
-Two typefaces with a rule: **Newsreader (serif) is only ever used for text a
-person actually wrote about a child** — an observation, a teacher note, a
-monthly summary. Public Sans carries everything the system says itself. Seeing
-the serif tells a reader, without a label, that these are someone's own words.
+The product sits under a dawn sky: a night-indigo rail, a pale mist backdrop
+that warms toward peach, and translucent white surfaces that pick up that
+light. Only bars and dialogs, which scroll over content, pay for a backdrop
+blur; cards are simply translucent.
 
-Border radius encodes audience: 4px in the school and admin apps, 10px on
-student-facing surfaces.
+Colour is semantic, one meaning per hue: **iris** (indigo into royal blue) is
+action, **lilac** is a person's own words, **jade** is growth and completion,
+**honey** is awaiting review, **coral** is flagged significant or destructive.
+The full royal-blue-to-lilac gradient is kept for a few moments: hero panels
+(home screens and sign-in), the brand mark, the create button and a student's
+finish celebration. Nothing is coloured for decoration.
+
+Two typefaces with a rule: **Literata (serif), in a lilac bubble, is only ever
+used for text a person actually wrote about a child** — an observation, a
+teacher note, a monthly summary. Lexend carries everything the system says
+itself. Seeing the serif tells a reader, without a label, that these are
+someone's own words.
+
+Radius follows hierarchy: 12px controls, 20px cards, 28px for the rail, hero
+panels and dialogs. Student-facing surfaces go one step rounder.
+
+On phones the rail becomes a bottom tab bar driven by the same menu config, with
+a role's main create action as the raised button in the middle. Motion answers
+something a person did; the one celebration plays when a student finishes an
+activity, and `prefers-reduced-motion` turns all of it off.

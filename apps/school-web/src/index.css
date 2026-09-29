@@ -5,14 +5,20 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-paper font-sans text-ink antialiased;
+    @apply bg-mist font-sans text-ink antialiased;
   }
 
-  /* The one piece of non-user-triggered motion in the product is the streak
-     mark. Anyone who has asked for less motion does not get it. */
+  ::selection {
+    @apply bg-iris-100 text-ink;
+  }
+
+  /* Motion in the product answers something a person did, apart from the
+     streak marks and the finish celebration. Anyone who has asked for less
+     motion gets none of it. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

@@ -4,8 +4,10 @@ import { useActivities, useAssignActivity, useStudents } from '@evolveiq/api-cli
 import { ActivityCard, DEVELOPMENT_AREA_LABELS, DEVELOPMENT_AREAS } from '@evolveiq/domain';
 import type { DevelopmentArea } from '@evolveiq/api-client';
 import {
+  BookOpen,
   Button,
   Card,
+  Check,
   EmptyState,
   ErrorState,
   FormField,
@@ -54,8 +56,8 @@ export function AssignActivityScreen() {
         subtitle="Pick a student, then choose something from the library."
       />
 
-      <Card className="flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-end">
-        <FormField label="Student" className="sm:flex-1">
+      <Card className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end sm:p-6">
+        <FormField label="Student">
           <Select value={chosenStudentId} onChange={(event) => setStudentId(event.target.value)}>
             {(students.data ?? []).map((student) => (
               <option key={student.id} value={student.id}>
@@ -64,7 +66,7 @@ export function AssignActivityScreen() {
             ))}
           </Select>
         </FormField>
-        <FormField label="Due by" className="sm:w-48">
+        <FormField label="Due by">
           <Input
             type="date"
             min={todayIsoDate()}
@@ -77,9 +79,12 @@ export function AssignActivityScreen() {
       {assignedTitle ? (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-3 rounded-md border border-moss-100 bg-moss-50 px-5 py-4"
+          className="flex flex-wrap items-center gap-3 rounded-2xl border border-jade-100 bg-jade-50/90 px-5 py-4"
         >
-          <p className="text-sm text-moss-700">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-jade-500 text-white">
+            <Check className="size-4" strokeWidth={3} />
+          </span>
+          <p className="min-w-0 flex-1 text-sm text-jade-700">
             {assignedTitle} is now set for{' '}
             {(students.data ?? []).find((student) => student.id === chosenStudentId)?.name ??
               'the student'}
@@ -116,11 +121,12 @@ export function AssignActivityScreen() {
         {(activities.data ?? []).length === 0 && !activities.isLoading ? (
           <EmptyState
             className="mt-5"
+            icon={BookOpen}
             title="Nothing in the library for that area yet"
             description="Choose another area, or ask your school psychologist to add one."
           />
         ) : (
-          <ul className="mt-5 flex flex-col gap-3">
+          <ul className="mt-5 grid gap-3 xl:grid-cols-2">
             {(activities.data ?? []).map((activity) => (
               <ActivityCard
                 key={activity.id}

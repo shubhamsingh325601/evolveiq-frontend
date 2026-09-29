@@ -8,7 +8,7 @@ import {
 } from '@evolveiq/api-client';
 import type { Student } from '@evolveiq/api-client';
 import { RecordsTable, ageFromDateOfBirth, type RecordsTableColumn } from '@evolveiq/domain';
-import { Button, ErrorState, PageHeader } from '@evolveiq/ui';
+import { Avatar, Button, ErrorState, PageHeader, Plus } from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 export function ManageStudentsScreen() {
@@ -68,7 +68,12 @@ export function ManageStudentsScreen() {
       id: 'name',
       header: 'Name',
       sortValue: (student) => student.name,
-      cell: (student) => <span className="font-medium text-ink">{student.name}</span>,
+      cell: (student) => (
+        <span className="flex items-center gap-3">
+          <Avatar name={student.name} size="sm" />
+          <span className="font-medium text-ink">{student.name}</span>
+        </span>
+      ),
     },
     {
       id: 'class',
@@ -100,7 +105,7 @@ export function ManageStudentsScreen() {
         title="Students"
         subtitle="Everyone enrolled at your school."
         actions={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a student
           </Button>
         }
@@ -118,14 +123,14 @@ export function ManageStudentsScreen() {
         isLoading={students.isLoading}
         onRowClick={(student) => setEditing(student)}
         rowActions={(student) => (
-          <Button variant="quiet" size="sm" onClick={() => void remove(student)}>
+          <Button variant="danger-quiet" size="sm" onClick={() => void remove(student)}>
             Remove
           </Button>
         )}
         emptyTitle="No students yet"
         emptyDescription="Add the first student and they can be placed in a class."
         emptyAction={
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a student
           </Button>
         }

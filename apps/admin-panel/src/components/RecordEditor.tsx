@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, FormField, Input, Modal, Select } from '@evolveiq/ui';
+import { Button, CircleAlert, FormField, Input, Modal, Select } from '@evolveiq/ui';
 
 /**
  * The create/edit dialog behind every management screen in this app.
@@ -126,7 +126,11 @@ export function RecordEditor({
         ))}
 
         {error ? (
-          <p role="alert" className="text-sm text-raspberry-700">
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-xl bg-coral-50 px-3.5 py-3 text-sm text-coral-700"
+          >
+            <CircleAlert className="mt-0.5 size-4 shrink-0" />
             {error}
           </p>
         ) : null}

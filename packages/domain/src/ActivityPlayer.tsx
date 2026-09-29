@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Activity, ActivityResponse, ActivityStep } from '@evolveiq/api-client';
-import { Button, cn } from '@evolveiq/ui';
+import { Button, Card, ChevronLeft, cn } from '@evolveiq/ui';
 import {
   ImagePickRenderer,
   McqRenderer,
@@ -79,9 +79,7 @@ export function ActivityPlayer({
   );
 
   if (!step) {
-    return (
-      <p className="text-sm text-ink-muted">This activity has no steps yet.</p>
-    );
+    return <p className="text-sm text-ink-muted">This activity has no steps yet.</p>;
   }
 
   const goBack = () => setStepIndex((index) => Math.max(0, index - 1));
@@ -94,36 +92,47 @@ export function ActivityPlayer({
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div>
-        <div className="flex items-center gap-1.5" aria-hidden="true">
+        <div className="flex items-center gap-2" aria-hidden="true">
           {activity.steps.map((activityStep, index) => (
             <span
               key={activityStep.id}
               className={cn(
-                'h-1.5 flex-1 rounded-full transition-colors',
-                index < stepIndex && 'bg-moss-500',
-                index === stepIndex && 'bg-teal-500',
-                index > stepIndex && 'bg-line',
+                'h-2 flex-1 rounded-full transition-colors duration-300',
+                index < stepIndex && 'bg-jade-400',
+                index === stepIndex && 'bg-iris-500',
+                index > stepIndex && 'bg-iris-100',
               )}
             />
           ))}
         </div>
-        <p className="mt-2 text-sm text-ink-muted">
+        <p className="mt-3 text-sm font-medium text-ink-muted">
           Step {stepIndex + 1} of {activity.steps.length}
         </p>
       </div>
 
-      <div className="flex flex-col gap-5">
-        <h2 className="max-w-prose text-2xl font-semibold text-ink">{step.prompt}</h2>
-        {renderStep(step, currentValue, (value) =>
-          setAnswers((previous) => ({ ...previous, [step.id]: value })),
-        )}
-      </div>
+      <Card isPlayful className="p-6 sm:p-8">
+        <h2 className="max-w-prose text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+          {step.prompt}
+        </h2>
+        <div className="mt-6">
+          {renderStep(step, currentValue, (value) =>
+            setAnswers((previous) => ({ ...previous, [step.id]: value })),
+          )}
+        </div>
+      </Card>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
+      <div className="flex flex-wrap items-center gap-3">
         {stepIndex > 0 ? (
-          <Button type="button" variant="secondary" size="lg" isPlayful onClick={goBack}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            isPlayful
+            icon={ChevronLeft}
+            onClick={goBack}
+          >
             Back
           </Button>
         ) : null}
@@ -145,7 +154,7 @@ export function ActivityPlayer({
             type="button"
             variant="quiet"
             size="lg"
-            className="ml-auto"
+            className="sm:ml-auto"
             onClick={onExit}
           >
             Save and come back later

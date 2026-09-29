@@ -112,23 +112,33 @@ function requireStudent(studentId: string): Student {
   return student;
 }
 
-function daysAgoIso(days: number): string {
+/**
+ * The calendar day a moment falls on where the student is. Both sides of the
+ * streak comparison use this: `toISOString()` would shift any timezone ahead
+ * of UTC back a day, so something finished today never counted for today.
+ */
+function localDay(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function daysAgo(days: number): string {
   const date = new Date();
-  date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() - days);
-  return date.toISOString().slice(0, 10);
+  return localDay(date);
 }
 
 function buildStreak(studentId: string): StreakInfo {
   const completedDays = new Set(
     store.assignments
       .filter((assignment) => assignment.studentId === studentId && assignment.completedAt)
-      .map((assignment) => assignment.completedAt!.slice(0, 10)),
+      .map((assignment) => localDay(new Date(assignment.completedAt!))),
   );
 
   const lastSevenDays: boolean[] = [];
   for (let offset = 6; offset >= 0; offset -= 1) {
-    lastSevenDays.push(completedDays.has(daysAgoIso(offset)));
+    lastSevenDays.push(completedDays.has(daysAgo(offset)));
   }
 
   let currentStreak = 0;

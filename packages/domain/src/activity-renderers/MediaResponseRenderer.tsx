@@ -8,8 +8,8 @@ export function MediaResponseRenderer({
   onChange,
 }: ActivityStepRendererProps<MediaResponseStep>) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="overflow-hidden rounded-lg border border-line bg-surface-sunk">
+    <div className="flex flex-col gap-5">
+      <div className="overflow-hidden rounded-2xl bg-surface-sunk ring-1 ring-line">
         {step.mediaType === 'image' ? (
           <img src={step.mediaUrl} alt="" className="w-full object-cover" />
         ) : null}
@@ -24,11 +24,11 @@ export function MediaResponseRenderer({
           </video>
         ) : null}
       </div>
-      <label className="flex flex-col gap-2">
-        <span className="text-base font-medium text-ink">{step.responsePrompt}</span>
+      <label className="flex flex-col gap-2.5">
+        <span className="text-lg font-medium text-ink">{step.responsePrompt}</span>
         <Textarea
           rows={4}
-          className="rounded-lg text-lg"
+          className="rounded-2xl px-4 py-3.5 text-lg leading-8"
           value={typeof value === 'string' ? value : ''}
           onChange={(event) => onChange(event.target.value)}
         />

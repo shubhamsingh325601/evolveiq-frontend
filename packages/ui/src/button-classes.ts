@@ -1,26 +1,37 @@
 import { cn } from './class-names';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'quiet'
+  | 'danger'
+  | 'danger-quiet'
+  | 'inverse';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-teal-500 text-ink-inverse hover:bg-teal-600 active:bg-teal-700',
+  primary: 'bg-iris-500 text-white shadow-glow hover:bg-iris-600 active:bg-iris-700',
   secondary:
-    'bg-surface text-ink border border-line hover:border-line-strong hover:bg-surface-sunk',
-  quiet: 'bg-transparent text-teal-600 hover:bg-teal-50',
-  danger: 'bg-raspberry-500 text-white hover:bg-raspberry-700',
+    'border border-line bg-white/80 text-ink hover:border-iris-200 hover:bg-white active:bg-iris-50',
+  quiet: 'text-iris-600 hover:bg-iris-50 active:bg-iris-100',
+  danger: 'bg-coral-600 text-white hover:bg-coral-700',
+  // A destructive action repeated down a list, such as "Remove" on each row.
+  // It only turns coral under the pointer, so a column of them stays quiet.
+  'danger-quiet': 'text-ink-muted hover:bg-coral-50 hover:text-coral-700 active:bg-coral-100',
+  // For use on a hero panel or any other iris-to-lilac surface.
+  inverse: 'bg-white text-iris-700 shadow-raised hover:bg-iris-50',
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
+  sm: 'h-9 px-3.5 text-sm',
+  md: 'h-11 px-5 text-sm',
   lg: 'h-12 px-6 text-base',
 };
 
 export interface ButtonClassOptions {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Student-facing surfaces use the softer radius. */
+  /** Student-facing surfaces use a rounder, larger target. */
   isPlayful?: boolean;
   className?: string;
 }
@@ -36,12 +47,15 @@ export function buttonClasses({
   className,
 }: ButtonClassOptions = {}): string {
   return cn(
-    'inline-flex items-center justify-center gap-2 font-medium transition-colors',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500',
-    'disabled:cursor-not-allowed disabled:opacity-50',
-    isPlayful ? 'rounded-lg' : 'rounded',
+    'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium',
+    'transition-[background-color,border-color,color,box-shadow,transform] duration-150 enabled:active:translate-y-px',
+    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
+    'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
+    '[&_svg]:size-4 [&_svg]:shrink-0',
+    isPlayful ? 'rounded-xl' : 'rounded-lg',
     VARIANT_CLASSES[variant],
     SIZE_CLASSES[size],
+    isPlayful && size === 'lg' && 'h-14 px-7 text-lg [&_svg]:size-5',
     className,
   );
 }

@@ -1,4 +1,5 @@
 import { cn } from './class-names';
+import { CircleAlert } from './icons';
 
 export interface LoadingStateProps {
   label?: string;
@@ -12,7 +13,7 @@ export function LoadingState({ label = 'Loading', className }: LoadingStateProps
       aria-live="polite"
       className={cn('flex items-center gap-3 px-1 py-8 text-sm text-ink-muted', className)}
     >
-      <span className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-teal-500" />
+      <span className="size-5 animate-spin rounded-full border-2 border-iris-100 border-t-iris-500" />
       {label}
     </div>
   );
@@ -36,21 +37,24 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-start gap-2 rounded-md border border-raspberry-100 bg-raspberry-50 px-5 py-4',
+        'flex items-start gap-3.5 rounded-2xl border border-coral-100 bg-coral-50/90 px-5 py-4',
         className,
       )}
     >
-      <p className="text-sm font-medium text-raspberry-700">{title}</p>
-      <p className="max-w-prose text-sm text-ink-muted">{description}</p>
-      {onRetry ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-1 rounded text-sm font-medium text-raspberry-700 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-raspberry-500"
-        >
-          Try again
-        </button>
-      ) : null}
+      <CircleAlert className="mt-0.5 size-5 shrink-0 text-coral-600" />
+      <div className="flex flex-col items-start gap-1">
+        <p className="text-sm font-medium text-coral-700">{title}</p>
+        <p className="max-w-prose text-sm text-ink-muted">{description}</p>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-1.5 rounded text-sm font-medium text-coral-700 underline decoration-coral-300 underline-offset-4 hover:decoration-coral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-500"
+          >
+            Try again
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

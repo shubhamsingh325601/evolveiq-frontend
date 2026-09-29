@@ -1,10 +1,12 @@
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useStudent, useTeacherNotes } from '@evolveiq/api-client';
-import { formatDay } from '@evolveiq/domain';
+import { BackLink, formatDay } from '@evolveiq/domain';
 import {
+  Card,
   EmptyState,
   ErrorState,
   LoadingState,
+  MessageCircle,
   PageHeader,
   Quote,
   RuledList,
@@ -23,37 +25,37 @@ export function TeacherNotesScreen() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
+        back={
+          <BackLink to={`/parent/children/${childId}`}>
+            {student.data?.name ?? 'Back to profile'}
+          </BackLink>
+        }
         title="Teacher notes"
         subtitle={
           student.data
-            ? `What ${student.data.name.split(' ')[0]}\u2019s teachers have passed on to you.`
+            ? `What ${student.data.name.split(' ')[0]}’s teachers have passed on to you.`
             : undefined
-        }
-        actions={
-          <Link
-            to={`/parent/children/${childId}`}
-            className="text-sm font-medium text-teal-600 underline underline-offset-4"
-          >
-            Back to profile
-          </Link>
         }
       />
 
       {(notes.data ?? []).length === 0 ? (
         <EmptyState
+          icon={MessageCircle}
           title="No notes yet"
           description="Teachers add a note when there is something they want you to know."
         />
       ) : (
-        <RuledList>
-          {(notes.data ?? []).map((note) => (
-            <RuledListItem key={note.id}>
-              <Quote attribution={`${note.authorName}, ${formatDay(note.createdAt)}`}>
-                {note.body}
-              </Quote>
-            </RuledListItem>
-          ))}
-        </RuledList>
+        <Card className="max-w-3xl p-6 sm:p-8">
+          <RuledList>
+            {(notes.data ?? []).map((note) => (
+              <RuledListItem key={note.id}>
+                <Quote attribution={`${note.authorName}, ${formatDay(note.createdAt)}`}>
+                  {note.body}
+                </Quote>
+              </RuledListItem>
+            ))}
+          </RuledList>
+        </Card>
       )}
     </div>
   );
