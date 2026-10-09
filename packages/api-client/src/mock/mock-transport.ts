@@ -6,11 +6,13 @@ import type {
   Assignment,
   ClassGroup,
   GrowthArea,
+  HolisticIndex,
   MonthlySummary,
   Observation,
   School,
   StreakInfo,
   Student,
+  StudentLevel,
   TeacherNote,
   User,
 } from '../types';
@@ -19,9 +21,12 @@ import {
   ASSIGNMENTS,
   CLASSES,
   GROWTH_AREAS,
+  HOLISTIC_INDEXES,
+  LEVEL_TITLES,
   MONTHLY_SUMMARIES,
   OBSERVATIONS,
   SCHOOLS,
+  STUDENT_LEVELS,
   STUDENTS,
   TEACHER_NOTES,
   USERS,
@@ -48,6 +53,8 @@ interface MockStore {
   growthAreas: GrowthArea[];
   teacherNotes: TeacherNote[];
   monthlySummaries: MonthlySummary[];
+  levels: StudentLevel[];
+  holisticIndexes: HolisticIndex[];
   currentUserId: string | null;
 }
 
@@ -62,6 +69,8 @@ const store: MockStore = {
   growthAreas: structuredClone(GROWTH_AREAS),
   teacherNotes: structuredClone(TEACHER_NOTES),
   monthlySummaries: structuredClone(MONTHLY_SUMMARIES),
+  levels: structuredClone(STUDENT_LEVELS),
+  holisticIndexes: structuredClone(HOLISTIC_INDEXES),
   currentUserId: null,
 };
 
@@ -77,6 +86,8 @@ export function resetMockStore(): void {
   store.growthAreas = structuredClone(GROWTH_AREAS);
   store.teacherNotes = structuredClone(TEACHER_NOTES);
   store.monthlySummaries = structuredClone(MONTHLY_SUMMARIES);
+  store.levels = structuredClone(STUDENT_LEVELS);
+  store.holisticIndexes = structuredClone(HOLISTIC_INDEXES);
   store.currentUserId = null;
 }
 
@@ -155,6 +166,40 @@ function buildStreak(studentId: string): StreakInfo {
   }
 
   return { studentId, currentStreak, longestStreak, lastSevenDays };
+}
+
+/** Each level needs 100 XP more than the last, so level n ends at n × 100. */
+const XP_PER_LEVEL = 100;
+
+function titleForLevel(level: number): string {
+  return LEVEL_TITLES[Math.min(level, LEVEL_TITLES.length) - 1] ?? LEVEL_TITLES[0];
+}
+
+function levelFor(studentId: string): StudentLevel {
+  return (
+    store.levels.find((candidate) => candidate.studentId === studentId) ?? {
+      studentId,
+      level: 1,
+      title: titleForLevel(1),
+      xp: 0,
+      xpForNextLevel: XP_PER_LEVEL,
+    }
+  );
+}
+
+function awardXp(studentId: string, xp: number): void {
+  const current = levelFor(studentId);
+  const total = current.xp + xp;
+  let level = current.level;
+  while (total >= level * XP_PER_LEVEL) level += 1;
+  const updated: StudentLevel = {
+    studentId,
+    level,
+    title: titleForLevel(level),
+    xp: total,
+    xpForNextLevel: level * XP_PER_LEVEL,
+  };
+  store.levels = [...store.levels.filter((candidate) => candidate.studentId !== studentId), updated];
 }
 
 function matchesQuery(value: unknown, expected: string | undefined): boolean {
@@ -286,6 +331,16 @@ function handleStudents(
   if (method === 'GET' && sub === 'streak') {
     requireStudent(studentId);
     return buildStreak(studentId);
+  }
+
+  if (method === 'GET' && sub === 'level') {
+    requireStudent(studentId);
+    return levelFor(studentId);
+  }
+
+  if (method === 'GET' && sub === 'holistic-index') {
+    requireStudent(studentId);
+    return store.holisticIndexes.find((index) => index.studentId === studentId) ?? null;
   }
 
   if (method === 'PATCH' && !sub) {
@@ -485,6 +540,7 @@ function handleAssignments(
     if (!input.activityId || !input.studentId) {
       throw new ApiError(422, 'An assignment needs an activity and a student');
     }
+    const activity = store.activities.find((candidate) => candidate.id === input.activityId);
     const created: Assignment = {
       id: nextId('asg'),
       activityId: input.activityId,
@@ -494,6 +550,8 @@ function handleAssignments(
       assignedAt: new Date().toISOString(),
       dueOn: input.dueOn ?? new Date().toISOString().slice(0, 10),
       status: 'assigned',
+      // Ten XP a minute: longer activities are worth more.
+      xp: (activity?.estimatedMinutes ?? 5) * 10,
     };
     store.assignments = [...store.assignments, created];
     return created;
@@ -511,6 +569,8 @@ function handleAssignments(
       ...(responses ? { responses } : {}),
     };
     store.assignments[index] = updated;
+    // Doing an activity again is welcome, but it only earns XP the first time.
+    if (existing.status !== 'completed') awardXp(existing.studentId, existing.xp);
     return updated;
   }
 

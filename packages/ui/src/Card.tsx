@@ -9,15 +9,22 @@ export interface CardProps {
   /**
    * `glass` is a surface floating on the dawn backdrop. `tinted` is a quieter
    * panel set inside another surface, such as the teacher-only fields.
+   * `night` is the one dark panel a screen may use for its headline figure.
    */
-  tone?: 'glass' | 'tinted';
+  tone?: 'glass' | 'tinted' | 'night';
   as?: 'div' | 'section' | 'article' | 'li' | 'aside';
 }
 
+const TONE_CLASSES = {
+  glass: 'border border-line/70 bg-white/85 shadow-card',
+  tinted: 'border border-iris-100/80 bg-iris-50/50',
+  night: 'border border-night-700 bg-insight text-white shadow-raised',
+} as const;
+
 /**
- * A translucent surface. It lets the dawn light behind the page through
- * rather than blurring it — only bars and dialogs, which scroll over content,
- * pay for a backdrop blur.
+ * A translucent surface with a hairline edge. It lets the dawn light behind
+ * the page through rather than blurring it — only bars and dialogs, which
+ * scroll over content, pay for a backdrop blur.
  */
 export function Card({
   children,
@@ -28,13 +35,7 @@ export function Card({
 }: CardProps) {
   return (
     <Tag
-      className={cn(
-        tone === 'glass'
-          ? 'border border-white/80 bg-white/75 shadow-card'
-          : 'border border-iris-100/80 bg-iris-50/50',
-        isPlayful ? 'rounded-3xl' : 'rounded-2xl',
-        className,
-      )}
+      className={cn(TONE_CLASSES[tone], isPlayful ? 'rounded-3xl' : 'rounded-2xl', className)}
     >
       {children}
     </Tag>

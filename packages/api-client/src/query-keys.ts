@@ -14,6 +14,8 @@ export const queryKeys = {
     teacherNotes: (studentId: string) => ['students', studentId, 'teacher-notes'] as const,
     monthlySummary: (studentId: string) => ['students', studentId, 'monthly-summary'] as const,
     streak: (studentId: string) => ['students', studentId, 'streak'] as const,
+    level: (studentId: string) => ['students', studentId, 'level'] as const,
+    holisticIndex: (studentId: string) => ['students', studentId, 'holistic-index'] as const,
   },
   observations: {
     all: ['observations'] as const,

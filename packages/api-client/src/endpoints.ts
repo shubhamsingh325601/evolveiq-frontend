@@ -19,6 +19,8 @@ export const ENDPOINTS = {
     teacherNotes: (studentId: string) => `/students/${studentId}/teacher-notes`,
     monthlySummary: (studentId: string) => `/students/${studentId}/monthly-summary`,
     streak: (studentId: string) => `/students/${studentId}/streak`,
+    level: (studentId: string) => `/students/${studentId}/level`,
+    holisticIndex: (studentId: string) => `/students/${studentId}/holistic-index`,
   },
   observations: {
     list: '/observations',

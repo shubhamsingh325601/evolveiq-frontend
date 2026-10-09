@@ -2,6 +2,7 @@ import type {
   ActivityStepKind,
   AssignmentStatus,
   DevelopmentArea,
+  HolisticDimension,
   LearningBehaviourArea,
   ObservationContext,
   ObservationFrequency,
@@ -70,6 +71,19 @@ export const ACTIVITY_STEP_LABELS: Record<ActivityStepKind, string> = {
   'image-pick': 'Pick an image',
   rating: 'Rating, 1 to 5',
   'media-response': 'Media and response',
+};
+
+/**
+ * The EvolvIQ Holistic Index's five pillars. "Wellbeing" draws on engagement,
+ * confidence and participation; it is a development indicator, never a
+ * diagnosis, which is why it is not called "mental health".
+ */
+export const HOLISTIC_DIMENSION_LABELS: Record<HolisticDimension, string> = {
+  education: 'Education',
+  skills: 'Skills',
+  physical: 'Physical',
+  wellbeing: 'Wellbeing',
+  character: 'Character',
 };
 
 /** Level is a teacher-entered 1-5 judgement; never shown to a parent. */

@@ -3,10 +3,12 @@ import type {
   Assignment,
   ClassGroup,
   GrowthArea,
+  HolisticIndex,
   MonthlySummary,
   Observation,
   School,
   Student,
+  StudentLevel,
   TeacherNote,
   User,
 } from '../types';
@@ -572,6 +574,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-21T08:00:00.000Z',
     dueOn: '2026-09-22',
     status: 'assigned',
+    xp: 60,
   },
   {
     id: 'asg-002',
@@ -582,6 +585,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-22T07:30:00.000Z',
     dueOn: '2026-09-22',
     status: 'assigned',
+    xp: 70,
   },
   {
     id: 'asg-003',
@@ -592,6 +596,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-19T08:00:00.000Z',
     dueOn: '2026-09-20',
     status: 'completed',
+    xp: 80,
     completedAt: '2026-09-20T17:20:00.000Z',
     responses: [
       { stepId: 'act-faces-s1', value: 'sad' },
@@ -607,6 +612,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-22T07:35:00.000Z',
     dueOn: '2026-09-23',
     status: 'assigned',
+    xp: 100,
   },
   {
     id: 'asg-005',
@@ -617,6 +623,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-16T08:00:00.000Z',
     dueOn: '2026-09-18',
     status: 'in-progress',
+    xp: 60,
   },
   {
     id: 'asg-006',
@@ -627,6 +634,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-20T08:00:00.000Z',
     dueOn: '2026-09-24',
     status: 'assigned',
+    xp: 50,
   },
   {
     id: 'asg-007',
@@ -637,6 +645,7 @@ export const ASSIGNMENTS: Assignment[] = [
     assignedAt: '2026-09-12T08:00:00.000Z',
     dueOn: '2026-09-14',
     status: 'completed',
+    xp: 60,
     completedAt: '2026-09-13T16:00:00.000Z',
     responses: [{ stepId: 'act-sorting-s1', value: 'b' }],
   },
@@ -752,5 +761,263 @@ export const MONTHLY_SUMMARIES: MonthlySummary[] = [
     body: 'Arjun completed two activities this month. The clearest change is in how he tells a story: he now holds the order from beginning to end, and is reaching for words he did not use before. Writing has not caught up with speaking yet, which is normal at this stage.',
     activitiesCompleted: 2,
     observationsLogged: 1,
+  },
+];
+
+/** Level names, from level 1 up. The last one holds for every level past it. */
+export const LEVEL_TITLES = [
+  'First Steps',
+  'Busy Bee',
+  'Bright Spark',
+  'Curious Explorer',
+  'Brave Builder',
+  'Story Weaver',
+  'Puzzle Solver',
+  'Rising Star',
+  'Trailblazer',
+  'Growth Champion',
+] as const;
+
+/**
+ * Where each demo child stands. A level needs 100 XP more than the one before
+ * it, so the next level starts at `level × 100`. Children not listed here
+ * start at level 1 with no XP.
+ */
+export const STUDENT_LEVELS: StudentLevel[] = [
+  { studentId: 'stu-maya', level: 4, title: 'Curious Explorer', xp: 340, xpForNextLevel: 400 },
+  { studentId: 'stu-arjun', level: 3, title: 'Bright Spark', xp: 230, xpForNextLevel: 300 },
+  { studentId: 'stu-devan', level: 4, title: 'Curious Explorer', xp: 310, xpForNextLevel: 400 },
+];
+
+/**
+ * EvolvIQ Holistic Index for every demo child. Each
+ * score is the rounded mean of its five pillars, and each history ends with
+ * the year in progress. The playbooks echo what teachers and parents have
+ * actually written about these children elsewhere in the fixtures.
+ */
+export const HOLISTIC_INDEXES: HolisticIndex[] = [
+  {
+    studentId: 'stu-maya',
+    score: 78,
+    dimensions: [
+      { dimension: 'education', score: 82 },
+      { dimension: 'skills', score: 76 },
+      { dimension: 'physical', score: 80 },
+      { dimension: 'wellbeing', score: 74 },
+      { dimension: 'character', score: 79 },
+    ],
+    history: [
+      { schoolYear: '2022–23', grade: 'KG', score: 58, isCurrent: false },
+      { schoolYear: '2023–24', grade: 'Year 1', score: 63, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 2', score: 69, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 3', score: 74, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 4', score: 78, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 84 },
+      { skill: 'Creativity', score: 88 },
+      { skill: 'Physical', score: 78 },
+      { skill: 'Social', score: 68 },
+      { skill: 'Focus', score: 66 },
+    ],
+    strengths: ['Creative arts', 'Logical reasoning', 'Reading aloud', 'Kindness to others'],
+    playbook: [
+      'Break homework into ten-minute blocks with a short stretch between them. Her focus is growing, and small wins help it grow.',
+      'Play a turn-taking game together twice a week, and praise the waiting rather than the winning.',
+      'She has started asking to join the reading group. Let her choose a book to read aloud to you at bedtime.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
+  },
+  {
+    studentId: 'stu-arjun',
+    score: 76,
+    dimensions: [
+      { dimension: 'education', score: 72 },
+      { dimension: 'skills', score: 78 },
+      { dimension: 'physical', score: 82 },
+      { dimension: 'wellbeing', score: 76 },
+      { dimension: 'character', score: 73 },
+    ],
+    history: [
+      { schoolYear: '2022–23', grade: 'KG', score: 61, isCurrent: false },
+      { schoolYear: '2023–24', grade: 'Year 1', score: 65, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 2', score: 69, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 3', score: 72, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 4', score: 76, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 70 },
+      { skill: 'Creativity', score: 84 },
+      { skill: 'Physical', score: 82 },
+      { skill: 'Social', score: 79 },
+      { skill: 'Focus', score: 72 },
+    ],
+    strengths: ['Storytelling', 'Vocabulary', 'Team games', 'Curiosity'],
+    playbook: [
+      'Let him tell a story out loud before he writes it down. His spoken stories are ahead of his written ones.',
+      'After a trip or a film, ask him to retell it in order: the start, the middle and the end.',
+      'Keep a list of new words on the fridge that he can add to whenever he hears one.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
+  },
+  {
+    studentId: 'stu-devan',
+    score: 73,
+    dimensions: [
+      { dimension: 'education', score: 76 },
+      { dimension: 'skills', score: 74 },
+      { dimension: 'physical', score: 79 },
+      { dimension: 'wellbeing', score: 66 },
+      { dimension: 'character', score: 70 },
+    ],
+    history: [
+      { schoolYear: '2022–23', grade: 'KG', score: 57, isCurrent: false },
+      { schoolYear: '2023–24', grade: 'Year 1', score: 61, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 2', score: 64, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 3', score: 69, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 4', score: 73, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 82 },
+      { skill: 'Creativity', score: 70 },
+      { skill: 'Physical', score: 79 },
+      { skill: 'Social', score: 64 },
+      { skill: 'Focus', score: 75 },
+    ],
+    strengths: ['Maths', 'Puzzles', 'Keeping to routines', 'Football'],
+    playbook: [
+      'Give him a few minutes’ warning before a plan changes. His teacher has seen the same thing help at school.',
+      'When something does change, name it together: what is happening now, and what comes next.',
+      'Notice out loud when he asks what is happening instead of shutting down. That is the skill growing.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
+  },
+{
+    studentId: 'stu-lila',
+    score: 75,
+    dimensions: [
+      { dimension: 'education', score: 78 },
+      { dimension: 'skills', score: 80 },
+      { dimension: 'physical', score: 72 },
+      { dimension: 'wellbeing', score: 75 },
+      { dimension: 'character', score: 70 },
+    ],
+    history: [
+      { schoolYear: '2023–24', grade: 'KG', score: 62, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 1', score: 67, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 2', score: 71, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 3', score: 75, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 82 },
+      { skill: 'Creativity', score: 78 },
+      { skill: 'Physical', score: 72 },
+      { skill: 'Social', score: 70 },
+      { skill: 'Focus', score: 74 },
+    ],
+    strengths: ['Problem solving', 'Building and making', 'Persistence', 'Curiosity'],
+    playbook: [
+      'Leave out building toys with no instructions. She plans her own fixes when something falls.',
+      'Ask her why her second try worked better than her first, and let her explain it fully.',
+      'Give her small jobs with a clear start and finish, such as setting the table.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
+  },
+  {
+    studentId: 'stu-noor',
+    score: 66,
+    dimensions: [
+      { dimension: 'education', score: 68 },
+      { dimension: 'skills', score: 62 },
+      { dimension: 'physical', score: 58 },
+      { dimension: 'wellbeing', score: 72 },
+      { dimension: 'character', score: 70 },
+    ],
+    history: [
+      { schoolYear: '2023–24', grade: 'KG', score: 55, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 1', score: 59, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 2', score: 63, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 3', score: 66, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 66 },
+      { skill: 'Creativity', score: 74 },
+      { skill: 'Physical', score: 58 },
+      { skill: 'Social', score: 72 },
+      { skill: 'Focus', score: 62 },
+    ],
+    strengths: ['Kindness', 'Drawing', 'Listening', 'Helping others'],
+    playbook: [
+      'Play with playdough or clothes pegs for a few minutes a day to build hand strength.',
+      'Let her draw with chunky crayons before moving on to a pencil.',
+      'Keep writing tasks short, and celebrate each one she finishes.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
+  },
+  {
+    studentId: 'stu-ibrahim',
+    score: 71,
+    dimensions: [
+      { dimension: 'education', score: 70 },
+      { dimension: 'skills', score: 68 },
+      { dimension: 'physical', score: 80 },
+      { dimension: 'wellbeing', score: 72 },
+      { dimension: 'character', score: 65 },
+    ],
+    history: [
+      { schoolYear: '2021–22', grade: 'KG', score: 60, isCurrent: false },
+      { schoolYear: '2022–23', grade: 'Year 1', score: 63, isCurrent: false },
+      { schoolYear: '2023–24', grade: 'Year 2', score: 65, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 3', score: 68, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 4', score: 70, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 5', score: 71, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 72 },
+      { skill: 'Creativity', score: 69 },
+      { skill: 'Physical', score: 80 },
+      { skill: 'Social', score: 74 },
+      { skill: 'Focus', score: 61 },
+    ],
+    strengths: ['Sport', 'Teamwork', 'Drawing maps', 'Sense of humour'],
+    playbook: [
+      'Give instructions one step at a time, and ask him to say each one back.',
+      'Use a checklist he can tick off for anything with more than two steps.',
+      'Notice out loud when he remembers something without a reminder.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
+  },
+  {
+    studentId: 'stu-tara',
+    score: 82,
+    dimensions: [
+      { dimension: 'education', score: 84 },
+      { dimension: 'skills', score: 80 },
+      { dimension: 'physical', score: 78 },
+      { dimension: 'wellbeing', score: 85 },
+      { dimension: 'character', score: 83 },
+    ],
+    history: [
+      { schoolYear: '2021–22', grade: 'KG', score: 64, isCurrent: false },
+      { schoolYear: '2022–23', grade: 'Year 1', score: 68, isCurrent: false },
+      { schoolYear: '2023–24', grade: 'Year 2', score: 72, isCurrent: false },
+      { schoolYear: '2024–25', grade: 'Year 3', score: 76, isCurrent: false },
+      { schoolYear: '2025–26', grade: 'Year 4', score: 79, isCurrent: false },
+      { schoolYear: '2026–27', grade: 'Year 5', score: 82, isCurrent: true },
+    ],
+    skills: [
+      { skill: 'Maths & logic', score: 83 },
+      { skill: 'Creativity', score: 78 },
+      { skill: 'Physical', score: 76 },
+      { skill: 'Social', score: 81 },
+      { skill: 'Focus', score: 86 },
+    ],
+    strengths: ['Independence', 'Organisation', 'Reading', 'Leadership'],
+    playbook: [
+      'Hand her a small responsibility at home, such as planning one family meal a week.',
+      'Let her help a younger child get ready in the morning. It builds on her independence.',
+      'Encourage her to set her own reading goal for the weekend.',
+    ],
+    updatedAt: '2026-10-06T08:00:00.000Z',
   },
 ];

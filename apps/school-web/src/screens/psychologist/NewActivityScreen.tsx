@@ -175,8 +175,8 @@ export function NewActivityScreen() {
         subtitle="Write the questions a student will work through, in order."
       />
 
-      <Card as="section" className="grid gap-5 p-6 sm:grid-cols-2 sm:p-8">
-        <h2 className="text-lg font-semibold tracking-tight text-ink sm:col-span-2">
+      <Card as="section" isPlayful className="grid gap-5 p-6 sm:grid-cols-2 sm:p-8">
+        <h2 className="text-lg font-black tracking-tight text-ink sm:col-span-2">
           About the activity
         </h2>
         <FormField label="Title" className="sm:col-span-2">
@@ -231,14 +231,14 @@ export function NewActivityScreen() {
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-semibold tracking-tight text-ink">Steps</h2>
+          <h2 className="text-xl font-black tracking-tight text-ink">Steps</h2>
           <p className="text-sm text-ink-muted">Students work through these in order.</p>
         </div>
 
         {drafts.map((draft, index) => (
-          <Card key={draft.key} className="flex flex-col gap-5 p-6">
+          <Card key={draft.key} isPlayful className="flex flex-col gap-5 p-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="flex items-center gap-3 text-base font-medium text-ink">
+              <p className="flex items-center gap-3 text-base font-bold text-ink">
                 <span
                   aria-hidden="true"
                   className="flex size-8 items-center justify-center rounded-full bg-iris-50 text-sm font-semibold tabular-nums text-iris-700 ring-1 ring-iris-100"

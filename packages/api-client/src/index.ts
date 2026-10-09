@@ -7,6 +7,7 @@ export { queryKeys } from './query-keys';
 export { canSeeClinicalDetail, redactObservationForRole } from './redaction';
 export { resetMockStore, setMockCurrentUser } from './mock/mock-transport';
 
+export * from './hooks/useClearCachedData';
 export * from './hooks/useStudents';
 export * from './hooks/useObservations';
 export * from './hooks/useActivities';
@@ -15,6 +16,8 @@ export * from './hooks/useGrowthAreas';
 export * from './hooks/useTeacherNotes';
 export * from './hooks/useMonthlySummary';
 export * from './hooks/useStreak';
+export * from './hooks/useStudentLevel';
+export * from './hooks/useHolisticIndex';
 export * from './hooks/useClasses';
 export * from './hooks/useUsers';
 export * from './hooks/useSchools';

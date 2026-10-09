@@ -11,8 +11,8 @@ export interface GrowthAreaListProps {
 
 /**
  * A student's open growth areas. The PRD caps this at five, so the list is
- * always short enough to read at a glance — no chart required, and charts are
- * out of scope for the MVP. The bar counts activities, never a score.
+ * always short enough to read at a glance — no chart required; the only charts
+ * in the product are the EHI views. The bar counts activities, never a score.
  */
 export function GrowthAreaList({ growthAreas, className }: GrowthAreaListProps) {
   return (
@@ -29,7 +29,7 @@ export function GrowthAreaList({ growthAreas, className }: GrowthAreaListProps) 
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <h3 className="text-base font-medium text-ink">
+                  <h3 className="text-base font-bold text-ink">
                     {DEVELOPMENT_AREA_LABELS[area.area]}
                   </h3>
                   <p className="text-sm tabular-nums text-ink-muted">

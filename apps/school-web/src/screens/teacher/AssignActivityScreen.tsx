@@ -14,8 +14,10 @@ import {
   Input,
   LoadingState,
   PageHeader,
+  SectionTitle,
   SegmentedControl,
   Select,
+  UsersRound,
 } from '@evolveiq/ui';
 
 const todayIsoDate = (): string => new Date().toISOString().slice(0, 10);
@@ -56,7 +58,14 @@ export function AssignActivityScreen() {
         subtitle="Pick a student, then choose something from the library."
       />
 
-      <Card className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end sm:p-6">
+      <Card
+        isPlayful
+        className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end sm:p-6"
+      >
+        <h2 className="flex items-center gap-2 text-lg font-black tracking-tight text-ink sm:col-span-2">
+          <UsersRound className="size-5 text-iris-500" />
+          Who it is for
+        </h2>
         <FormField label="Student">
           <Select value={chosenStudentId} onChange={(event) => setStudentId(event.target.value)}>
             {(students.data ?? []).map((student) => (
@@ -102,7 +111,8 @@ export function AssignActivityScreen() {
 
       {error ? <ErrorState title="That did not save" description={error} /> : null}
 
-      <section>
+      <section className="flex flex-col gap-4">
+        <SectionTitle icon={BookOpen}>From the library</SectionTitle>
         <SegmentedControl
           label="Filter the library by area"
           value={area}
@@ -126,7 +136,7 @@ export function AssignActivityScreen() {
             description="Choose another area, or ask your school psychologist to add one."
           />
         ) : (
-          <ul className="mt-5 grid gap-3 xl:grid-cols-2">
+          <ul className="mt-1 grid gap-3 xl:grid-cols-2">
             {(activities.data ?? []).map((activity) => (
               <ActivityCard
                 key={activity.id}

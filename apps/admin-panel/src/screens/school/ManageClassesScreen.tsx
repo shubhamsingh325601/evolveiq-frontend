@@ -8,7 +8,17 @@ import {
 } from '@evolveiq/api-client';
 import type { ClassGroup } from '@evolveiq/api-client';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
-import { Button, ErrorState, LayoutGrid, PageHeader, Plus } from '@evolveiq/ui';
+import {
+  Backpack,
+  Button,
+  ErrorState,
+  LayoutGrid,
+  PageHeader,
+  Plus,
+  Presentation,
+  StatTile,
+  UsersRound,
+} from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 export function ManageClassesScreen() {
@@ -30,6 +40,11 @@ export function ManageClassesScreen() {
   const teacherNameById = new Map(
     (teachers.data ?? []).map((teacher) => [teacher.id, teacher.name]),
   );
+
+  const groups = classes.data ?? [];
+  const studentsPlaced = groups.reduce((sum, group) => sum + group.studentIds.length, 0);
+  const averageSize = groups.length === 0 ? 0 : Math.round(studentsPlaced / groups.length);
+  const withoutTeacher = groups.filter((group) => !teacherNameById.has(group.teacherId)).length;
 
   const save = async (values: RecordValues) => {
     setError(undefined);
@@ -60,7 +75,7 @@ export function ManageClassesScreen() {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-iris-50 text-iris-600">
             <LayoutGrid className="size-4" />
           </span>
-          <span className="font-medium text-ink">{group.name}</span>
+          <span className="font-bold text-ink">{group.name}</span>
         </span>
       ),
     },
@@ -96,6 +111,31 @@ export function ManageClassesScreen() {
           </Button>
         }
       />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile icon={LayoutGrid} label="Classes" value={groups.length} detail="At your school" />
+        <StatTile
+          icon={Backpack}
+          tone="jade"
+          label="Students placed"
+          value={studentsPlaced}
+          detail="Across every class"
+        />
+        <StatTile
+          icon={UsersRound}
+          tone="lilac"
+          label="Typical class"
+          value={averageSize}
+          detail="Students per class, on average"
+        />
+        <StatTile
+          icon={Presentation}
+          tone="honey"
+          label="Without a teacher"
+          value={withoutTeacher}
+          detail={withoutTeacher === 0 ? 'Every class has one' : 'Give these a class teacher'}
+        />
+      </div>
 
       {error ? <ErrorState title="That did not save" description={error} /> : null}
 

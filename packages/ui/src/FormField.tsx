@@ -38,7 +38,7 @@ export function FormField({
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <div className="flex flex-col gap-1">
-        <label htmlFor={fieldId} className="text-sm font-medium text-ink">
+        <label htmlFor={fieldId} className="text-sm font-semibold text-ink">
           {label}
           {isOptional ? (
             <span className="ml-2 font-normal text-ink-faint">optional</span>
@@ -72,7 +72,7 @@ export interface FieldsetProps {
 export function Fieldset({ legend, hint, error, children, className }: FieldsetProps) {
   return (
     <fieldset className={cn('flex flex-col gap-1', className)}>
-      <legend className="text-sm font-medium text-ink">{legend}</legend>
+      <legend className="text-sm font-semibold text-ink">{legend}</legend>
       {hint ? <p className="text-sm text-ink-muted">{hint}</p> : null}
       <div className="mt-2">{children}</div>
       {error ? <FieldError>{error}</FieldError> : null}

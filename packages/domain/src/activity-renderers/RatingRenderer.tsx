@@ -23,7 +23,7 @@ export function RatingRenderer({
               aria-label={`${point} out of 5`}
               onClick={() => onChange(point)}
               className={cn(
-                'h-16 flex-1 rounded-2xl text-2xl font-semibold tabular-nums transition-[background-color,box-shadow,color,transform] duration-150',
+                'h-16 flex-1 rounded-2xl text-2xl font-black tabular-nums transition-[background-color,box-shadow,color,transform] duration-150',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
                 isSelected
                   ? 'scale-105 bg-iris-500 text-white shadow-glow'

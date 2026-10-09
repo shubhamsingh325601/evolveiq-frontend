@@ -13,10 +13,15 @@ import {
   Avatar,
   Badge,
   Button,
+  Contact,
   ErrorState,
+  HeartHandshake,
   PageHeader,
   Plus,
+  Presentation,
+  School,
   SegmentedControl,
+  StatTile,
 } from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
@@ -49,6 +54,11 @@ export function ManageUsersScreen() {
     ...(schools.data ?? []).map((school) => ({ value: school.id, label: school.name })),
   ];
   const schoolNameById = new Map((schools.data ?? []).map((school) => [school.id, school.name]));
+  const everyone = allUsers.data ?? [];
+  const staffCount = everyone.filter((person) =>
+    ['teacher', 'psychologist', 'school-admin'].includes(person.role),
+  ).length;
+  const familyCount = everyone.filter((person) => ['parent', 'student'].includes(person.role)).length;
 
   const save = async (values: RecordValues) => {
     setError(undefined);
@@ -78,7 +88,7 @@ export function ManageUsersScreen() {
       cell: (person) => (
         <span className="flex items-center gap-3">
           <Avatar name={person.name} size="sm" />
-          <span className="font-medium text-ink">{person.name}</span>
+          <span className="font-bold text-ink">{person.name}</span>
         </span>
       ),
     },
@@ -115,6 +125,31 @@ export function ManageUsersScreen() {
           </Button>
         }
       />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile icon={Contact} label="Accounts" value={everyone.length} detail="Across every role" />
+        <StatTile
+          icon={Presentation}
+          tone="lilac"
+          label="School staff"
+          value={staffCount}
+          detail="Teachers, psychologists and admins"
+        />
+        <StatTile
+          icon={HeartHandshake}
+          tone="jade"
+          label="Families"
+          value={familyCount}
+          detail="Parents and students"
+        />
+        <StatTile
+          icon={School}
+          tone="honey"
+          label="Schools"
+          value={(schools.data ?? []).length}
+          detail="Accounts can belong to one"
+        />
+      </div>
 
       <SegmentedControl
         label="Filter by role"

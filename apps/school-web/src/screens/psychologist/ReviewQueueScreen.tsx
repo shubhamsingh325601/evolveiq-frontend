@@ -12,10 +12,15 @@ import {
 import {
   Avatar,
   Badge,
+  Check,
+  CircleAlert,
+  ClipboardList,
   ErrorState,
+  HeartHandshake,
+  Inbox,
   PageHeader,
-  SegmentedControl,
   Select,
+  StatTile,
 } from '@evolveiq/ui';
 
 /** The five filters the PRD asks for, as one switch over the same query. */
@@ -59,7 +64,7 @@ export function ReviewQueueScreen() {
         return (
           <span className="flex items-center gap-3">
             <Avatar name={name} size="sm" />
-            <span className="font-medium text-ink">{name}</span>
+            <span className="font-bold text-ink">{name}</span>
           </span>
         );
       },
@@ -127,53 +132,50 @@ export function ReviewQueueScreen() {
         subtitle="Observations waiting on you, newest first."
       />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <SegmentedControl
-          label="Filter the queue"
-          value={filter}
-          onChange={setFilter}
-          options={[
-            {
-              value: 'pending',
-              label: 'Pending',
-              count: all.filter((entry) => entry.status === 'pending').length,
-            },
-            {
-              value: 'significant',
-              label: 'Significant',
-              count: all.filter((entry) => entry.isSignificant).length,
-            },
-            {
-              value: 'from-parents',
-              label: 'From parents',
-              count: all.filter((entry) => entry.authorRole === 'parent').length,
-            },
-            {
-              value: 'reviewed',
-              label: 'Reviewed',
-              count: all.filter((entry) => entry.status === 'reviewed').length,
-            },
-            { value: 'all', label: 'Everything', count: all.length },
-          ]}
+      <div role="tablist" aria-label="Filter the queue" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <StatTile
+          icon={Inbox}
+          tone="honey"
+          label="Pending"
+          value={all.filter((entry) => entry.status === 'pending').length}
+          detail="Waiting on a decision"
+          isSelected={filter === 'pending'}
+          onSelect={() => setFilter('pending')}
         />
-
-        <div className="shrink-0 lg:w-56">
-          <label className="sr-only" htmlFor="school-filter">
-            School
-          </label>
-          <Select
-            id="school-filter"
-            value={schoolId}
-            onChange={(event) => setSchoolId(event.target.value)}
-          >
-            <option value="">All schools</option>
-            {(schools.data ?? []).map((school) => (
-              <option key={school.id} value={school.id}>
-                {school.name}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <StatTile
+          icon={CircleAlert}
+          tone="coral"
+          label="Significant"
+          value={all.filter((entry) => entry.isSignificant).length}
+          detail="Flagged by a teacher"
+          isSelected={filter === 'significant'}
+          onSelect={() => setFilter('significant')}
+        />
+        <StatTile
+          icon={HeartHandshake}
+          tone="lilac"
+          label="From parents"
+          value={all.filter((entry) => entry.authorRole === 'parent').length}
+          detail="Written at home"
+          isSelected={filter === 'from-parents'}
+          onSelect={() => setFilter('from-parents')}
+        />
+        <StatTile
+          icon={Check}
+          label="Reviewed"
+          value={all.filter((entry) => entry.status === 'reviewed').length}
+          detail="Closed with a decision"
+          isSelected={filter === 'reviewed'}
+          onSelect={() => setFilter('reviewed')}
+        />
+        <StatTile
+          icon={ClipboardList}
+          label="Everything"
+          value={all.length}
+          detail="Every observation"
+          isSelected={filter === 'all'}
+          onSelect={() => setFilter('all')}
+        />
       </div>
 
       <RecordsTable
@@ -185,6 +187,26 @@ export function ReviewQueueScreen() {
           `${nameById.get(observation.studentId) ?? ''} ${observation.body} ${observation.authorName}`
         }
         searchPlaceholder="Search the queue"
+        toolbar={
+          <div className="w-48">
+            <label className="sr-only" htmlFor="school-filter">
+              School
+            </label>
+            <Select
+              id="school-filter"
+              className="h-10 rounded-full"
+              value={schoolId}
+              onChange={(event) => setSchoolId(event.target.value)}
+            >
+              <option value="">All schools</option>
+              {(schools.data ?? []).map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        }
         isLoading={observations.isLoading}
         onRowClick={(observation) => navigate(`/review-queue/${observation.id}`)}
         emptyTitle="Nothing in this filter"

@@ -15,6 +15,11 @@
  *   honey  awaiting a psychologist's review
  *   coral  flagged significant, or destructive — the only colour that means "look now"
  * Peach exists only inside the `dawn` and `hero` glows. It never means anything.
+ *
+ * Two small sets sit outside that scheme, each with a single job:
+ *   ehi    the five pillars of the EvolvIQ Holistic Index, as chart series.
+ *          Identity only, only inside an EHI chart, always beside a label.
+ *   flame  a student's streak, and nothing else.
  */
 
 /** @type {import('tailwindcss').Config} */
@@ -91,6 +96,23 @@ export default {
           600: '#C8392A',
           700: '#A42D20',
         },
+        // The EHI's five pillars, outermost ring first. Validated as one
+        // categorical set in this order (dataviz six checks: CVD-safe for
+        // neighbouring rings). Skills and physical sit under 3:1 on white,
+        // so every chart that uses them prints each pillar's value beside it.
+        ehi: {
+          education: '#6366F1',
+          skills: '#10B981',
+          physical: '#F59E0B',
+          wellbeing: '#EC4899',
+          character: '#8B5CF6',
+        },
+        flame: {
+          50: '#FFF4EC',
+          200: '#FED7AA',
+          500: '#F97316',
+          700: '#C2410C',
+        },
       },
 
       fontFamily: {
@@ -126,7 +148,7 @@ export default {
         xl: '16px',
         // Cards.
         '2xl': '20px',
-        // Shell: the rail, hero panels, dialogs.
+        // Shell: the rail, the report header, dialogs.
         '3xl': '28px',
         full: '9999px',
       },
@@ -149,8 +171,8 @@ export default {
           'radial-gradient(48rem 32rem at 100% 0%, rgba(169, 138, 243, 0.18), transparent 60%)',
           'radial-gradient(60rem 40rem at 100% 100%, rgba(255, 196, 160, 0.32), transparent 60%)',
         ].join(', '),
-        // Home-screen hero panels: royal blue into indigo into soft purple,
-        // with the dawn warmth rising in one corner.
+        // Royal blue into indigo into soft purple, with the dawn warmth rising
+        // in one corner: kept for a student finishing an activity.
         hero: [
           'radial-gradient(34rem 22rem at 100% 100%, rgba(255, 190, 150, 0.36), transparent 70%)',
           'linear-gradient(120deg, #3446D6 0%, #4B4FE0 45%, #7650D9 100%)',
@@ -159,6 +181,15 @@ export default {
           'radial-gradient(22rem 18rem at 0% 0%, rgba(124, 128, 240, 0.3), transparent 70%)',
           'linear-gradient(180deg, #1F1C4D 0%, #17153B 60%, #1B1747 100%)',
         ].join(', '),
+        // The Holistic Report's header: deep indigo into plum, darker than
+        // `hero` so the EHI in jade reads as the brightest thing on it.
+        report: [
+          'radial-gradient(18rem 14rem at 100% 0%, rgba(255, 255, 255, 0.12), transparent 70%)',
+          'radial-gradient(14rem 12rem at 0% 100%, rgba(99, 102, 241, 0.35), transparent 70%)',
+          'linear-gradient(135deg, #312E81 0%, #3730A3 50%, #581C87 100%)',
+        ].join(', '),
+        // A deep panel for AI insight cards on light pages.
+        insight: 'linear-gradient(135deg, #17153B 0%, #1F1C5E 100%)',
       },
 
       maxWidth: {
@@ -187,12 +218,34 @@ export default {
           '0%': { boxShadow: '0 0 0 0 rgba(118, 80, 217, 0.45)' },
           '100%': { boxShadow: '0 0 0 36px rgba(118, 80, 217, 0)' },
         },
+        // Charts draw themselves in once, when they first appear. Rings use
+        // pathLength 100, so each sweeps from empty to its own value.
+        'ring-fill': {
+          '0%': { strokeDasharray: '0 100' },
+        },
+        // Lines use pathLength 1.
+        'line-draw': {
+          '0%': { strokeDashoffset: '1' },
+          '100%': { strokeDashoffset: '0' },
+        },
+        'chart-grow': {
+          '0%': { transform: 'scale(0.4)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
       },
       animation: {
         'streak-mark': 'streak-mark 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         rise: 'rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         celebrate: 'celebrate 640ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         halo: 'halo 1400ms ease-out 360ms both',
+        'ring-fill': 'ring-fill 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        'line-draw': 'line-draw 1100ms cubic-bezier(0.4, 0, 0.2, 1) both',
+        'chart-grow': 'chart-grow 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        'fade-in': 'fade-in 600ms ease-out 300ms both',
       },
     },
   },

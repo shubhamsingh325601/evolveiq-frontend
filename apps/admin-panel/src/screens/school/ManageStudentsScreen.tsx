@@ -8,7 +8,18 @@ import {
 } from '@evolveiq/api-client';
 import type { Student } from '@evolveiq/api-client';
 import { RecordsTable, ageFromDateOfBirth, type RecordsTableColumn } from '@evolveiq/domain';
-import { Avatar, Button, ErrorState, PageHeader, Plus } from '@evolveiq/ui';
+import {
+  Avatar,
+  Backpack,
+  Button,
+  ErrorState,
+  HeartHandshake,
+  LayoutGrid,
+  PageHeader,
+  Plus,
+  StatTile,
+  Inbox,
+} from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 export function ManageStudentsScreen() {
@@ -28,6 +39,9 @@ export function ManageStudentsScreen() {
     label: `${group.name}, ${group.yearLevel}`,
   }));
   const classNameById = new Map((classes.data ?? []).map((group) => [group.id, group.name]));
+  const enrolled = students.data ?? [];
+  const withoutClass = enrolled.filter((student) => !classNameById.has(student.classId)).length;
+  const withParent = enrolled.filter((student) => student.parentIds.length > 0).length;
 
   const save = async (values: RecordValues) => {
     setError(undefined);
@@ -71,7 +85,7 @@ export function ManageStudentsScreen() {
       cell: (student) => (
         <span className="flex items-center gap-3">
           <Avatar name={student.name} size="sm" />
-          <span className="font-medium text-ink">{student.name}</span>
+          <span className="font-bold text-ink">{student.name}</span>
         </span>
       ),
     },
@@ -110,6 +124,31 @@ export function ManageStudentsScreen() {
           </Button>
         }
       />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile icon={Backpack} label="Students" value={enrolled.length} detail="Enrolled at your school" />
+        <StatTile
+          icon={LayoutGrid}
+          tone="lilac"
+          label="Classes"
+          value={(classes.data ?? []).length}
+          detail="Groups students are placed in"
+        />
+        <StatTile
+          icon={HeartHandshake}
+          tone="jade"
+          label="With a parent linked"
+          value={`${withParent} of ${enrolled.length}`}
+          detail="Families following along"
+        />
+        <StatTile
+          icon={Inbox}
+          tone="honey"
+          label="Without a class"
+          value={withoutClass}
+          detail={withoutClass === 0 ? 'Everyone is placed' : 'Waiting to be placed'}
+        />
+      </div>
 
       {error ? <ErrorState title="That did not save" description={error} /> : null}
 

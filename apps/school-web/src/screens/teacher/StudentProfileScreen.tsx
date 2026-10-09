@@ -2,7 +2,9 @@ import { Link, useParams } from 'react-router-dom';
 import {
   useActivities,
   useActivityQueue,
+  useClasses,
   useGrowthAreas,
+  useHolisticIndex,
   useObservations,
   useStudent,
 } from '@evolveiq/api-client';
@@ -10,6 +12,7 @@ import {
   ASSIGNMENT_STATUS_LABELS,
   BackLink,
   GrowthAreaList,
+  HolisticIndexCard,
   ObservationEntry,
   ageFromDateOfBirth,
   formatRelativeDay,
@@ -22,25 +25,31 @@ import {
   ClipboardList,
   EmptyState,
   ErrorState,
+  FileText,
+  LayoutGrid,
   LoadingState,
   NotebookPen,
   Plus,
   RuledList,
   RuledListItem,
+  SectionTitle,
   Sprout,
 } from '@evolveiq/ui';
 
 /**
- * A teacher's full view of one student: up to five growth areas, activity
- * progress, and the complete observation history including clinical detail.
+ * A teacher's full view of one student: their EvolvIQ Holistic Index, up to
+ * five growth areas, activity progress, and the complete observation history
+ * including clinical detail.
  */
 export function StudentProfileScreen() {
   const { studentId } = useParams<{ studentId: string }>();
   const student = useStudent(studentId);
+  const holisticIndex = useHolisticIndex(studentId);
   const growthAreas = useGrowthAreas(studentId);
   const observations = useObservations(studentId ? { studentId } : {});
   const assignments = useActivityQueue(studentId ? { studentId } : {});
   const activities = useActivities();
+  const classes = useClasses();
 
   if (student.isLoading) return <LoadingState label="Loading the student" />;
   if (student.isError || !student.data) {
@@ -52,10 +61,12 @@ export function StudentProfileScreen() {
     );
   }
 
+  const child = student.data;
   const activityById = new Map((activities.data ?? []).map((activity) => [activity.id, activity]));
+  const className = (classes.data ?? []).find((group) => group.id === child.classId)?.name;
   const entries = observations.data ?? [];
   const openGrowthAreas = growthAreas.data ?? [];
-  const assignPath = `/teacher/assign?studentId=${student.data.id}`;
+  const assignPath = `/teacher/assign?studentId=${child.id}`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -63,40 +74,78 @@ export function StudentProfileScreen() {
         My students
       </BackLink>
 
-      <Card className="flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center">
-        <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Avatar name={student.data.name} size="xl" className="size-20 text-2xl" />
-          <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-              {student.data.name}
-            </h1>
-            <p className="mt-1.5 text-base text-ink-muted">
-              {ageFromDateOfBirth(student.data.dateOfBirth)} years old
-            </p>
+      <Card isPlayful className="relative isolate overflow-hidden p-6 sm:p-8">
+        <span
+          aria-hidden="true"
+          className="absolute -right-20 -top-24 -z-10 size-72 rounded-full bg-gradient-to-br from-iris-100 to-lilac-100 blur-2xl"
+        />
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-5">
+            <Avatar name={child.name} size="xl" className="size-20 text-2xl" />
+            <div className="min-w-0">
+              <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">
+                {child.name}
+              </h1>
+              <ul className="mt-2.5 flex flex-wrap gap-2">
+                {className ? (
+                  <li>
+                    <Badge icon={LayoutGrid}>Class {className}</Badge>
+                  </li>
+                ) : null}
+                <li>
+                  <Badge>{ageFromDateOfBirth(child.dateOfBirth)} years old</Badge>
+                </li>
+                <li>
+                  <Badge tone="growth" icon={Sprout}>
+                    {child.growthAreaIds.length} of 5 growth areas
+                  </Badge>
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to={assignPath} className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
-            <ClipboardList />
-            Assign an activity
-          </Link>
-          <Link
-            to={`/teacher/observations/new?studentId=${student.data.id}`}
-            className={buttonClasses({ size: 'sm' })}
-          >
-            <Plus />
-            New observation
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {holisticIndex.data ? (
+              <Link
+                to={`/teacher/students/${child.id}/report`}
+                className={buttonClasses({ variant: 'secondary', size: 'sm' })}
+              >
+                <FileText />
+                Holistic Report
+              </Link>
+            ) : null}
+            <Link to={assignPath} className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+              <ClipboardList />
+              Assign an activity
+            </Link>
+            <Link
+              to={`/teacher/observations/new?studentId=${child.id}`}
+              className={buttonClasses({ size: 'sm' })}
+            >
+              <Plus />
+              New observation
+            </Link>
+          </div>
         </div>
       </Card>
 
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
         <div className="flex flex-col gap-10 lg:col-span-5">
+          {holisticIndex.data ? (
+            <HolisticIndexCard studentName={child.name} index={holisticIndex.data} />
+          ) : null}
+
           <section>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-ink">Growth areas</h2>
-              <p className="text-sm tabular-nums text-ink-muted">{openGrowthAreas.length} of 5 open</p>
-            </div>
+            <SectionTitle
+              icon={Sprout}
+              iconClassName="text-jade-500"
+              action={
+                <p className="text-sm font-semibold tabular-nums text-ink-muted">
+                  {openGrowthAreas.length} of 5 open
+                </p>
+              }
+            >
+              Growth areas
+            </SectionTitle>
             {openGrowthAreas.length === 0 ? (
               <EmptyState
                 className="mt-4"
@@ -110,7 +159,7 @@ export function StudentProfileScreen() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold tracking-tight text-ink">Activity progress</h2>
+            <SectionTitle icon={ClipboardList}>Activity progress</SectionTitle>
             {(assignments.data ?? []).length === 0 ? (
               <EmptyState
                 className="mt-4"
@@ -132,7 +181,7 @@ export function StudentProfileScreen() {
                       className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
                     >
                       <div className="min-w-0">
-                        <p className="font-medium text-ink">
+                        <p className="font-bold text-ink">
                           {activityById.get(assignment.activityId)?.title ?? 'Activity'}
                         </p>
                         <p className="mt-0.5 text-sm text-ink-muted">
@@ -152,7 +201,9 @@ export function StudentProfileScreen() {
         </div>
 
         <section className="lg:col-span-7">
-          <h2 className="text-xl font-semibold tracking-tight text-ink">Observation history</h2>
+          <SectionTitle icon={NotebookPen} iconClassName="text-lilac-500">
+            Observation history
+          </SectionTitle>
           {observations.isLoading ? <LoadingState /> : null}
           {entries.length === 0 && !observations.isLoading ? (
             <EmptyState
@@ -162,7 +213,7 @@ export function StudentProfileScreen() {
               description="Record what you notice and it goes to the review queue."
             />
           ) : (
-            <Card className="mt-4 p-6 sm:p-7">
+            <Card isPlayful className="mt-4 p-6 sm:p-7">
               <RuledList>
                 {entries.map((observation) => (
                   <RuledListItem

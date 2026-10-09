@@ -34,7 +34,7 @@ export function AppBottomNav({ sections, className }: AppBottomNavProps) {
         className,
       )}
     >
-      <ul className="mx-auto flex max-w-md items-end justify-around gap-1 rounded-3xl border border-white/70 bg-white/80 p-1.5 shadow-raised backdrop-blur-xl">
+      <ul className="mx-auto flex max-w-md items-end justify-around gap-1 rounded-3xl border border-white/80 bg-white/90 p-1.5 shadow-raised backdrop-blur-xl">
         {slots.map((item) => {
           if (item === action) {
             const ActionIcon = item.icon ?? Plus;
@@ -61,7 +61,7 @@ export function AppBottomNav({ sections, className }: AppBottomNavProps) {
                 end={item.isEndMatch ?? false}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex flex-col items-center gap-0.5 rounded-2xl px-1 py-1 text-[0.6875rem] font-medium transition-colors',
+                    'relative flex flex-col items-center gap-0.5 rounded-2xl px-1 py-1 text-[0.6875rem] font-semibold transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
                     isActive ? 'text-iris-700' : 'text-ink-muted hover:text-ink',
                   )

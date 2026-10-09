@@ -33,6 +33,7 @@ import {
   Quote,
   RuledList,
   RuledListItem,
+  SectionTitle,
   Select,
   Textarea,
 } from '@evolveiq/ui';
@@ -122,7 +123,7 @@ export function ObservationDetailScreen() {
             <div className="flex items-center gap-4">
               {student.data ? <Avatar name={student.data.name} size="lg" /> : null}
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                <h1 className="text-2xl font-black tracking-tight text-ink sm:text-3xl">
                   {student.data?.name ?? 'Observation'}
                 </h1>
                 {student.data ? (
@@ -170,7 +171,9 @@ export function ObservationDetailScreen() {
           </Card>
 
           <section>
-            <h2 className="text-xl font-semibold tracking-tight text-ink">Related history</h2>
+            <SectionTitle icon={NotebookPen} iconClassName="text-lilac-500">
+              Related history
+            </SectionTitle>
             {history.isLoading ? <LoadingState /> : null}
             {relatedHistory.length === 0 && !history.isLoading ? (
               <EmptyState
@@ -202,9 +205,18 @@ export function ObservationDetailScreen() {
           </section>
         </div>
 
-        <Card as="section" className="flex flex-col gap-8 p-6 sm:p-7">
+        <Card as="section" isPlayful className="flex flex-col gap-8 p-6 sm:p-7 lg:sticky lg:top-24">
+          <p className="-mb-3 text-sm font-semibold text-ink-muted">Your decision</p>
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-ink">Development areas</h2>
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-iris-50 text-xs font-black text-iris-700 ring-1 ring-inset ring-iris-100"
+              >
+                1
+              </span>
+              <h2 className="text-lg font-black tracking-tight text-ink">Development areas</h2>
+            </div>
             <p className="mt-1 text-sm text-ink-muted">
               Confirm the area this belongs to, or add others it touches.
             </p>
@@ -223,7 +235,15 @@ export function ObservationDetailScreen() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-ink">Recommend an activity</h2>
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-iris-50 text-xs font-black text-iris-700 ring-1 ring-inset ring-iris-100"
+              >
+                2
+              </span>
+              <h2 className="text-lg font-black tracking-tight text-ink">Recommend an activity</h2>
+            </div>
             <p className="mt-1 text-sm text-ink-muted">
               Optional. If you pick one, it is set when you mark this reviewed.
             </p>
@@ -244,7 +264,15 @@ export function ObservationDetailScreen() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-ink">Note for teachers</h2>
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-iris-50 text-xs font-black text-iris-700 ring-1 ring-inset ring-iris-100"
+              >
+                3
+              </span>
+              <h2 className="text-lg font-black tracking-tight text-ink">Note for teachers</h2>
+            </div>
             <p className="mt-1 text-sm text-ink-muted">
               Seen by teachers and psychologists only. Parents never see this.
             </p>

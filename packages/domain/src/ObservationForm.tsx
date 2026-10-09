@@ -228,7 +228,7 @@ export function ObservationForm({
       {isTeacher ? (
         <Card as="section" tone="tinted" className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
           <div className="sm:col-span-2">
-            <h3 className="text-base font-medium text-ink">For the school team</h3>
+            <h3 className="text-base font-bold text-ink">For the school team</h3>
             <p className="mt-1 text-sm text-ink-muted">
               Parents never see these fields or the flag.
             </p>

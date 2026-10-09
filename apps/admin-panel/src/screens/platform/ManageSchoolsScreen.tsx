@@ -2,7 +2,17 @@ import { useState } from 'react';
 import { useCreateSchool, useSchools, useUpdateSchool } from '@evolveiq/api-client';
 import type { School } from '@evolveiq/api-client';
 import { RecordsTable, formatDay, type RecordsTableColumn } from '@evolveiq/domain';
-import { Button, ErrorState, PageHeader, Plus, School as SchoolIcon } from '@evolveiq/ui';
+import {
+  Backpack,
+  Button,
+  ErrorState,
+  MapPin,
+  PageHeader,
+  Plus,
+  Presentation,
+  School as SchoolIcon,
+  StatTile,
+} from '@evolveiq/ui';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
 export function ManageSchoolsScreen() {
@@ -14,6 +24,11 @@ export function ManageSchoolsScreen() {
   const [error, setError] = useState<string>();
 
   if (schools.isError) return <ErrorState onRetry={() => void schools.refetch()} />;
+
+  const list = schools.data ?? [];
+  const totalStudents = list.reduce((sum, school) => sum + school.studentCount, 0);
+  const totalTeachers = list.reduce((sum, school) => sum + school.teacherCount, 0);
+  const cities = new Set(list.map((school) => school.city).filter(Boolean)).size;
 
   const save = async (values: RecordValues) => {
     setError(undefined);
@@ -40,7 +55,7 @@ export function ManageSchoolsScreen() {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-iris-50 text-iris-600">
             <SchoolIcon className="size-4" />
           </span>
-          <span className="font-medium text-ink">{school.name}</span>
+          <span className="font-bold text-ink">{school.name}</span>
         </span>
       ),
     },
@@ -86,6 +101,25 @@ export function ManageSchoolsScreen() {
           </Button>
         }
       />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile icon={SchoolIcon} label="Schools" value={list.length} detail="Using EvolvIQ" />
+        <StatTile
+          icon={Backpack}
+          tone="jade"
+          label="Students"
+          value={totalStudents.toLocaleString('en-GB')}
+          detail="Enrolled across every school"
+        />
+        <StatTile
+          icon={Presentation}
+          tone="lilac"
+          label="Teachers"
+          value={totalTeachers.toLocaleString('en-GB')}
+          detail="Across every school"
+        />
+        <StatTile icon={MapPin} tone="honey" label="Cities" value={cities} detail="Where our schools are" />
+      </div>
 
       {error ? <ErrorState title="That did not save" description={error} /> : null}
 

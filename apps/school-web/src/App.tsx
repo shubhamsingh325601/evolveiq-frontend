@@ -4,6 +4,7 @@ import { AppFrame } from './AppFrame';
 import { SignInScreen } from './screens/SignInScreen';
 import { StudentsScreen } from './screens/teacher/StudentsScreen';
 import { StudentProfileScreen } from './screens/teacher/StudentProfileScreen';
+import { StudentReportScreen } from './screens/teacher/StudentReportScreen';
 import { NewObservationScreen } from './screens/teacher/NewObservationScreen';
 import { AssignActivityScreen } from './screens/teacher/AssignActivityScreen';
 import { ReviewQueueScreen } from './screens/psychologist/ReviewQueueScreen';
@@ -23,6 +24,7 @@ export function App() {
         <Route element={<AppFrame />}>
           <Route path="/teacher/students" element={<StudentsScreen />} />
           <Route path="/teacher/students/:studentId" element={<StudentProfileScreen />} />
+          <Route path="/teacher/students/:studentId/report" element={<StudentReportScreen />} />
           <Route path="/teacher/observations/new" element={<NewObservationScreen />} />
           <Route path="/teacher/assign" element={<AssignActivityScreen />} />
         </Route>

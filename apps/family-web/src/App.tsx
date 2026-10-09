@@ -5,8 +5,10 @@ import { SignInScreen } from './screens/SignInScreen';
 import { TodayScreen } from './screens/student/TodayScreen';
 import { ActivityScreen } from './screens/student/ActivityScreen';
 import { ProgressScreen } from './screens/student/ProgressScreen';
+import { StudentReportScreen } from './screens/student/StudentReportScreen';
 import { ChildrenScreen } from './screens/parent/ChildrenScreen';
-import { ChildDetailScreen } from './screens/parent/ChildDetailScreen';
+import { ChildDashboardScreen } from './screens/parent/ChildDashboardScreen';
+import { ChildReportScreen } from './screens/parent/ChildReportScreen';
 import { TeacherNotesScreen } from './screens/parent/TeacherNotesScreen';
 import { MonthlySummaryScreen } from './screens/parent/MonthlySummaryScreen';
 import { ObservationsScreen } from './screens/parent/ObservationsScreen';
@@ -25,13 +27,15 @@ export function App() {
           <Route path="/student/today" element={<TodayScreen />} />
           <Route path="/student/activities/:assignmentId" element={<ActivityScreen />} />
           <Route path="/student/progress" element={<ProgressScreen />} />
+          <Route path="/student/report" element={<StudentReportScreen />} />
         </Route>
       </Route>
 
       <Route element={<RoleGuard allow={['parent']} />}>
         <Route element={<AppFrame />}>
           <Route path="/parent/children" element={<ChildrenScreen />} />
-          <Route path="/parent/children/:childId" element={<ChildDetailScreen />} />
+          <Route path="/parent/children/:childId" element={<ChildDashboardScreen />} />
+          <Route path="/parent/children/:childId/report" element={<ChildReportScreen />} />
           <Route path="/parent/children/:childId/notes" element={<TeacherNotesScreen />} />
           <Route path="/parent/children/:childId/summary" element={<MonthlySummaryScreen />} />
           <Route path="/parent/observations" element={<ObservationsScreen />} />

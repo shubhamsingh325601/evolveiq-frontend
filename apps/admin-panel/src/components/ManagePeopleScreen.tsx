@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useCreateUser, useDeleteUser, useUpdateUser, useUsers } from '@evolveiq/api-client';
 import type { Role, User } from '@evolveiq/api-client';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
@@ -21,6 +21,8 @@ export interface ManagePeopleScreenProps {
   /** Extra fields beyond name and email. */
   extraFields?: RecordEditorField[];
   extraColumns?: RecordsTableColumn<User>[];
+  /** The KPI row between the header and the table. */
+  summary?: ReactNode;
 }
 
 export function ManagePeopleScreen({
@@ -32,6 +34,7 @@ export function ManagePeopleScreen({
   emptyDescription,
   extraFields = [],
   extraColumns = [],
+  summary,
 }: ManagePeopleScreenProps) {
   const people = useUsers({ role });
   const createUser = useCreateUser();
@@ -72,7 +75,7 @@ export function ManagePeopleScreen({
       cell: (person) => (
         <span className="flex items-center gap-3">
           <Avatar name={person.name} size="sm" />
-          <span className="font-medium text-ink">{person.name}</span>
+          <span className="font-bold text-ink">{person.name}</span>
         </span>
       ),
     },
@@ -104,6 +107,8 @@ export function ManagePeopleScreen({
           </Button>
         }
       />
+
+      {summary}
 
       {error ? <ErrorState title="That did not save" description={error} /> : null}
 

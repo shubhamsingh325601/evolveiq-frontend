@@ -47,7 +47,7 @@ export function buttonClasses({
   className,
 }: ButtonClassOptions = {}): string {
   return cn(
-    'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium',
+    'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-semibold',
     'transition-[background-color,border-color,color,box-shadow,transform] duration-150 enabled:active:translate-y-px',
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
     'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',

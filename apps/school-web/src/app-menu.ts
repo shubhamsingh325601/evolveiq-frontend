@@ -1,14 +1,19 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { Backpack, BookOpen, ClipboardList, Inbox, Plus } from '@evolveiq/ui';
+import { BookOpen, ClipboardList, Inbox, Plus, UsersRound } from '@evolveiq/ui';
 
 /** The school app's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`. */
 export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSection[] {
   if (role === 'teacher') {
     return [
       {
+        kind: 'action',
+        items: [{ label: 'New observation', to: '/teacher/observations/new', icon: Plus }],
+      },
+      {
+        title: 'Classroom',
         items: [
-          { label: 'My students', shortLabel: 'Students', to: '/teacher/students', icon: Backpack },
+          { label: 'My students', shortLabel: 'Students', to: '/teacher/students', icon: UsersRound },
           {
             label: 'Assign an activity',
             shortLabel: 'Assign',
@@ -17,16 +22,17 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
           },
         ],
       },
-      {
-        kind: 'action',
-        items: [{ label: 'New observation', to: '/teacher/observations/new', icon: Plus }],
-      },
     ];
   }
 
   if (role === 'psychologist') {
     return [
       {
+        kind: 'action',
+        items: [{ label: 'New activity', to: '/activities/new', icon: Plus }],
+      },
+      {
+        title: 'Review',
         items: [
           {
             label: 'Review queue',
@@ -35,6 +41,11 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
             badge: pendingReviewCount,
             icon: Inbox,
           },
+        ],
+      },
+      {
+        title: 'Library',
+        items: [
           {
             label: 'Activity library',
             shortLabel: 'Library',
@@ -43,10 +54,6 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
             icon: BookOpen,
           },
         ],
-      },
-      {
-        kind: 'action',
-        items: [{ label: 'New activity', to: '/activities/new', icon: Plus }],
       },
     ];
   }

@@ -4,7 +4,7 @@ import { cn } from './class-names';
 export interface PageHeaderProps {
   title: string;
   /** One line of orienting detail. Kept as prose, not a run of separators. */
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
   /** The way back up a level, drawn above the title — usually a `BackLink`. */
   back?: ReactNode;
@@ -21,8 +21,10 @@ export function PageHeader({ title, subtitle, actions, back, className }: PageHe
     >
       <div className="min-w-0">
         {back ? <div className="mb-4">{back}</div> : null}
-        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{title}</h1>
-        {subtitle ? <p className="mt-2 max-w-prose text-base text-ink-muted">{subtitle}</p> : null}
+        <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">{title}</h1>
+        {subtitle ? (
+          <p className="mt-2 max-w-2xl text-base font-medium text-ink-muted">{subtitle}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>

@@ -66,7 +66,7 @@ export function ActivityCard({
         <h3
           className={cn(
             'mt-2 text-ink',
-            isPlayful ? 'text-xl font-semibold tracking-tight' : 'text-base font-medium',
+            isPlayful ? 'text-xl font-black tracking-tight' : 'text-base font-bold',
           )}
         >
           {activity.title}

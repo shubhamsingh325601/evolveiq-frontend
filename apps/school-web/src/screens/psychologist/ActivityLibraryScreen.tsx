@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useActivities } from '@evolveiq/api-client';
+import { useActivities, useActivityQueue } from '@evolveiq/api-client';
 import type { Activity } from '@evolveiq/api-client';
 import {
   ACTIVITY_STEP_LABELS,
@@ -9,10 +9,22 @@ import {
   formatDay,
   type RecordsTableColumn,
 } from '@evolveiq/domain';
-import { Badge, buttonClasses, ErrorState, PageHeader, Plus } from '@evolveiq/ui';
+import {
+  Badge,
+  BookOpen,
+  buttonClasses,
+  ClipboardList,
+  Clock,
+  ErrorState,
+  LayoutGrid,
+  PageHeader,
+  Plus,
+  StatTile,
+} from '@evolveiq/ui';
 
 export function ActivityLibraryScreen() {
   const activities = useActivities();
+  const assignments = useActivityQueue();
 
   if (activities.isError) return <ErrorState onRetry={() => void activities.refetch()} />;
 
@@ -23,7 +35,7 @@ export function ActivityLibraryScreen() {
       sortValue: (activity) => activity.title,
       cell: (activity) => (
         <span className="block min-w-[14rem]">
-          <span className="block font-medium text-ink">{activity.title}</span>
+          <span className="block font-bold text-ink">{activity.title}</span>
           <span className="mt-0.5 block max-w-sm text-ink-muted">{activity.description}</span>
         </span>
       ),
@@ -73,6 +85,14 @@ export function ActivityLibraryScreen() {
     },
   ];
 
+  const library = activities.data ?? [];
+  const areasCovered = new Set(library.map((activity) => activity.area)).size;
+  const averageMinutes =
+    library.length === 0
+      ? 0
+      : Math.round(library.reduce((sum, activity) => sum + activity.estimatedMinutes, 0) / library.length);
+  const inProgress = (assignments.data ?? []).filter((assignment) => assignment.status !== 'completed').length;
+
   const newActivityLink = (
     <Link to="/activities/new" className={buttonClasses({ size: 'sm' })}>
       <Plus />
@@ -87,6 +107,31 @@ export function ActivityLibraryScreen() {
         subtitle="Everything that can be assigned to a student."
         actions={newActivityLink}
       />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile icon={BookOpen} label="Activities" value={library.length} detail="Ready to assign" />
+        <StatTile
+          icon={LayoutGrid}
+          tone="lilac"
+          label="Areas covered"
+          value={`${areasCovered} of 8`}
+          detail="Development areas with an activity"
+        />
+        <StatTile
+          icon={Clock}
+          tone="jade"
+          label="Typical length"
+          value={`${averageMinutes} min`}
+          detail="Average across the library"
+        />
+        <StatTile
+          icon={ClipboardList}
+          tone="honey"
+          label="Set and not finished"
+          value={inProgress}
+          detail="Assignments still open"
+        />
+      </div>
 
       <RecordsTable
         caption="Activity library"

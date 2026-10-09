@@ -170,6 +170,8 @@ export interface Assignment {
   assignedAt: string;
   dueOn: string;
   status: AssignmentStatus;
+  /** XP the student earns for finishing it. Set by the backend when assigned. */
+  xp: number;
   completedAt?: string;
   responses?: ActivityResponse[];
 }
@@ -215,6 +217,71 @@ export interface StreakInfo {
   longestStreak: number;
   /** Most recent seven days, oldest first. */
   lastSevenDays: boolean[];
+}
+
+/** A student's place on the level ladder. XP comes from finished activities. */
+export interface StudentLevel {
+  studentId: string;
+  level: number;
+  /** A friendly name for the level, e.g. "Curious Explorer". */
+  title: string;
+  /** All the XP earned so far. */
+  xp: number;
+  /** The total XP at which the next level starts. */
+  xpForNextLevel: number;
+}
+
+/**
+ * The five pillars of the EvolvIQ Holistic Index, in the order they are
+ * drawn: outermost ring first.
+ */
+export type HolisticDimension = 'education' | 'skills' | 'physical' | 'wellbeing' | 'character';
+
+export interface HolisticDimensionScore {
+  dimension: HolisticDimension;
+  /** 0–100. */
+  score: number;
+}
+
+export interface HolisticYear {
+  /** e.g. "2025–26". */
+  schoolYear: string;
+  /** The child's year group that year, e.g. "KG" or "Year 3". */
+  grade: string;
+  /** The EHI at the end of that year; for the year in progress, the EHI so far. */
+  score: number;
+  /** True only for the year still in progress, which is always the last entry. */
+  isCurrent: boolean;
+}
+
+export interface SkillScore {
+  skill: string;
+  /** 0–100. */
+  score: number;
+}
+
+/**
+ * The EvolvIQ Holistic Index (EHI) for one child: a 0–100 development index
+ * built from observations, finished activities and participation.
+ *
+ * It is parent-safe by construction. It is not a clinical score, and nothing
+ * here carries an observation's level, significance flag or a psychologist's
+ * note, so it can be shown to parents and students as it arrives.
+ */
+export interface HolisticIndex {
+  studentId: string;
+  score: number;
+  /** One per pillar, in `HolisticDimension` order. */
+  dimensions: HolisticDimensionScore[];
+  /** One entry per school year, oldest first. */
+  history: HolisticYear[];
+  /** The skill profile, drawn as a five-point radar. */
+  skills: SkillScore[];
+  /** Plain-language strengths, strongest first. */
+  strengths: string[];
+  /** The Growth Playbook: plain-language next steps for home. */
+  playbook: string[];
+  updatedAt: string;
 }
 
 export type ReviewQueueFilters = {

@@ -4,6 +4,7 @@ import {
   request,
   setAuthTokenProvider,
   setMockCurrentUser,
+  useClearCachedData,
   type User,
 } from '@evolveiq/api-client';
 import { AuthContext, type AuthState } from './auth-context';
@@ -46,6 +47,10 @@ export interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
+  // Cached responses belong to whoever loaded them. Without this, someone
+  // signing in straight after someone else could be shown the first person's
+  // data — including clinical detail a parent must never see.
+  const clearCachedData = useClearCachedData();
 
   useEffect(() => {
     const stored = readStoredSession();
@@ -61,18 +66,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const session = await request<StoredSession>('POST', ENDPOINTS.session.login, {
       body: { email },
     });
+    clearCachedData();
     activeToken = session.token;
     writeStoredSession(session);
     setUser(session.user);
     return session.user;
-  }, []);
+  }, [clearCachedData]);
 
   const signOut = useCallback(() => {
+    clearCachedData();
     activeToken = null;
     writeStoredSession(null);
     setMockCurrentUser(null);
     setUser(null);
-  }, []);
+  }, [clearCachedData]);
 
   const value = useMemo<AuthState>(
     () => ({ user, role: user?.role, isRestoring, signIn, signOut }),

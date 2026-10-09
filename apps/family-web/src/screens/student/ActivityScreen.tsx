@@ -9,7 +9,7 @@ import {
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
 import { ActivityPlayer, StreakIndicator } from '@evolveiq/domain';
-import { Button, Card, ErrorState, LoadingState, PageHeader, Star } from '@evolveiq/ui';
+import { Button, Card, ErrorState, LoadingState, PageHeader, Sparkles, Star } from '@evolveiq/ui';
 
 export function ActivityScreen() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -52,9 +52,12 @@ export function ActivityScreen() {
           <span aria-hidden="true" className="absolute inset-0 animate-halo rounded-[2rem]" />
         </div>
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">Finished</h1>
+          <h1 className="text-4xl font-black tracking-tight text-ink sm:text-5xl">Finished</h1>
           <p className="mx-auto mt-3 max-w-prose text-lg text-ink-muted">
             You have finished {activity.data.title}. Your teacher will see it.
+          </p>
+          <p className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-iris-50 px-4 py-1.5 text-sm font-black text-iris-700 ring-1 ring-inset ring-iris-100">
+            <Sparkles className="size-4" />+{assignment.xp} XP
           </p>
         </div>
         {streak.data ? (

@@ -122,11 +122,18 @@ export function RecordsTable<TRow>({
   };
 
   const hasToolbar = Boolean(searchableText) || Boolean(toolbar);
+  // A row that opens something says so with a chevron, unless it has its own actions.
+  const hasOpenCue = Boolean(onRowClick) && !rowActions;
 
   return (
-    <div className={cn('flex flex-col gap-4 [container-type:inline-size]', className)}>
+    <div
+      className={cn(
+        'overflow-hidden rounded-3xl border border-line/70 bg-white/85 shadow-card [container-type:inline-size]',
+        className,
+      )}
+    >
       {hasToolbar ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-line-soft px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           {searchableText ? (
             <div className="sm:max-w-xs sm:flex-1">
               <label className="sr-only" htmlFor={`${caption}-search`}>
@@ -138,6 +145,7 @@ export function RecordsTable<TRow>({
                 leadingIcon={Search}
                 value={search}
                 placeholder={searchPlaceholder}
+                className="h-10 rounded-full bg-surface-sunk/80"
                 onChange={(event) => {
                   setSearch(event.target.value);
                   setPage(0);
@@ -151,10 +159,11 @@ export function RecordsTable<TRow>({
         </div>
       ) : null}
 
-      {isLoading ? <LoadingState label="Loading records" /> : null}
+      {isLoading ? <LoadingState label="Loading records" className="px-5" /> : null}
 
       {!isLoading && sortedRows.length === 0 ? (
         <EmptyState
+          className="rounded-none border-none bg-transparent px-5 py-8"
           icon={search ? Search : undefined}
           title={search ? `Nothing matches “${search}”` : emptyTitle}
           description={
@@ -166,12 +175,12 @@ export function RecordsTable<TRow>({
 
       {!isLoading && sortedRows.length > 0 ? (
         <>
-          <div className="overflow-hidden rounded-2xl border border-white/80 bg-white/75 shadow-card">
+          <div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <caption className="sr-only">{caption}</caption>
                 <thead>
-                  <tr className="border-b border-line-soft bg-iris-50/40">
+                  <tr className="border-b border-line-soft bg-surface-sunk/80">
                     {columns.map((column) => {
                       const isSorted = sort?.columnId === column.id;
                       const SortIcon = isSorted
@@ -191,7 +200,7 @@ export function RecordsTable<TRow>({
                               : undefined
                           }
                           className={cn(
-                            'whitespace-nowrap px-4 py-3 text-xs font-medium text-ink-muted first:pl-5 last:pr-5',
+                            'whitespace-nowrap px-4 py-3 text-xs font-bold text-ink-faint first:pl-5 last:pr-5',
                             column.align === 'right' ? 'text-right' : 'text-left',
                             column.isSecondary && SECONDARY_COLUMN_CLASSES,
                           )}
@@ -222,6 +231,11 @@ export function RecordsTable<TRow>({
                         <span className="sr-only">Actions</span>
                       </th>
                     ) : null}
+                    {hasOpenCue ? (
+                      <th scope="col" className="w-10 pr-4">
+                        <span className="sr-only">Open</span>
+                      </th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -230,15 +244,15 @@ export function RecordsTable<TRow>({
                       key={getRowId(row)}
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
                       className={cn(
-                        'border-b border-line-soft transition-colors last:border-b-0',
-                        onRowClick && 'cursor-pointer hover:bg-iris-50/60',
+                        'group/row border-b border-line-soft transition-colors last:border-b-0',
+                        onRowClick && 'cursor-pointer hover:bg-iris-50/50',
                       )}
                     >
                       {columns.map((column) => (
                         <td
                           key={column.id}
                           className={cn(
-                            'px-4 py-3.5 align-middle text-ink first:pl-5 last:pr-5',
+                            'px-4 py-4 align-middle text-ink first:pl-5 last:pr-5',
                             column.align === 'right' ? 'text-right' : 'text-left',
                             column.isSecondary && SECONDARY_COLUMN_CLASSES,
                             column.className,
@@ -255,6 +269,14 @@ export function RecordsTable<TRow>({
                           {rowActions(row)}
                         </td>
                       ) : null}
+                      {hasOpenCue ? (
+                        <td className="w-10 pr-4 text-right">
+                          <ChevronRight
+                            aria-hidden="true"
+                            className="ml-auto size-4 text-ink-faint transition-[color,transform] group-hover/row:translate-x-0.5 group-hover/row:text-iris-500"
+                          />
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -263,7 +285,7 @@ export function RecordsTable<TRow>({
           </div>
 
           {pageCount > 1 ? (
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 border-t border-line-soft px-5 py-3">
               <p className="text-sm text-ink-muted">
                 Showing {page * pageSize + 1} to{' '}
                 {Math.min((page + 1) * pageSize, sortedRows.length)} of {sortedRows.length}

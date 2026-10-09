@@ -113,7 +113,7 @@ export function ActivityPlayer({
       </div>
 
       <Card isPlayful className="p-6 sm:p-8">
-        <h2 className="max-w-prose text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+        <h2 className="max-w-prose text-2xl font-black tracking-tight text-ink sm:text-3xl">
           {step.prompt}
         </h2>
         <div className="mt-6">

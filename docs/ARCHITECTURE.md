@@ -52,7 +52,10 @@ not be reimplemented per app:
   schools, activity library, review queue).
 - `AppSidebar` — one sidebar shell; each app passes a role-based menu config
   rather than forking the component. On phones, `AppBottomNav` renders the
-  same config as a tab bar, so the two never disagree.
+  same config as a tab bar, so the two never disagree. `AppLayout` wraps both
+  with `AppTopBar` (place, date, notifications). Apps pass a `contextCard`
+  (built on `SidebarCard`) and a list of `AppNotification`s, both computed
+  from queries the app already runs — the shell never fetches on its own.
 
 ## Role-based access
 Each app has one entry point but the menu, routes, and visible data are
@@ -68,10 +71,21 @@ new roles or permission changes are made there, not per-screen.
 - No app talks to the backend directly; this keeps the contract in one place
   and makes it trivial to add optimistic updates or retry logic later.
 
+## Charts
+The only charts are the EvolvIQ Holistic Index views on the parent and
+student screens (in scope since the client's feedback of 9 Oct 2026; see
+SCOPE_OF_WORK.md). They are hand-drawn SVG in `packages/ui` (`RingsChart`,
+`TrendChart`, `RadarChart`) rather than a charting library: small, testable in
+jsdom, styled from the same tokens, and readable without hover — every value
+is printed or listed beside its chart, and the trajectory reads with the arrow
+keys. `packages/domain` gives them their EHI meaning (`HolisticIndexCard`,
+`HolisticReport`, `SkillProfileCard`).
+
 ## What's deliberately out of scope for MVP
-Per the PRD's Scope Boundaries: no charts/graphs, no permission editor/audit
-log UI, no parent–teacher chat, no drag-and-drop activity builder, no
-native mobile shell. Don't build abstractions to anticipate these.
+Per the PRD's Scope Boundaries: no charts/graphs beyond the EHI views, no
+permission editor/audit log UI, no parent–teacher chat, no drag-and-drop
+activity builder, no native mobile shell. Don't build abstractions to
+anticipate these.
 
 ## Running all three at once
 `tools/dev-shell` is a development-only launcher that serves a role picker on a

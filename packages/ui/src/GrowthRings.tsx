@@ -12,7 +12,7 @@ const RINGS = [
 
 /**
  * Tree rings, drawn slightly off-centre the way real ones grow. The one
- * decorative motif in the product: it sits behind hero panels and sign-in,
+ * decorative motif in the product: it sits on the rail and behind sign-in,
  * standing for development measured over seasons rather than in marks.
  * Colour comes from `currentColor`.
  */

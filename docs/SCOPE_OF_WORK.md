@@ -3,6 +3,13 @@
 Source of truth: `EvolvIQ_MVP_Scope_Confirmation.pdf` (Sept 2026). This file
 translates that PRD into frontend-specific deliverables.
 
+**Change, 9 Oct 2026 (client feedback):** the parent and student views must
+follow the client's Gemini prototype (the "EvolvIQMobile" canvas) as closely
+as possible and lead with the product's USP, the **EvolvIQ Holistic Index
+(EHI)** — including its chart and graph views. That brings the EHI views below
+into scope and narrows the "no charts" exclusion to everything else. The
+teacher view was accepted as it is.
+
 ## Apps to build
 1. **Family Web App** — Parent, Student
 2. **School Web App** — Teacher, Psychologist
@@ -10,18 +17,30 @@ translates that PRD into frontend-specific deliverables.
 
 ## In scope by role
 
+### Every signed-in role
+- One shell: a collapsible rail with the role's at-a-glance context card, a top
+  bar, and a notifications bell built from data the app already loads
+- KPI tiles made of counts (no charts) at the top of working screens
+
 ### Student (Family Web App)
-- Today's assigned activities view
+- Home: today's assigned activities as Daily Missions, with XP per mission
+- Level and XP progress, streak
 - Activity player: MCQ, text, image pick, 1–5 rating, media + response
 - Progress/streak indicator on completion
+- Own Holistic Report Card (EHI trajectory, skill profile, strengths, Growth Playbook)
 - No access to any other student's data
 
 ### Parent (Family Web App)
-- Children list + development info
+- Dashboard per child, with a switcher between children
+- EvolvIQ Holistic Index: score, change since last year, five-pillar rings
+- Holistic Report Card: EHI trajectory over the years, skill profile radar,
+  strengths, year-by-year card, Growth Playbook, save as PDF / share
 - Observation submission form (area, free text, when, how often)
 - Teacher notes (read-only)
 - Growth areas + monthly summary (plain-language, not clinical)
-- No access to clinical scores or psychologist notes
+- No access to clinical scores or psychologist notes. The EHI is a
+  development index, not a clinical score; it carries no observation levels,
+  significance flags or psychologist notes
 
 ### Teacher (School Web App)
 - Own students list
@@ -30,6 +49,8 @@ translates that PRD into frontend-specific deliverables.
 - Direct activity assignment
 - Student progress tracking
 - Student profile: up to 5 growth areas, activity progress, full observation history
+- Each student's EvolvIQ Holistic Index on the roster and profile, and the same
+  Holistic Report Card the family sees
 
 ### Psychologist (School Web App)
 - Observation review queue with filters: Pending, Significant, From
@@ -48,7 +69,12 @@ translates that PRD into frontend-specific deliverables.
 - Add schools, manage users across roles
 
 ## Explicitly out of scope (do not build)
-- Charts/graphs on any dashboard
+- Charts/graphs on any dashboard, apart from the EHI views on the parent and
+  student screens listed above
+- Prototype features beyond the confirmed MVP, until the client confirms them:
+  SOS / safety centre, health and medical records, Explore (admissions, fests,
+  maps), alumni network, splash / intro tour / consent flow, settings and
+  language switch, AI career-path predictions
 - More than 5 growth areas per student
 - Permission editor, audit log UI
 - Parent–teacher chat

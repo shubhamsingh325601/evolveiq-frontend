@@ -1,8 +1,25 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROLE_APP, ROLE_HOME_PATH, ROLE_LABELS, useAuth } from '@evolveiq/auth';
-import { Avatar, BrandMark, ChevronRight, DawnBackdrop, ErrorState } from '@evolveiq/ui';
+import {
+  Avatar,
+  BrandMark,
+  ChevronRight,
+  DawnBackdrop,
+  ErrorState,
+  GrowthRings,
+  HeartHandshake,
+  School,
+  ShieldCheck,
+  type IconComponent,
+} from '@evolveiq/ui';
 import { APP_GROUPS, DEMO_PEOPLE, type DemoPerson } from './demo-people';
+
+const GROUP_ICONS: Record<(typeof APP_GROUPS)[number]['id'], IconComponent> = {
+  family: HeartHandshake,
+  school: School,
+  admin: ShieldCheck,
+};
 
 /**
  * The launcher. Picking someone signs in as them and hands the page over to
@@ -29,32 +46,41 @@ export function RolePicker() {
   return (
     <div className="relative min-h-dvh">
       <DawnBackdrop />
-      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:py-16">
-        <header>
+      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-10">
+        <header className="relative isolate overflow-hidden rounded-3xl bg-rail px-6 py-8 text-white shadow-raised sm:px-10 sm:py-10">
+          <GrowthRings className="absolute -bottom-52 -right-40 -z-10 size-[34rem] text-white/[0.07]" />
           <div className="flex items-center gap-3">
             <BrandMark />
-            <p className="text-lg font-semibold tracking-tight text-ink">EvolvIQ</p>
+            <p className="text-lg font-black tracking-tight">EvolvIQ</p>
+            <span className="ml-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/75 ring-1 ring-inset ring-white/15">
+              Development launcher
+            </span>
           </div>
-          <h1 className="mt-10 max-w-2xl text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+          <h1 className="mt-8 max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">
             Open the product as anyone
           </h1>
-          <p className="mt-4 max-w-prose text-base leading-7 text-ink-muted">
-            All three apps, on one port, with the same seed data. Pick a person
-            and you are signed in as them. This launcher is for development only
-            and is never deployed.
+          <p className="mt-4 max-w-prose text-base leading-7 text-white/75">
+            All three apps, on one port, with the same seed data. Pick a person and you are
+            signed in as them. This launcher is for development only and is never deployed.
           </p>
         </header>
 
         {error ? <ErrorState className="mt-8" title="That did not open" description={error} /> : null}
 
-        <div className="mt-12 flex flex-col gap-12">
+        <div className="mt-10 flex flex-col gap-10">
           {APP_GROUPS.map((group) => {
             const people = DEMO_PEOPLE.filter((person) => ROLE_APP[person.role] === group.id);
+            const GroupIcon = GROUP_ICONS[group.id];
             return (
               <section key={group.id}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="text-xl font-semibold tracking-tight text-ink">{group.name}</h2>
-                  <p className="text-sm text-ink-faint">{group.note}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-iris-50 text-iris-600 ring-1 ring-inset ring-iris-100">
+                      <GroupIcon className="size-5" />
+                    </span>
+                    <h2 className="text-xl font-black tracking-tight text-ink">{group.name}</h2>
+                  </div>
+                  <p className="text-sm font-medium text-ink-faint">{group.note}</p>
                 </div>
 
                 <ul className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -64,19 +90,19 @@ export function RolePicker() {
                         type="button"
                         onClick={() => void open(person)}
                         disabled={busyEmail !== null}
-                        className="group flex h-full w-full items-start gap-4 rounded-3xl border border-white/80 bg-white/75 p-5 text-left shadow-card transition-[border-color,box-shadow] hover:border-iris-200 hover:shadow-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="group flex h-full w-full items-start gap-4 rounded-3xl border border-line/70 bg-white/85 p-5 text-left shadow-card transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-iris-200 hover:shadow-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Avatar name={person.name} size="lg" />
                         <span className="min-w-0 flex-1">
-                          <span className="flex items-baseline justify-between gap-3">
-                            <span className="text-lg font-semibold tracking-tight text-ink">
+                          <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                            <span className="text-lg font-black tracking-tight text-ink">
                               {person.name}
                             </span>
                             {busyEmail === person.email ? (
-                              <span className="text-sm text-iris-600">Opening…</span>
+                              <span className="text-sm font-semibold text-iris-600">Opening…</span>
                             ) : null}
                           </span>
-                          <span className="mt-0.5 block text-sm font-medium text-iris-600">
+                          <span className="mt-1 inline-flex rounded-full bg-iris-50 px-2.5 py-0.5 text-xs font-semibold text-iris-700 ring-1 ring-inset ring-iris-100">
                             {ROLE_LABELS[person.role]}
                           </span>
                           <span className="mt-2 block text-sm leading-6 text-ink-muted">
@@ -93,7 +119,7 @@ export function RolePicker() {
           })}
         </div>
 
-        <footer className="mt-14 border-t border-line pt-6">
+        <footer className="mt-12 border-t border-line pt-6">
           <p className="max-w-prose text-sm leading-7 text-ink-muted">
             Switching roles here is the same as signing out and signing back in —
             nothing is shared between roles. To run one app the way it ships, use
