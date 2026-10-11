@@ -1,227 +1,387 @@
 /**
- * Domain types shared by every app. These mirror the backend contract; when
- * the real API lands only `endpoints.ts` and `http-client.ts` change.
+ * The backend contract (evolveiq-backend, `/api/v1`), as TypeScript. Field
+ * names, value lists and response shapes match the API exactly — the mock in
+ * `mock/` serves the same shapes — so nothing between a hook and a screen
+ * translates or invents data.
+ *
+ * Each audience has its own shape (a parent's observation is not a
+ * psychologist's with fields hidden), the same way the backend serialises
+ * them.
  */
+
+// ───────────────────────────── People ─────────────────────────────
 
 export type Role =
   | 'student'
   | 'parent'
   | 'teacher'
   | 'psychologist'
-  | 'school-admin'
-  | 'platform-admin';
+  | 'school_admin'
+  | 'platform_admin';
 
+/** Who is signed in, as `POST /auth/login` returns it. */
+export interface SessionUser {
+  id: string;
+  role: Role;
+  fullName: string;
+  /** Null for psychologists and platform admins, who work across schools. */
+  schoolId: string | null;
+}
+
+/** An account as user management (`/users`) sees it. */
 export interface User {
   id: string;
-  name: string;
-  email: string;
   role: Role;
+  fullName: string;
+  /** Adults only; null for students. */
+  email: string | null;
+  /** Students only: the ID they sign in with. Null for adults. */
+  studentId: string | null;
   schoolId: string | null;
-  /** Students this user may see. Empty for platform admins. */
-  linkedStudentIds: string[];
+  /** Students only: their linked parent's user ID. */
+  parentId: string | null;
+  isActive: boolean;
+  createdAt: string;
 }
+
+/** Just enough to name someone. */
+export interface Person {
+  id: string;
+  fullName: string;
+}
+
+/** `POST /auth/register` — accounts are created by admins, never by sign-up. */
+export type NewUser =
+  | {
+      role: 'student';
+      fullName: string;
+      studentId: string;
+      /** Exactly six digits. */
+      pin: string;
+      schoolId?: string;
+      parentId?: string;
+    }
+  | {
+      role: 'parent' | 'teacher' | 'school_admin';
+      fullName: string;
+      email: string;
+      /** 10–128 characters. */
+      password: string;
+      schoolId?: string;
+    }
+  | {
+      role: 'psychologist' | 'platform_admin';
+      fullName: string;
+      email: string;
+      password: string;
+    };
+
+/** Adults: name and email. Students: name and student ID. Role and school never change. */
+export interface UserChanges {
+  fullName?: string;
+  email?: string;
+  studentId?: string;
+}
+
+// ───────────────────────────── Schools and classes ─────────────────────────────
 
 export interface School {
   id: string;
   name: string;
-  city: string;
-  studentCount: number;
-  teacherCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ClassGroup {
   id: string;
-  name: string;
   schoolId: string;
-  yearLevel: string;
-  teacherId: string;
-  studentIds: string[];
+  name: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Student {
-  id: string;
-  name: string;
-  dateOfBirth: string;
-  classId: string;
-  schoolId: string;
-  parentIds: string[];
-  /** PRD caps this at 5. Enforced in the api-client, not per screen. */
-  growthAreaIds: string[];
+/** `GET /classes/:classId`: the class with its teachers and students. */
+export interface ClassDetail {
+  class: ClassGroup;
+  teachers: Person[];
+  students: Person[];
 }
 
-/** The eight development areas the PRD works in. */
-export type DevelopmentArea =
-  | 'focus-and-attention'
-  | 'emotional-regulation'
-  | 'social-interaction'
-  | 'language-and-expression'
-  | 'motor-skills'
-  | 'problem-solving'
-  | 'independence'
-  | 'memory-and-recall';
+/** A parent and one of their children (`/parent-students`). */
+export interface ParentStudentLink {
+  parent: Person;
+  student: Person;
+  createdAt: string;
+}
 
+// ───────────────────────────── Observations ─────────────────────────────
+
+/** The value lists the lead confirmed (Oct 2026); labels live in `@evolveiq/domain`. */
+export type ObservationArea =
+  | 'emotions'
+  | 'behaviour'
+  | 'social'
+  | 'learning'
+  | 'communication'
+  | 'physical'
+  | 'routines'
+  | 'other';
+
+export type ObservationWhen = 'today' | 'this_week' | 'this_month' | 'over_a_month';
+
+export type ObservationFrequency = 'once' | 'sometimes' | 'often' | 'daily';
+
+/** Teachers only. "Significant" is the flag the psychologist's queue filters on. */
+export type ObservationLevel = 'minor' | 'moderate' | 'significant';
+
+/** Teachers only. */
 export type LearningBehaviourArea =
-  | 'engagement'
-  | 'persistence'
-  | 'self-direction'
-  | 'collaboration'
-  | 'following-instructions';
+  | 'attention'
+  | 'participation'
+  | 'following_instructions'
+  | 'task_completion'
+  | 'organisation'
+  | 'working_with_others'
+  | 'self_control'
+  | 'other';
 
-export type ObservationFrequency = 'first-time' | 'occasionally' | 'weekly' | 'daily';
+/** The psychologist's review tag. Also what growth areas are named after. */
+export type DevelopmentArea =
+  | 'managing_feelings'
+  | 'social_skills'
+  | 'communication'
+  | 'focus_attention'
+  | 'self_control'
+  | 'confidence'
+  | 'resilience'
+  | 'independence'
+  | 'learning_skills'
+  | 'motor_skills';
 
-export type ObservationContext = 'at-home' | 'in-class' | 'during-play' | 'during-transitions';
+export type ObservationStatus = 'pending' | 'reviewed';
 
-export type ObservationStatus = 'pending' | 'reviewed' | 'no-action-needed';
+/** "Assign & mark reviewed" / "No action needed". */
+export type ReviewOutcome = 'assigned' | 'no_action';
 
-export interface Observation {
+/** What a parent wrote, and its status. Nothing clinical, by construction. */
+export interface ParentObservation {
   id: string;
   studentId: string;
-  authorId: string;
-  authorName: string;
-  authorRole: Extract<Role, 'parent' | 'teacher'>;
-  area: DevelopmentArea;
-  /** The person's own words. Always rendered in the serif face. */
-  body: string;
-  context: ObservationContext;
-  frequency: ObservationFrequency;
-  observedAt: string;
-  createdAt: string;
+  area: ObservationArea;
+  /** The parent's own words. Always rendered in the serif face. */
+  description: string;
+  when: ObservationWhen;
+  howOften: ObservationFrequency;
   status: ObservationStatus;
-  isSignificant: boolean;
-  /** Teacher-only fields; absent on parent-submitted observations. */
-  level?: 1 | 2 | 3 | 4 | 5;
+  createdAt: string;
+}
+
+/** What a teacher wrote, its status, and the psychologist's note back to them. */
+export interface TeacherObservation extends ParentObservation {
+  level: ObservationLevel | null;
+  learningBehaviourArea: LearningBehaviourArea | null;
+  teacherOnlyNote: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ObservationReview {
+  outcome: ReviewOutcome;
+  developmentArea: DevelopmentArea | null;
+  teacherOnlyNote: string | null;
+  reviewedBy: Person;
+  reviewedAt: string;
+  /** Activities this review assigned to the student. */
+  activityIds: string[];
+}
+
+/** The psychologist's full view: queue, detail and history. */
+export interface ReviewObservation {
+  id: string;
+  schoolId: string;
+  student: Person;
+  author: Person & { role: 'parent' | 'teacher' };
+  area: ObservationArea;
+  description: string;
+  when: ObservationWhen;
+  howOften: ObservationFrequency;
+  level: ObservationLevel | null;
+  learningBehaviourArea: LearningBehaviourArea | null;
+  status: ObservationStatus;
+  /** Null while pending. */
+  review: ObservationReview | null;
+  createdAt: string;
+}
+
+export interface ObservationDetail {
+  observation: ReviewObservation;
+  /** The student's other observations, newest first (up to 20). */
+  history: ReviewObservation[];
+}
+
+export interface NewObservation {
+  studentId: string;
+  area: ObservationArea;
+  description: string;
+  when: ObservationWhen;
+  howOften: ObservationFrequency;
+  /** Teachers only — a parent sending these is a 400. */
+  level?: ObservationLevel;
   learningBehaviourArea?: LearningBehaviourArea;
-  /** Set during psychologist review. Never sent to parent or student clients. */
-  reviewedAt?: string;
-  reviewedById?: string;
-  taggedAreas?: DevelopmentArea[];
-  teacherOnlyNote?: string;
 }
 
-export type ActivityStepKind = 'mcq' | 'text' | 'image-pick' | 'rating' | 'media-response';
+/** One review closes an observation; it cannot be repeated or edited. */
+export type ReviewDecision =
+  | {
+      outcome: 'assigned';
+      /** 1–10 active activities, assigned to the student as "recommended". */
+      activityIds: string[];
+      /** Required when the observation is Significant. */
+      developmentArea?: DevelopmentArea;
+      teacherOnlyNote?: string;
+    }
+  | {
+      outcome: 'no_action';
+      developmentArea?: DevelopmentArea;
+      teacherOnlyNote?: string;
+    };
 
-export interface McqStep {
+/** The psychologist's queue filters: Pending, Significant, From parents, Reviewed, by school. */
+export interface ReviewQueueFilters {
+  status?: ObservationStatus;
+  level?: ObservationLevel;
+  authorRole?: 'parent' | 'teacher';
+  schoolId?: string;
+  studentId?: string;
+  area?: ObservationArea;
+}
+
+// ───────────────────────────── Activities ─────────────────────────────
+
+export type ActivityType = 'mcq' | 'text' | 'image_pick' | 'rating' | 'media_response';
+
+export interface McqOption {
   id: string;
-  kind: 'mcq';
-  prompt: string;
-  options: { id: string; label: string }[];
+  label: string;
 }
 
-export interface TextStep {
+export interface ImageOption {
   id: string;
-  kind: 'text';
-  prompt: string;
-  placeholder?: string;
+  imageUrl: string;
+  label?: string;
 }
 
-export interface ImagePickStep {
-  id: string;
-  kind: 'image-pick';
-  prompt: string;
-  options: { id: string; label: string; imageUrl: string }[];
-}
+/** One question per activity: the five types are one discriminated union. */
+export type ActivityContent =
+  | { type: 'mcq'; prompt: string; options: McqOption[] }
+  | { type: 'text'; prompt: string }
+  | { type: 'image_pick'; prompt: string; options: ImageOption[] }
+  | { type: 'rating'; prompt: string }
+  | { type: 'media_response'; prompt: string; mediaUrl: string };
 
-export interface RatingStep {
-  id: string;
-  kind: 'rating';
-  prompt: string;
-  lowLabel: string;
-  highLabel: string;
-}
+/** A student's answer; its `type` must match the activity's. */
+export type ActivityAnswer =
+  | { type: 'mcq'; optionId: string }
+  | { type: 'text'; text: string }
+  | { type: 'image_pick'; optionId: string }
+  | { type: 'rating'; rating: number }
+  | { type: 'media_response'; text: string };
 
-export interface MediaResponseStep {
-  id: string;
-  kind: 'media-response';
-  prompt: string;
-  mediaType: 'image' | 'audio' | 'video';
-  mediaUrl: string;
-  responsePrompt: string;
-}
-
-export type ActivityStep =
-  | McqStep
-  | TextStep
-  | ImagePickStep
-  | RatingStep
-  | MediaResponseStep;
-
+/** The one global library. Archived, never deleted. */
 export interface Activity {
   id: string;
   title: string;
-  /** Plain-language summary a parent can read. */
-  description: string;
-  area: DevelopmentArea;
-  ageRange: string;
-  estimatedMinutes: number;
-  authorId: string;
+  content: ActivityContent;
+  isArchived: boolean;
+  /** Assigned at least once: its type and options are frozen from then on. */
+  isAssigned: boolean;
   createdAt: string;
-  steps: ActivityStep[];
+  updatedAt: string;
 }
 
-export type AssignmentStatus = 'assigned' | 'in-progress' | 'completed';
+export interface NewActivity {
+  title: string;
+  content: ActivityContent;
+}
 
-export interface Assignment {
+export interface ActivityChanges {
+  title?: string;
+  content?: ActivityContent;
+}
+
+// ───────────────────────────── Assignments ─────────────────────────────
+
+export interface Completion {
+  answer: ActivityAnswer;
+  completedAt: string;
+}
+
+/** A teacher's or psychologist's view of a student's assignment, with the answer. */
+export interface StaffAssignment {
   id: string;
-  activityId: string;
   studentId: string;
-  assignedById: string;
-  assignedByName: string;
+  activity: { id: string; title: string; type: ActivityType };
+  /** Direct from a teacher, or recommended through a psychologist's review. */
+  source: 'direct' | 'recommended';
+  assignedBy: Person;
+  observationId: string | null;
   assignedAt: string;
-  dueOn: string;
-  status: AssignmentStatus;
-  /** XP the student earns for finishing it. Set by the backend when assigned. */
-  xp: number;
-  completedAt?: string;
-  responses?: ActivityResponse[];
+  completion: Completion | null;
 }
 
-export interface ActivityResponse {
-  stepId: string;
-  value: string | number | string[];
+/** The student's own view: the activity to do and their own answer. */
+export interface StudentAssignment {
+  id: string;
+  activity: { id: string; title: string; content: ActivityContent };
+  assignedAt: string;
+  isDone: boolean;
+  completion: Completion | null;
 }
 
+/** A parent's view: the activity and whether it is done. Never the answer. */
+export interface FamilyAssignment {
+  id: string;
+  title: string;
+  isDone: boolean;
+  assignedAt: string;
+  completedAt: string | null;
+}
+
+export interface CompletionRecord {
+  id: string;
+  assignmentId: string;
+  answer: ActivityAnswer;
+  completedAt: string;
+}
+
+// ───────────────────────────── Progress ─────────────────────────────
+
+/** Derived from "Assign & mark reviewed" reviews: names only, never more than five. */
 export interface GrowthArea {
-  id: string;
-  studentId: string;
-  area: DevelopmentArea;
-  /** Plain-language, parent-safe. Never a clinical score. */
-  summary: string;
-  openedAt: string;
-  activitiesAssigned: number;
-  activitiesCompleted: number;
+  /** The development area's label, e.g. "Managing feelings". */
+  name: string;
 }
 
-export interface TeacherNote {
-  id: string;
-  studentId: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
+export interface Streak {
+  /** Consecutive Asia/Kolkata days with at least one finished activity. */
+  days: number;
 }
 
 export interface MonthlySummary {
-  id: string;
   studentId: string;
+  /** "YYYY-MM", an Asia/Kolkata calendar month. */
   month: string;
-  headline: string;
-  body: string;
-  activitiesCompleted: number;
-  observationsLogged: number;
+  /** Plain-language template text. Parent-safe for every audience. */
+  text: string;
+  /** True for a finished month (stored, never changes); false for the current one. */
+  isFinal: boolean;
 }
 
-export interface StreakInfo {
-  studentId: string;
-  currentStreak: number;
-  longestStreak: number;
-  /** Most recent seven days, oldest first. */
-  lastSevenDays: boolean[];
-}
-
-/** A student's place on the level ladder. XP comes from finished activities. */
+/**
+ * A student's place on the level ladder. Worked out in the frontend from the
+ * activities they have finished (see `student-level.ts`); the backend keeps no
+ * XP of its own.
+ */
 export interface StudentLevel {
-  studentId: string;
   level: number;
   /** A friendly name for the level, e.g. "Curious Explorer". */
   title: string;
@@ -229,12 +389,14 @@ export interface StudentLevel {
   xp: number;
   /** The total XP at which the next level starts. */
   xpForNextLevel: number;
+  completedCount: number;
 }
 
-/**
- * The five pillars of the EvolvIQ Holistic Index, in the order they are
- * drawn: outermost ring first.
- */
+// ───────────────────────────── EvolvIQ Holistic Index ─────────────────────────────
+// Not served by the backend yet (see FEATURES in `features.ts`). The types stay
+// for the EHI components in `@evolveiq/domain`, which are kept and tested.
+
+/** The five pillars, in the order they are drawn: outermost ring first. */
 export type HolisticDimension = 'education' | 'skills' | 'physical' | 'wellbeing' | 'character';
 
 export interface HolisticDimensionScore {
@@ -261,40 +423,43 @@ export interface SkillScore {
 }
 
 /**
- * The EvolvIQ Holistic Index (EHI) for one child: a 0–100 development index
- * built from observations, finished activities and participation.
- *
- * It is parent-safe by construction. It is not a clinical score, and nothing
- * here carries an observation's level, significance flag or a psychologist's
- * note, so it can be shown to parents and students as it arrives.
+ * The EvolvIQ Holistic Index (EHI) for one child: a 0–100 development index.
+ * Parent-safe by construction: nothing here is clinical.
  */
 export interface HolisticIndex {
   studentId: string;
   score: number;
-  /** One per pillar, in `HolisticDimension` order. */
   dimensions: HolisticDimensionScore[];
-  /** One entry per school year, oldest first. */
   history: HolisticYear[];
-  /** The skill profile, drawn as a five-point radar. */
   skills: SkillScore[];
-  /** Plain-language strengths, strongest first. */
   strengths: string[];
-  /** The Growth Playbook: plain-language next steps for home. */
   playbook: string[];
   updatedAt: string;
 }
 
-export type ReviewQueueFilters = {
-  status?: ObservationStatus;
-  isSignificant?: boolean;
-  authorRole?: Observation['authorRole'];
-  schoolId?: string;
-  studentId?: string;
-};
+// ───────────────────────────── Lists and errors ─────────────────────────────
 
-export interface Paginated<T> {
-  items: T[];
-  total: number;
+/** The metadata every list endpoint returns beside its items. */
+export interface Pagination {
   page: number;
-  pageSize: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+/** One problem with one field, from a 400. */
+export interface FieldIssue {
+  field: string;
+  message: string;
+}
+
+/** The body of every error response. */
+export interface ApiErrorBody {
+  error: {
+    code: string;
+    message: string;
+    details?: FieldIssue[] | Record<string, unknown>;
+  };
 }

@@ -59,7 +59,7 @@ describe('Dev shell', () => {
     await user.click(screen.getByRole('button', { name: /Priya Ahluwalia/ }));
 
     expect(await screen.findByRole('heading', { name: 'Parent Dashboard' })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Maya’s score' })).toBeInTheDocument();
+    expect(await screen.findByText('Review Arjun’s progress and pending tasks.')).toBeInTheDocument();
   });
 
   it('opens the school app on the review queue for a psychologist', async () => {
@@ -115,16 +115,18 @@ describe('Dev shell', () => {
     renderShell();
     await screen.findByRole('heading', { name: 'Open the product as anyone' });
 
-    // Sunita's student list does not include Ibrahim, who is in another class.
+    // Sunita's class list holds only her own classes, 4B and 3A.
     await user.click(screen.getByRole('button', { name: /Sunita Rao/ }));
     await screen.findByRole('heading', { name: 'My students' });
+    await screen.findByText('Maya Ahluwalia');
     await user.click(screen.getByRole('button', { name: 'Switch role' }));
 
-    await user.click(await screen.findByRole('button', { name: /Dr. Anand Mehta/ }));
-    await screen.findByRole('heading', { name: 'Review queue' });
+    // The school admin asks for the same list and must get the whole school's.
+    await user.click(await screen.findByRole('button', { name: /Clara Fernandes/ }));
+    await screen.findByRole('heading', { name: 'Students' });
+    await user.click(screen.getAllByRole('link', { name: /Classes/ })[0]!);
 
-    // Served from Sunita's cache, Ibrahim's observation would have no student name.
-    expect(await screen.findByText('Ibrahim Qureshi')).toBeInTheDocument();
-    expect(screen.queryByText('Unknown student')).not.toBeInTheDocument();
+    // Served from Sunita's cache, Ritu Kapoor's class would be missing.
+    expect(await screen.findByText('5C')).toBeInTheDocument();
   });
 });

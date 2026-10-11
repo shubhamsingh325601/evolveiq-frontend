@@ -1,49 +1,53 @@
-import type { Role } from '@evolveiq/api-client';
+import { DEMO_PASSWORD, DEMO_PIN, type Credentials, type Role } from '@evolveiq/api-client';
 
 export interface DemoPerson {
   role: Role;
   name: string;
-  email: string;
+  credentials: Credentials;
   /** What this role actually gets to do, in their own terms. */
   summary: string;
 }
 
-/** Mirrors the seed accounts in `packages/api-client/src/mock/fixtures.ts`. */
+/**
+ * The demo accounts. They exist in the in-memory mock, and in a development
+ * backend filled by `npm run db:seed-demo` in evolveiq-backend — the same
+ * people, with the same password and PIN.
+ */
 export const DEMO_PEOPLE: DemoPerson[] = [
   {
     role: 'parent',
     name: 'Priya Ahluwalia',
-    email: 'priya@family.test',
-    summary: 'Two children, each with an EvolvIQ Holistic Index, a report, teacher notes and a monthly summary.',
+    credentials: { email: 'priya@family.test', password: DEMO_PASSWORD },
+    summary: 'Two children, each with this month’s summary, growth areas and activities to follow.',
   },
   {
     role: 'student',
     name: 'Maya Ahluwalia',
-    email: 'maya@family.test',
-    summary: 'Level 4, two missions waiting, a finished one, and her own Holistic Report.',
+    credentials: { studentId: 'RV-1001', pin: DEMO_PIN },
+    summary: 'Missions to do, a streak going, and the activity player.',
   },
   {
     role: 'teacher',
     name: 'Sunita Rao',
-    email: 'rao@school.test',
-    summary: 'Five students across 4B and 3A, with their EHI and full observation history.',
+    credentials: { email: 'rao@school.test', password: DEMO_PASSWORD },
+    summary: 'Five students across 4B and 3A, with their growth areas, activities and her own observations.',
   },
   {
     role: 'psychologist',
     name: 'Dr. Anand Mehta',
-    email: 'mehta@school.test',
-    summary: 'Six observations pending, three flagged significant, plus the activity library.',
+    credentials: { email: 'mehta@school.test', password: DEMO_PASSWORD },
+    summary: 'The review queue across both schools, three of it Significant, plus the activity library.',
   },
   {
-    role: 'school-admin',
+    role: 'school_admin',
     name: 'Clara Fernandes',
-    email: 'clara@school.test',
+    credentials: { email: 'clara@school.test', password: DEMO_PASSWORD },
     summary: 'Students, teachers, classes and parents at Ridgeview Primary.',
   },
   {
-    role: 'platform-admin',
+    role: 'platform_admin',
     name: 'Tunde Oyelaran',
-    email: 'tunde@evolveiq.test',
+    credentials: { email: 'tunde@evolveiq.test', password: DEMO_PASSWORD },
     summary: 'Two schools and every account across all six roles.',
   },
 ];

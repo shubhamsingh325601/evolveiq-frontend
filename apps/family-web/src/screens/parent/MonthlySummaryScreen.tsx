@@ -1,97 +1,103 @@
-import { useParams } from 'react-router-dom';
-import { useGrowthAreas, useMonthlySummary, useStudent } from '@evolveiq/api-client';
-import { BackLink, GrowthAreaList, formatMonth } from '@evolveiq/domain';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
+  addMonths,
+  businessMonth,
+  isApiError,
+  useChildren,
+  useGrowthAreas,
+  useMonthlySummary,
+} from '@evolveiq/api-client';
+import { BackLink, firstNameOf, formatMonth, GrowthAreaList, possessive } from '@evolveiq/domain';
+import {
+  Button,
   CalendarDays,
   Card,
-  Check,
+  ChevronLeft,
+  ChevronRight,
   EmptyState,
   ErrorState,
   LoadingState,
-  NotebookPen,
   PageHeader,
   Quote,
 } from '@evolveiq/ui';
 
 /**
  * The parent's plain-language monthly read. No scores, no clinical language —
- * a summary written for someone who is not a specialist, so it is set in the
- * serif like everything else a person wrote.
+ * template sentences built from what was finished and what is being worked
+ * on. This month is written live; a finished month is kept exactly as it was
+ * first written. Set in the serif, like everything written about a child.
  */
 export function MonthlySummaryScreen() {
   const { childId } = useParams<{ childId: string }>();
-  const student = useStudent(childId);
-  const summary = useMonthlySummary(childId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentMonth = businessMonth();
+  const requested = searchParams.get('month');
+  const month = requested && /^\d{4}-\d{2}$/.test(requested) && requested <= currentMonth ? requested : currentMonth;
+
+  const children = useChildren();
+  const summary = useMonthlySummary(childId, month);
   const growthAreas = useGrowthAreas(childId);
 
-  if (summary.isLoading || student.isLoading) return <LoadingState label="Loading the summary" />;
-  if (summary.isError) return <ErrorState onRetry={() => void summary.refetch()} />;
+  const child = (children.data ?? []).find((candidate) => candidate.id === childId);
+  const firstName = child ? firstNameOf(child.fullName) : 'your child';
+  const isBeforeAccount = isApiError(summary.error) && summary.error.status === 404;
+  const goTo = (next: string) =>
+    setSearchParams(next === currentMonth ? {} : { month: next }, { replace: true });
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        back={
-          <BackLink to={`/parent/children/${childId}`}>
-            {student.data?.name ?? 'Back to profile'}
-          </BackLink>
+        back={<BackLink to={`/parent/children/${childId}`}>{child ? `${possessive(firstName)} dashboard` : 'Back'}</BackLink>}
+        title={month === currentMonth ? 'This month' : formatMonth(month)}
+        subtitle={month === currentMonth ? `${formatMonth(month)}, so far` : 'As it was written when the month ended'}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={ChevronLeft}
+              disabled={isBeforeAccount}
+              onClick={() => goTo(addMonths(month, -1))}
+            >
+              Earlier
+            </Button>
+            <Button size="sm" variant="secondary" disabled={month === currentMonth} onClick={() => goTo(addMonths(month, 1))}>
+              Later
+              <ChevronRight />
+            </Button>
+          </div>
         }
-        title="This month"
-        subtitle={summary.data ? formatMonth(summary.data.month) : undefined}
       />
 
-      {!summary.data ? (
+      {summary.isLoading ? <LoadingState label="Loading the summary" /> : null}
+
+      {isBeforeAccount ? (
         <EmptyState
           icon={CalendarDays}
-          title="No summary for this month yet"
-          description="A summary is written once there is enough in the month to say something useful."
+          title={`No summary for ${formatMonth(month)}`}
+          description={`${firstName} was not on EvolvIQ yet that month.`}
+          action={
+            <Button size="sm" onClick={() => goTo(currentMonth)}>
+              Back to this month
+            </Button>
+          }
         />
-      ) : (
-        <>
-          <div className="grid gap-4 lg:grid-cols-12">
-            <Card isPlayful className="p-6 sm:p-10 lg:col-span-8">
-              <h2 className="max-w-2xl font-serif text-3xl leading-tight text-ink sm:text-4xl sm:leading-tight">
-                {summary.data.headline}
-              </h2>
-              <Quote className="mt-6">{summary.data.body}</Quote>
-            </Card>
+      ) : null}
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1 lg:content-start">
-              <Card className="flex items-center gap-4 p-5">
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-jade-50 text-jade-600">
-                  <Check className="size-6" strokeWidth={2.5} />
-                </span>
-                <div>
-                  <p className="text-3xl font-semibold tabular-nums text-ink">
-                    {summary.data.activitiesCompleted}
-                  </p>
-                  <p className="text-sm text-ink-muted">activities finished this month</p>
-                </div>
-              </Card>
-              <Card className="flex items-center gap-4 p-5">
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-lilac-50 text-lilac-600">
-                  <NotebookPen className="size-6" />
-                </span>
-                <div>
-                  <p className="text-3xl font-semibold tabular-nums text-ink">
-                    {summary.data.observationsLogged}
-                  </p>
-                  <p className="text-sm text-ink-muted">observations recorded this month</p>
-                </div>
-              </Card>
-            </div>
-          </div>
+      {summary.isError && !isBeforeAccount ? <ErrorState onRetry={() => void summary.refetch()} /> : null}
 
-          {(growthAreas.data ?? []).length > 0 ? (
-            <section>
-              <h2 className="text-xl font-semibold tracking-tight text-ink">Growth areas</h2>
-              <GrowthAreaList
-                className="mt-4 md:grid-cols-2"
-                growthAreas={growthAreas.data ?? []}
-              />
-            </section>
-          ) : null}
-        </>
-      )}
+      {summary.data ? (
+        <Card isPlayful className="p-6 sm:p-10">
+          <Quote size="lg">{summary.data.text}</Quote>
+        </Card>
+      ) : null}
+
+      {month === currentMonth && (growthAreas.data ?? []).length > 0 ? (
+        <section>
+          <h2 className="text-xl font-semibold tracking-tight text-ink">Growth areas</h2>
+          <GrowthAreaList className="mt-4 md:grid-cols-2" growthAreas={growthAreas.data ?? []} />
+        </section>
+      ) : null}
     </div>
   );
 }

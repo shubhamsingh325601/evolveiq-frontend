@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import type { Student } from '@evolveiq/api-client';
-import { ageFromDateOfBirth, firstNameOf } from '@evolveiq/domain';
+import type { Person } from '@evolveiq/api-client';
+import { firstNameOf } from '@evolveiq/domain';
 import { cn } from '@evolveiq/ui';
 
 export interface ChildSwitcherProps {
-  students: Student[];
+  students: Person[];
   currentChildId: string;
 }
 
@@ -31,7 +31,7 @@ export function ChildSwitcher({ students, currentChildId }: ChildSwitcherProps) 
                     : 'border-line bg-white/90 text-ink-muted hover:text-ink',
                 )}
               >
-                {firstNameOf(student.name)} • {ageFromDateOfBirth(student.dateOfBirth)} yrs
+                {firstNameOf(student.fullName)}
               </Link>
             </li>
           );

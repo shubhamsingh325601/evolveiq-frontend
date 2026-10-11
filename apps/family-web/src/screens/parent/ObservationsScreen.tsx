@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useObservations, useStudents } from '@evolveiq/api-client';
+import { useChildren, useFamilyObservations } from '@evolveiq/api-client';
 import { ObservationEntry } from '@evolveiq/domain';
 import {
   buttonClasses,
@@ -14,15 +14,15 @@ import {
   RuledListItem,
 } from '@evolveiq/ui';
 
-/** Everything this parent has recorded, plus what their children's teachers have. */
+/** Everything this parent has recorded about their children, and where each one stands. */
 export function ObservationsScreen() {
-  const observations = useObservations();
-  const students = useStudents();
+  const observations = useFamilyObservations();
+  const children = useChildren();
 
   if (observations.isLoading) return <LoadingState label="Loading observations" />;
   if (observations.isError) return <ErrorState onRetry={() => void observations.refetch()} />;
 
-  const nameById = new Map((students.data ?? []).map((student) => [student.id, student.name]));
+  const nameById = new Map((children.data ?? []).map((child) => [child.id, child.fullName]));
   const entries = observations.data ?? [];
 
   const addLink = (
@@ -36,7 +36,7 @@ export function ObservationsScreen() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Observations"
-        subtitle="Everything recorded about your children, by you and by their teachers."
+        subtitle="What you have recorded about your children, and whether the school has read it."
         actions={addLink}
       />
 
@@ -44,20 +44,19 @@ export function ObservationsScreen() {
         <EmptyState
           icon={NotebookPen}
           title="Nothing recorded yet"
-          description="Write down something you have noticed, and the school will see it."
+          description="Write down something you have noticed, and the school psychologist will read it."
           action={addLink}
         />
       ) : (
         <Card className="max-w-3xl p-6 sm:p-8">
           <RuledList>
             {entries.map((observation) => (
-              <RuledListItem
-                key={observation.id}
-                tone={observation.status === 'pending' ? 'pending' : 'default'}
-              >
+              <RuledListItem key={observation.id} tone={observation.status === 'pending' ? 'pending' : 'default'}>
                 <ObservationEntry
                   observation={observation}
-                  studentName={nameById.get(observation.studentId) ?? undefined}
+                  audience="family"
+                  authorName="You"
+                  {...(nameById.has(observation.studentId) ? { studentName: nameById.get(observation.studentId) } : {})}
                 />
               </RuledListItem>
             ))}

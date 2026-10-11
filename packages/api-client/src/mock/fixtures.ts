@@ -1,1023 +1,537 @@
+import { addDays, businessDate } from '../business-time';
 import type {
-  Activity,
-  Assignment,
-  ClassGroup,
-  GrowthArea,
-  HolisticIndex,
-  MonthlySummary,
-  Observation,
-  School,
-  Student,
-  StudentLevel,
-  TeacherNote,
-  User,
+  ActivityAnswer,
+  ActivityContent,
+  DevelopmentArea,
+  LearningBehaviourArea,
+  ObservationArea,
+  ObservationFrequency,
+  ObservationLevel,
+  ObservationStatus,
+  ObservationWhen,
+  ReviewOutcome,
+  Role,
 } from '../types';
 
 /**
- * Seed data for the mock backend. Realistic enough that every screen shows a
- * believable state — empty tables hide layout problems.
+ * Seed data for the in-memory backend: the same people and stories as the
+ * backend's `npm run db:seed-demo`, so the demo accounts behave the same with
+ * or without a server. Stored the way the backend stores it (one record per
+ * table row); `mock-transport.ts` serialises each audience's shape from it.
+ *
+ * Dates are relative to when the store is built, so "today", streaks and
+ * "this month" always read naturally.
  */
 
-const illustration = (background: string, glyph: string): string =>
-  `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120"><rect width="160" height="120" rx="8" fill="${background}"/><text x="80" y="82" font-size="58" text-anchor="middle" font-family="Georgia, serif">${glyph}</text></svg>`,
-  )}`;
+/** Every demo adult signs in with this password, every demo student with DEMO_PIN. */
+export const DEMO_PASSWORD = 'EvolvIQ-Demo-2026';
+export const DEMO_PIN = '246810';
 
-export const SCHOOLS: School[] = [
-  {
-    id: 'sch-ridgeview',
-    name: 'Ridgeview Primary',
-    city: 'Pune',
-    studentCount: 412,
-    teacherCount: 26,
-    createdAt: '2026-01-12T09:00:00.000Z',
-  },
-  {
-    id: 'sch-halden',
-    name: 'Halden Grove School',
-    city: 'Bengaluru',
-    studentCount: 268,
-    teacherCount: 19,
-    createdAt: '2026-03-02T09:00:00.000Z',
-  },
-];
+export interface MockUser {
+  id: string;
+  role: Role;
+  fullName: string;
+  email: string | null;
+  studentLoginId: string | null;
+  schoolId: string | null;
+  /** The password or PIN. The mock compares it in plain text; the backend stores an argon2 hash. */
+  secret: string;
+  isActive: boolean;
+  createdAt: string;
+}
 
-export const USERS: User[] = [
-  {
-    id: 'usr-maya',
-    name: 'Maya Ahluwalia',
-    email: 'maya@family.test',
+export interface MockSchool {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MockClass {
+  id: string;
+  schoolId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MockObservation {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  authorId: string;
+  authorRole: 'parent' | 'teacher';
+  area: ObservationArea;
+  description: string;
+  when: ObservationWhen;
+  howOften: ObservationFrequency;
+  level: ObservationLevel | null;
+  learningBehaviourArea: LearningBehaviourArea | null;
+  status: ObservationStatus;
+  reviewOutcome: ReviewOutcome | null;
+  developmentArea: DevelopmentArea | null;
+  teacherOnlyNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface MockActivity {
+  id: string;
+  title: string;
+  content: ActivityContent;
+  createdById: string;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MockAssignment {
+  id: string;
+  activityId: string;
+  studentId: string;
+  assignedById: string;
+  source: 'direct' | 'recommended';
+  observationId: string | null;
+  createdAt: string;
+}
+
+export interface MockCompletion {
+  id: string;
+  assignmentId: string;
+  answer: ActivityAnswer;
+  completedAt: string;
+}
+
+export interface MockState {
+  users: MockUser[];
+  schools: MockSchool[];
+  classes: MockClass[];
+  classTeachers: { classId: string; teacherId: string }[];
+  /** A student is in one class at most. */
+  classStudents: { classId: string; studentId: string }[];
+  /** A student has one parent at most. */
+  parentLinks: { studentId: string; parentId: string; createdAt: string }[];
+  observations: MockObservation[];
+  activities: MockActivity[];
+  assignments: MockAssignment[];
+  completions: MockCompletion[];
+  /** Finished months' summaries, stored once and never changed: `${studentId}:${month}` → text. */
+  monthlySummaries: Record<string, string>;
+}
+
+const placeholderImage = (text: string, colour: string): string =>
+  `https://placehold.co/320x240/${colour}/ffffff/png?text=${text}`;
+
+export function buildSeed(now: Date = new Date()): MockState {
+  const today = businessDate(now);
+  /** That hour (Asia/Kolkata) on the business day `days` before today — never in the future. */
+  const daysAgo = (days: number, hour = 10): string => {
+    const at = new Date(`${addDays(today, -days)}T${String(hour).padStart(2, '0')}:00:00+05:30`);
+    return new Date(Math.min(at.getTime(), now.getTime())).toISOString();
+  };
+  const created = daysAgo(120);
+
+  const adult = (
+    id: string,
+    role: Role,
+    fullName: string,
+    email: string,
+    schoolId: string | null,
+  ): MockUser => ({
+    id,
+    role,
+    fullName,
+    email,
+    studentLoginId: null,
+    schoolId,
+    secret: DEMO_PASSWORD,
+    isActive: true,
+    createdAt: created,
+  });
+  const student = (id: string, fullName: string, studentLoginId: string, schoolId: string): MockUser => ({
+    id,
     role: 'student',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: ['stu-maya'],
-  },
-  {
-    id: 'usr-priya',
-    name: 'Priya Ahluwalia',
-    email: 'priya@family.test',
-    role: 'parent',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: ['stu-maya', 'stu-arjun'],
-  },
-  {
-    id: 'usr-rao',
-    name: 'Sunita Rao',
-    email: 'rao@school.test',
-    role: 'teacher',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: ['stu-maya', 'stu-arjun', 'stu-devan', 'stu-lila', 'stu-noor'],
-  },
-  {
-    id: 'usr-mehta',
-    name: 'Dr. Anand Mehta',
-    email: 'mehta@school.test',
-    role: 'psychologist',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: [],
-  },
-  {
-    id: 'usr-fernandes',
-    name: 'Clara Fernandes',
-    email: 'clara@school.test',
-    role: 'school-admin',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: [],
-  },
-  {
-    id: 'usr-oyelaran',
-    name: 'Tunde Oyelaran',
-    email: 'tunde@evolveiq.test',
-    role: 'platform-admin',
-    schoolId: null,
-    linkedStudentIds: [],
-  },
-  {
-    id: 'usr-kapoor',
-    name: 'Ritu Kapoor',
-    email: 'ritu@school.test',
-    role: 'teacher',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: ['stu-ibrahim', 'stu-tara'],
-  },
-  {
-    id: 'usr-dsouza',
-    name: 'Neil D’Souza',
-    email: 'neil@family.test',
-    role: 'parent',
-    schoolId: 'sch-ridgeview',
-    linkedStudentIds: ['stu-devan'],
-  },
-];
+    fullName,
+    email: null,
+    studentLoginId,
+    schoolId,
+    secret: DEMO_PIN,
+    isActive: true,
+    createdAt: created,
+  });
 
-export const CLASSES: ClassGroup[] = [
-  {
-    id: 'cls-4b',
-    name: '4B',
-    schoolId: 'sch-ridgeview',
-    yearLevel: 'Year 4',
-    teacherId: 'usr-rao',
-    studentIds: ['stu-maya', 'stu-arjun', 'stu-devan'],
-  },
-  {
-    id: 'cls-3a',
-    name: '3A',
-    schoolId: 'sch-ridgeview',
-    yearLevel: 'Year 3',
-    teacherId: 'usr-rao',
-    studentIds: ['stu-lila', 'stu-noor'],
-  },
-  {
-    id: 'cls-5c',
-    name: '5C',
-    schoolId: 'sch-ridgeview',
-    yearLevel: 'Year 5',
-    teacherId: 'usr-kapoor',
-    studentIds: ['stu-ibrahim', 'stu-tara'],
-  },
-];
+  const RIDGEVIEW = 'sch-ridgeview';
+  const HALDEN = 'sch-halden';
 
-export const STUDENTS: Student[] = [
-  {
-    id: 'stu-maya',
-    name: 'Maya Ahluwalia',
-    dateOfBirth: '2017-04-11',
-    classId: 'cls-4b',
-    schoolId: 'sch-ridgeview',
-    parentIds: ['usr-priya'],
-    growthAreaIds: ['gro-maya-focus', 'gro-maya-social'],
-  },
-  {
-    id: 'stu-arjun',
-    name: 'Arjun Ahluwalia',
-    dateOfBirth: '2018-09-23',
-    classId: 'cls-4b',
-    schoolId: 'sch-ridgeview',
-    parentIds: ['usr-priya'],
-    growthAreaIds: ['gro-arjun-language'],
-  },
-  {
-    id: 'stu-devan',
-    name: 'Devan D’Souza',
-    dateOfBirth: '2017-01-30',
-    classId: 'cls-4b',
-    schoolId: 'sch-ridgeview',
-    parentIds: ['usr-dsouza'],
-    growthAreaIds: ['gro-devan-regulation'],
-  },
-  {
-    id: 'stu-lila',
-    name: 'Lila Menon',
-    dateOfBirth: '2018-06-02',
-    classId: 'cls-3a',
-    schoolId: 'sch-ridgeview',
-    parentIds: [],
-    growthAreaIds: [],
-  },
-  {
-    id: 'stu-noor',
-    name: 'Noor Siddiqui',
-    dateOfBirth: '2018-11-17',
-    classId: 'cls-3a',
-    schoolId: 'sch-ridgeview',
-    parentIds: [],
-    growthAreaIds: ['gro-noor-motor'],
-  },
-  {
-    id: 'stu-ibrahim',
-    name: 'Ibrahim Qureshi',
-    dateOfBirth: '2016-08-08',
-    classId: 'cls-5c',
-    schoolId: 'sch-ridgeview',
-    parentIds: [],
-    growthAreaIds: [],
-  },
-  {
-    id: 'stu-tara',
-    name: 'Tara Bhatt',
-    dateOfBirth: '2016-12-19',
-    classId: 'cls-5c',
-    schoolId: 'sch-ridgeview',
-    parentIds: [],
-    growthAreaIds: ['gro-tara-independence'],
-  },
-];
+  const users: MockUser[] = [
+    adult('usr-tunde', 'platform_admin', 'Tunde Oyelaran', 'tunde@evolveiq.test', null),
+    adult('usr-mehta', 'psychologist', 'Dr. Anand Mehta', 'mehta@school.test', null),
+    adult('usr-clara', 'school_admin', 'Clara Fernandes', 'clara@school.test', RIDGEVIEW),
+    adult('usr-farah', 'school_admin', 'Farah Khan', 'farah@halden.test', HALDEN),
+    adult('usr-rao', 'teacher', 'Sunita Rao', 'rao@school.test', RIDGEVIEW),
+    adult('usr-kapoor', 'teacher', 'Ritu Kapoor', 'ritu@school.test', RIDGEVIEW),
+    adult('usr-omar', 'teacher', 'Omar Haddad', 'omar@halden.test', HALDEN),
+    adult('usr-priya', 'parent', 'Priya Ahluwalia', 'priya@family.test', RIDGEVIEW),
+    adult('usr-neil', 'parent', 'Neil D’Souza', 'neil@family.test', RIDGEVIEW),
+    student('stu-maya', 'Maya Ahluwalia', 'RV-1001', RIDGEVIEW),
+    student('stu-arjun', 'Arjun Ahluwalia', 'RV-1002', RIDGEVIEW),
+    student('stu-devan', 'Devan D’Souza', 'RV-1003', RIDGEVIEW),
+    student('stu-lila', 'Lila Menon', 'RV-1004', RIDGEVIEW),
+    student('stu-noor', 'Noor Siddiqui', 'RV-1005', RIDGEVIEW),
+    student('stu-ibrahim', 'Ibrahim Qureshi', 'RV-1006', RIDGEVIEW),
+    student('stu-tara', 'Tara Bhatt', 'RV-1007', RIDGEVIEW),
+    student('stu-zoe', 'Zoe Pinto', 'HG-2001', HALDEN),
+    student('stu-kabir', 'Kabir Shah', 'HG-2002', HALDEN),
+  ];
 
-export const OBSERVATIONS: Observation[] = [
-  {
-    id: 'obs-001',
-    studentId: 'stu-maya',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    authorRole: 'teacher',
-    area: 'focus-and-attention',
-    body: 'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
-    context: 'in-class',
-    frequency: 'occasionally',
-    observedAt: '2026-09-18T10:15:00.000Z',
-    createdAt: '2026-09-18T11:02:00.000Z',
-    status: 'reviewed',
-    isSignificant: false,
-    level: 4,
-    learningBehaviourArea: 'persistence',
-    reviewedAt: '2026-09-19T08:30:00.000Z',
-    reviewedById: 'usr-mehta',
-    taggedAreas: ['focus-and-attention'],
-    teacherOnlyNote: 'Worth repeating the same task next week to see whether the duration holds.',
-  },
-  {
-    id: 'obs-002',
-    studentId: 'stu-maya',
-    authorId: 'usr-priya',
-    authorName: 'Priya Ahluwalia',
-    authorRole: 'parent',
-    area: 'social-interaction',
-    body: 'At her cousin’s birthday she waited for her turn at the game twice, then got upset the third time and walked away.',
-    context: 'during-play',
-    frequency: 'weekly',
-    observedAt: '2026-09-14T16:40:00.000Z',
-    createdAt: '2026-09-14T19:12:00.000Z',
-    status: 'pending',
-    isSignificant: false,
-  },
-  {
-    id: 'obs-003',
-    studentId: 'stu-devan',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    authorRole: 'teacher',
-    area: 'emotional-regulation',
-    body: 'Devan left the room without asking when the fire drill alarm sounded, and needed about fifteen minutes before he could come back in.',
-    context: 'during-transitions',
-    frequency: 'occasionally',
-    observedAt: '2026-09-21T09:05:00.000Z',
-    createdAt: '2026-09-21T09:40:00.000Z',
-    status: 'pending',
-    isSignificant: true,
-    level: 2,
-    learningBehaviourArea: 'self-direction',
-  },
-  {
-    id: 'obs-004',
-    studentId: 'stu-arjun',
-    authorId: 'usr-priya',
-    authorName: 'Priya Ahluwalia',
-    authorRole: 'parent',
-    area: 'language-and-expression',
-    body: 'Arjun told the whole story of his school trip at dinner without losing track, and used words I have not heard him use before.',
-    context: 'at-home',
-    frequency: 'first-time',
-    observedAt: '2026-09-16T19:30:00.000Z',
-    createdAt: '2026-09-16T20:05:00.000Z',
-    status: 'reviewed',
-    isSignificant: false,
-    reviewedAt: '2026-09-17T07:50:00.000Z',
-    reviewedById: 'usr-mehta',
-    taggedAreas: ['language-and-expression'],
-  },
-  {
-    id: 'obs-005',
-    studentId: 'stu-noor',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    authorRole: 'teacher',
-    area: 'motor-skills',
-    body: 'Noor is still holding the pencil in a full fist grip. She tires after roughly five minutes of writing and asks to stop.',
-    context: 'in-class',
-    frequency: 'daily',
-    observedAt: '2026-09-15T11:20:00.000Z',
-    createdAt: '2026-09-15T13:00:00.000Z',
-    status: 'pending',
-    isSignificant: true,
-    level: 2,
-    learningBehaviourArea: 'persistence',
-  },
-  {
-    id: 'obs-006',
-    studentId: 'stu-tara',
-    authorId: 'usr-kapoor',
-    authorName: 'Ritu Kapoor',
-    authorRole: 'teacher',
-    area: 'independence',
-    body: 'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
-    context: 'during-transitions',
-    frequency: 'daily',
-    observedAt: '2026-09-17T14:50:00.000Z',
-    createdAt: '2026-09-17T15:10:00.000Z',
-    status: 'no-action-needed',
-    isSignificant: false,
-    level: 5,
-    learningBehaviourArea: 'self-direction',
-    reviewedAt: '2026-09-18T09:15:00.000Z',
-    reviewedById: 'usr-mehta',
-  },
-  {
-    id: 'obs-007',
-    studentId: 'stu-maya',
-    authorId: 'usr-priya',
-    authorName: 'Priya Ahluwalia',
-    authorRole: 'parent',
-    area: 'focus-and-attention',
-    body: 'Homework took over an hour because she got up six or seven times. She finished it, but only after I sat with her.',
-    context: 'at-home',
-    frequency: 'daily',
-    observedAt: '2026-09-20T18:00:00.000Z',
-    createdAt: '2026-09-20T21:14:00.000Z',
-    status: 'pending',
-    isSignificant: false,
-  },
-  {
-    id: 'obs-008',
-    studentId: 'stu-devan',
-    authorId: 'usr-dsouza',
-    authorName: 'Neil D’Souza',
-    authorRole: 'parent',
-    area: 'emotional-regulation',
-    body: 'He managed the change of plan on Saturday much better than he would have a month ago. He asked what was happening instead of shutting down.',
-    context: 'at-home',
-    frequency: 'occasionally',
-    observedAt: '2026-09-19T11:00:00.000Z',
-    createdAt: '2026-09-19T12:30:00.000Z',
-    status: 'pending',
-    isSignificant: false,
-  },
-  {
-    id: 'obs-009',
-    studentId: 'stu-lila',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    authorRole: 'teacher',
-    area: 'problem-solving',
-    body: 'When the block tower fell, Lila rebuilt it with a wider base without anyone suggesting it.',
-    context: 'during-play',
-    frequency: 'first-time',
-    observedAt: '2026-09-11T10:00:00.000Z',
-    createdAt: '2026-09-11T10:45:00.000Z',
-    status: 'reviewed',
-    isSignificant: false,
-    level: 4,
-    learningBehaviourArea: 'engagement',
-    reviewedAt: '2026-09-12T08:00:00.000Z',
-    reviewedById: 'usr-mehta',
-    taggedAreas: ['problem-solving'],
-  },
-  {
-    id: 'obs-010',
-    studentId: 'stu-ibrahim',
-    authorId: 'usr-kapoor',
-    authorName: 'Ritu Kapoor',
-    authorRole: 'teacher',
-    area: 'memory-and-recall',
-    body: 'Ibrahim could not recall the three-step instruction even straight after I gave it. This happened in both sessions today.',
-    context: 'in-class',
-    frequency: 'weekly',
-    observedAt: '2026-09-22T09:30:00.000Z',
-    createdAt: '2026-09-22T09:55:00.000Z',
-    status: 'pending',
-    isSignificant: true,
-    level: 2,
-    learningBehaviourArea: 'following-instructions',
-  },
-];
+  const schools: MockSchool[] = [
+    { id: RIDGEVIEW, name: 'Ridgeview Primary', createdAt: daysAgo(270), updatedAt: daysAgo(270) },
+    { id: HALDEN, name: 'Halden Grove School', createdAt: daysAgo(220), updatedAt: daysAgo(220) },
+  ];
 
-export const ACTIVITIES: Activity[] = [
-  {
-    id: 'act-sorting',
-    title: 'Sort the morning',
-    description: 'Puts four steps of a morning routine in order and explains the choice.',
-    area: 'problem-solving',
-    ageRange: '6–9',
-    estimatedMinutes: 6,
-    authorId: 'usr-mehta',
-    createdAt: '2026-08-04T10:00:00.000Z',
-    steps: [
+  const group = (id: string, schoolId: string, name: string): MockClass => ({
+    id,
+    schoolId,
+    name,
+    createdAt: created,
+    updatedAt: created,
+  });
+  const classes: MockClass[] = [
+    group('cls-4b', RIDGEVIEW, '4B'),
+    group('cls-3a', RIDGEVIEW, '3A'),
+    group('cls-5c', RIDGEVIEW, '5C'),
+    group('cls-6a', HALDEN, '6A'),
+  ];
+
+  const classTeachers = [
+    { classId: 'cls-4b', teacherId: 'usr-rao' },
+    { classId: 'cls-3a', teacherId: 'usr-rao' },
+    { classId: 'cls-5c', teacherId: 'usr-kapoor' },
+    { classId: 'cls-6a', teacherId: 'usr-omar' },
+  ];
+  const classStudents = [
+    { classId: 'cls-4b', studentId: 'stu-maya' },
+    { classId: 'cls-4b', studentId: 'stu-arjun' },
+    { classId: 'cls-4b', studentId: 'stu-devan' },
+    { classId: 'cls-3a', studentId: 'stu-lila' },
+    { classId: 'cls-3a', studentId: 'stu-noor' },
+    { classId: 'cls-5c', studentId: 'stu-ibrahim' },
+    { classId: 'cls-5c', studentId: 'stu-tara' },
+    { classId: 'cls-6a', studentId: 'stu-zoe' },
+    { classId: 'cls-6a', studentId: 'stu-kabir' },
+  ];
+  const parentLinks = [
+    { studentId: 'stu-maya', parentId: 'usr-priya', createdAt: created },
+    { studentId: 'stu-arjun', parentId: 'usr-priya', createdAt: created },
+    { studentId: 'stu-devan', parentId: 'usr-neil', createdAt: created },
+  ];
+
+  const activity = (id: string, title: string, content: ActivityContent, days: number): MockActivity => ({
+    id,
+    title,
+    content,
+    createdById: 'usr-mehta',
+    archivedAt: null,
+    createdAt: daysAgo(days),
+    updatedAt: daysAgo(days),
+  });
+  const activities: MockActivity[] = [
+    activity(
+      'act-sorting',
+      'Sort the morning',
       {
-        id: 'act-sorting-s1',
-        kind: 'mcq',
+        type: 'mcq',
         prompt: 'Which one comes first in the morning?',
         options: [
-          { id: 'a', label: 'Put on shoes' },
-          { id: 'b', label: 'Wake up' },
-          { id: 'c', label: 'Eat breakfast' },
-          { id: 'd', label: 'Pack the bag' },
+          { id: 'shoes', label: 'Put on shoes' },
+          { id: 'wake', label: 'Wake up' },
+          { id: 'breakfast', label: 'Eat breakfast' },
+          { id: 'bag', label: 'Pack the bag' },
         ],
       },
+      60,
+    ),
+    activity(
+      'act-feelings',
+      'How are you feeling today?',
       {
-        id: 'act-sorting-s2',
-        kind: 'text',
-        prompt: 'Why does that one come first?',
-        placeholder: 'Write as much or as little as you like',
-      },
-      {
-        id: 'act-sorting-s3',
-        kind: 'rating',
-        prompt: 'How easy was that?',
-        lowLabel: 'Hard',
-        highLabel: 'Easy',
-      },
-    ],
-  },
-  {
-    id: 'act-faces',
-    title: 'Reading faces',
-    description: 'Matches a described feeling to a face, then names a time they felt it.',
-    area: 'emotional-regulation',
-    ageRange: '5–8',
-    estimatedMinutes: 8,
-    authorId: 'usr-mehta',
-    createdAt: '2026-08-11T10:00:00.000Z',
-    steps: [
-      {
-        id: 'act-faces-s1',
-        kind: 'image-pick',
-        prompt: 'Someone just dropped their ice cream. Which face is theirs?',
+        type: 'image_pick',
+        prompt: 'Pick the picture that matches how you feel right now.',
         options: [
-          { id: 'sad', label: 'Sad', imageUrl: illustration('#F4C7D6', '☹') },
-          { id: 'happy', label: 'Happy', imageUrl: illustration('#C8E3D2', '☺') },
-          { id: 'surprised', label: 'Surprised', imageUrl: illustration('#F8E2B0', '○') },
-          { id: 'cross', label: 'Cross', imageUrl: illustration('#C9E0E5', '—') },
+          { id: 'happy', label: 'Happy', imageUrl: placeholderImage('Happy', 'f59e0b') },
+          { id: 'calm', label: 'Calm', imageUrl: placeholderImage('Calm', '10b981') },
+          { id: 'worried', label: 'Worried', imageUrl: placeholderImage('Worried', '6366f1') },
+          { id: 'cross', label: 'Cross', imageUrl: placeholderImage('Cross', 'ef4444') },
         ],
       },
+      55,
+    ),
+    activity(
+      'act-story',
+      'Tell me about your day',
+      { type: 'text', prompt: 'What was the best part of your day, and why?' },
+      50,
+    ),
+    activity(
+      'act-homework',
+      'How tricky was homework?',
       {
-        id: 'act-faces-s2',
-        kind: 'text',
-        prompt: 'Tell us about a time you felt that way.',
-        placeholder: 'It was when...',
+        type: 'rating',
+        prompt: 'How tricky did today’s homework feel? 1 is very easy, 5 is very hard.',
       },
-    ],
-  },
-  {
-    id: 'act-listen',
-    title: 'Listen and do',
-    description: 'Listens to a short instruction, then repeats it back in their own words.',
-    area: 'memory-and-recall',
-    ageRange: '7–10',
-    estimatedMinutes: 5,
-    authorId: 'usr-mehta',
-    createdAt: '2026-08-19T10:00:00.000Z',
-    steps: [
+      45,
+    ),
+    activity(
+      'act-video',
+      'Watch and tell',
       {
-        id: 'act-listen-s1',
-        kind: 'media-response',
-        prompt: 'Listen once, then answer without playing it again.',
-        mediaType: 'audio',
-        mediaUrl: 'https://cdn.evolveiq.test/activities/listen-and-do.mp3',
-        responsePrompt: 'What were the three things, in order?',
+        type: 'media_response',
+        prompt: 'Watch the flower open. What did you notice changing?',
+        mediaUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
       },
-      {
-        id: 'act-listen-s2',
-        kind: 'rating',
-        prompt: 'How sure are you that you got the order right?',
-        lowLabel: 'Not sure',
-        highLabel: 'Very sure',
-      },
-    ],
-  },
-  {
-    id: 'act-turns',
-    title: 'Taking turns',
-    description: 'Works through what to do while waiting for a turn.',
-    area: 'social-interaction',
-    ageRange: '6–9',
-    estimatedMinutes: 7,
-    authorId: 'usr-mehta',
-    createdAt: '2026-09-01T10:00:00.000Z',
-    steps: [
-      {
-        id: 'act-turns-s1',
-        kind: 'mcq',
-        prompt: 'Two people want the same swing. What helps most?',
-        options: [
-          { id: 'a', label: 'Count to twenty and swap' },
-          { id: 'b', label: 'Hold on tighter' },
-          { id: 'c', label: 'Find an adult straight away' },
-        ],
-      },
-      {
-        id: 'act-turns-s2',
-        kind: 'text',
-        prompt: 'What could you say to the other person?',
-        placeholder: 'I could say...',
-      },
-      {
-        id: 'act-turns-s3',
-        kind: 'rating',
-        prompt: 'How hard is waiting for your turn, usually?',
-        lowLabel: 'Very hard',
-        highLabel: 'Easy',
-      },
-    ],
-  },
-  {
-    id: 'act-story',
-    title: 'Finish the story',
-    description: 'Continues a two-line story, encouraging longer spoken and written sentences.',
-    area: 'language-and-expression',
-    ageRange: '6–10',
-    estimatedMinutes: 10,
-    authorId: 'usr-mehta',
-    createdAt: '2026-09-05T10:00:00.000Z',
-    steps: [
-      {
-        id: 'act-story-s1',
-        kind: 'media-response',
-        prompt: 'Look at the picture, then carry the story on.',
-        mediaType: 'image',
-        mediaUrl: illustration('#C9E0E5', '☁'),
-        responsePrompt: 'What happens next?',
-      },
-      {
-        id: 'act-story-s2',
-        kind: 'text',
-        prompt: 'Give your story a title.',
-        placeholder: 'The day the...',
-      },
-    ],
-  },
-  {
-    id: 'act-steady',
-    title: 'Steady hands',
-    description: 'Short tracing and pinching tasks for pencil grip and hand strength.',
-    area: 'motor-skills',
-    ageRange: '5–8',
-    estimatedMinutes: 6,
-    authorId: 'usr-mehta',
-    createdAt: '2026-09-09T10:00:00.000Z',
-    steps: [
-      {
-        id: 'act-steady-s1',
-        kind: 'image-pick',
-        prompt: 'Which line did you find easiest to trace?',
-        options: [
-          { id: 'straight', label: 'Straight', imageUrl: illustration('#C9E0E5', '│') },
-          { id: 'wave', label: 'Wavy', imageUrl: illustration('#C8E3D2', '∿') },
-          { id: 'loop', label: 'Loops', imageUrl: illustration('#F8E2B0', '◯') },
-        ],
-      },
-      {
-        id: 'act-steady-s2',
-        kind: 'rating',
-        prompt: 'How tired did your hand feel at the end?',
-        lowLabel: 'Very tired',
-        highLabel: 'Not tired',
-      },
-    ],
-  },
-];
+      40,
+    ),
+  ];
 
-export const ASSIGNMENTS: Assignment[] = [
-  {
-    id: 'asg-001',
-    activityId: 'act-sorting',
-    studentId: 'stu-maya',
-    assignedById: 'usr-mehta',
-    assignedByName: 'Dr. Anand Mehta',
-    assignedAt: '2026-09-21T08:00:00.000Z',
-    dueOn: '2026-09-22',
-    status: 'assigned',
-    xp: 60,
-  },
-  {
-    id: 'asg-002',
-    activityId: 'act-turns',
-    studentId: 'stu-maya',
-    assignedById: 'usr-rao',
-    assignedByName: 'Sunita Rao',
-    assignedAt: '2026-09-22T07:30:00.000Z',
-    dueOn: '2026-09-22',
-    status: 'assigned',
-    xp: 70,
-  },
-  {
-    id: 'asg-003',
-    activityId: 'act-faces',
-    studentId: 'stu-maya',
-    assignedById: 'usr-mehta',
-    assignedByName: 'Dr. Anand Mehta',
-    assignedAt: '2026-09-19T08:00:00.000Z',
-    dueOn: '2026-09-20',
-    status: 'completed',
-    xp: 80,
-    completedAt: '2026-09-20T17:20:00.000Z',
-    responses: [
-      { stepId: 'act-faces-s1', value: 'sad' },
-      { stepId: 'act-faces-s2', value: 'When my tower fell over at school.' },
-    ],
-  },
-  {
-    id: 'asg-004',
-    activityId: 'act-story',
-    studentId: 'stu-arjun',
-    assignedById: 'usr-rao',
-    assignedByName: 'Sunita Rao',
-    assignedAt: '2026-09-22T07:35:00.000Z',
-    dueOn: '2026-09-23',
-    status: 'assigned',
-    xp: 100,
-  },
-  {
-    id: 'asg-005',
-    activityId: 'act-steady',
-    studentId: 'stu-noor',
-    assignedById: 'usr-mehta',
-    assignedByName: 'Dr. Anand Mehta',
-    assignedAt: '2026-09-16T08:00:00.000Z',
-    dueOn: '2026-09-18',
-    status: 'in-progress',
-    xp: 60,
-  },
-  {
-    id: 'asg-006',
-    activityId: 'act-listen',
-    studentId: 'stu-ibrahim',
-    assignedById: 'usr-kapoor',
-    assignedByName: 'Ritu Kapoor',
-    assignedAt: '2026-09-20T08:00:00.000Z',
-    dueOn: '2026-09-24',
-    status: 'assigned',
-    xp: 50,
-  },
-  {
-    id: 'asg-007',
-    activityId: 'act-sorting',
-    studentId: 'stu-devan',
-    assignedById: 'usr-mehta',
-    assignedByName: 'Dr. Anand Mehta',
-    assignedAt: '2026-09-12T08:00:00.000Z',
-    dueOn: '2026-09-14',
-    status: 'completed',
-    xp: 60,
-    completedAt: '2026-09-13T16:00:00.000Z',
-    responses: [{ stepId: 'act-sorting-s1', value: 'b' }],
-  },
-];
+  const observation = (
+    fields: Pick<
+      MockObservation,
+      'id' | 'studentId' | 'authorId' | 'authorRole' | 'area' | 'description' | 'when' | 'howOften'
+    > &
+      Partial<MockObservation> & { createdDaysAgo: number },
+  ): MockObservation => {
+    const { createdDaysAgo, ...rest } = fields;
+    return {
+      schoolId: RIDGEVIEW,
+      level: null,
+      learningBehaviourArea: null,
+      status: 'pending',
+      reviewOutcome: null,
+      developmentArea: null,
+      teacherOnlyNote: null,
+      reviewedById: null,
+      reviewedAt: null,
+      createdAt: daysAgo(createdDaysAgo, 9),
+      ...rest,
+    };
+  };
+  const reviewed = (
+    days: number,
+    outcome: ReviewOutcome,
+    developmentArea: DevelopmentArea | null,
+    teacherOnlyNote: string | null = null,
+  ): Partial<MockObservation> => ({
+    status: 'reviewed',
+    reviewOutcome: outcome,
+    developmentArea,
+    teacherOnlyNote,
+    reviewedById: 'usr-mehta',
+    reviewedAt: daysAgo(days, 12),
+  });
 
-export const GROWTH_AREAS: GrowthArea[] = [
-  {
-    id: 'gro-maya-focus',
-    studentId: 'stu-maya',
-    area: 'focus-and-attention',
-    summary: 'Staying with one task without needing a reminder to come back to it.',
-    openedAt: '2026-08-28T00:00:00.000Z',
-    activitiesAssigned: 4,
-    activitiesCompleted: 3,
-  },
-  {
-    id: 'gro-maya-social',
-    studentId: 'stu-maya',
-    area: 'social-interaction',
-    summary: 'Waiting for a turn in group games without stepping away.',
-    openedAt: '2026-09-09T00:00:00.000Z',
-    activitiesAssigned: 2,
-    activitiesCompleted: 1,
-  },
-  {
-    id: 'gro-arjun-language',
-    studentId: 'stu-arjun',
-    area: 'language-and-expression',
-    summary: 'Telling a longer story in order, start to finish.',
-    openedAt: '2026-09-02T00:00:00.000Z',
-    activitiesAssigned: 3,
-    activitiesCompleted: 2,
-  },
-  {
-    id: 'gro-devan-regulation',
-    studentId: 'stu-devan',
-    area: 'emotional-regulation',
-    summary: 'Settling back after an unexpected change to the plan.',
-    openedAt: '2026-07-21T00:00:00.000Z',
-    activitiesAssigned: 6,
-    activitiesCompleted: 5,
-  },
-  {
-    id: 'gro-noor-motor',
-    studentId: 'stu-noor',
-    area: 'motor-skills',
-    summary: 'Building up hand strength so writing lasts longer before a break.',
-    openedAt: '2026-09-15T00:00:00.000Z',
-    activitiesAssigned: 2,
-    activitiesCompleted: 0,
-  },
-  {
-    id: 'gro-tara-independence',
-    studentId: 'stu-tara',
-    area: 'independence',
-    summary: 'Getting ready for the day without being prompted.',
-    openedAt: '2026-06-30T00:00:00.000Z',
-    activitiesAssigned: 3,
-    activitiesCompleted: 3,
-  },
-];
+  const observations: MockObservation[] = [
+    observation({
+      id: 'obs-tangram',
+      studentId: 'stu-maya',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'learning',
+      when: 'this_week',
+      howOften: 'sometimes',
+      level: 'minor',
+      learningBehaviourArea: 'attention',
+      description:
+        'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
+      createdDaysAgo: 9,
+      ...reviewed(8, 'assigned', 'focus_attention', 'Worth repeating the same task next week to see whether the duration holds.'),
+    }),
+    observation({
+      id: 'obs-fire-drill',
+      studentId: 'stu-devan',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'emotions',
+      when: 'today',
+      howOften: 'sometimes',
+      level: 'significant',
+      learningBehaviourArea: 'self_control',
+      description:
+        'Devan left the room without asking when the fire drill alarm sounded, and needed about fifteen minutes before he could come back in.',
+      createdDaysAgo: 1,
+    }),
+    observation({
+      id: 'obs-pencil',
+      studentId: 'stu-noor',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'physical',
+      when: 'this_week',
+      howOften: 'daily',
+      level: 'significant',
+      learningBehaviourArea: 'task_completion',
+      description:
+        'Noor is still holding the pencil in a full fist grip. She tires after roughly five minutes of writing and asks to stop.',
+      createdDaysAgo: 4,
+    }),
+    observation({
+      id: 'obs-blocks',
+      studentId: 'stu-lila',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'learning',
+      when: 'this_month',
+      howOften: 'once',
+      level: 'minor',
+      learningBehaviourArea: 'attention',
+      description: 'When the block tower fell, Lila rebuilt it with a wider base without anyone suggesting it.',
+      createdDaysAgo: 14,
+      ...reviewed(13, 'assigned', 'learning_skills'),
+    }),
+    observation({
+      id: 'obs-timetable',
+      studentId: 'stu-tara',
+      authorId: 'usr-kapoor',
+      authorRole: 'teacher',
+      area: 'routines',
+      when: 'this_week',
+      howOften: 'daily',
+      level: 'minor',
+      learningBehaviourArea: 'organisation',
+      description:
+        'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
+      createdDaysAgo: 6,
+      ...reviewed(5, 'no_action', null, 'Lovely to see. Nothing to change; keep noticing it.'),
+    }),
+    observation({
+      id: 'obs-instructions',
+      studentId: 'stu-ibrahim',
+      authorId: 'usr-kapoor',
+      authorRole: 'teacher',
+      area: 'learning',
+      when: 'today',
+      howOften: 'often',
+      level: 'significant',
+      learningBehaviourArea: 'following_instructions',
+      description:
+        'Ibrahim could not recall the three-step instruction even straight after I gave it. This happened in both sessions today.',
+      createdDaysAgo: 0,
+    }),
+    observation({
+      id: 'obs-assembly',
+      studentId: 'stu-maya',
+      authorId: 'usr-priya',
+      authorRole: 'parent',
+      area: 'emotions',
+      when: 'this_month',
+      howOften: 'once',
+      description:
+        'Maya was so nervous before the school assembly that she asked to stay at home. Once she was there, she said she enjoyed it.',
+      createdDaysAgo: 12,
+      ...reviewed(11, 'assigned', 'confidence'),
+    }),
+    observation({
+      id: 'obs-birthday',
+      studentId: 'stu-maya',
+      authorId: 'usr-priya',
+      authorRole: 'parent',
+      area: 'social',
+      when: 'this_week',
+      howOften: 'often',
+      description:
+        'At her cousin’s birthday she waited for her turn at the game twice, then got upset the third time and walked away.',
+      createdDaysAgo: 3,
+    }),
+    observation({
+      id: 'obs-dinner',
+      studentId: 'stu-arjun',
+      authorId: 'usr-priya',
+      authorRole: 'parent',
+      area: 'communication',
+      when: 'today',
+      howOften: 'once',
+      description:
+        'Arjun told the whole story of his school trip at dinner without losing track, and used words I have not heard him use before.',
+      createdDaysAgo: 7,
+      ...reviewed(6, 'assigned', 'communication'),
+    }),
+    observation({
+      id: 'obs-change-of-plan',
+      studentId: 'stu-devan',
+      authorId: 'usr-neil',
+      authorRole: 'parent',
+      area: 'emotions',
+      when: 'this_week',
+      howOften: 'sometimes',
+      description:
+        'He managed the change of plan on Saturday much better than he would have a month ago. He asked what was happening instead of shutting down.',
+      createdDaysAgo: 2,
+    }),
+  ];
 
-export const TEACHER_NOTES: TeacherNote[] = [
-  {
-    id: 'note-001',
-    studentId: 'stu-maya',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    body: 'Maya works best in the first half of the morning. If there is something demanding to get through, that is the window.',
-    createdAt: '2026-09-19T09:00:00.000Z',
-  },
-  {
-    id: 'note-002',
-    studentId: 'stu-maya',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    body: 'She has started asking to join the reading group rather than waiting to be invited. Worth encouraging at home too.',
-    createdAt: '2026-09-08T09:00:00.000Z',
-  },
-  {
-    id: 'note-003',
-    studentId: 'stu-arjun',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    body: 'Arjun’s spoken storytelling is well ahead of his written work. Giving him a chance to say it before writing helps.',
-    createdAt: '2026-09-17T09:00:00.000Z',
-  },
-  {
-    id: 'note-004',
-    studentId: 'stu-devan',
-    authorId: 'usr-rao',
-    authorName: 'Sunita Rao',
-    body: 'Warning Devan a few minutes before a change of activity makes a real difference to how the transition goes.',
-    createdAt: '2026-09-21T10:30:00.000Z',
-  },
-];
+  const assignment = (
+    id: string,
+    studentId: string,
+    activityId: string,
+    assignedById: string,
+    days: number,
+    observationId: string | null = null,
+  ): MockAssignment => ({
+    id,
+    activityId,
+    studentId,
+    assignedById,
+    source: observationId ? 'recommended' : 'direct',
+    observationId,
+    createdAt: daysAgo(days, 8),
+  });
+  const assignments: MockAssignment[] = [
+    // Recommended through reviews.
+    assignment('asg-maya-sorting', 'stu-maya', 'act-sorting', 'usr-mehta', 8, 'obs-tangram'),
+    assignment('asg-maya-feelings', 'stu-maya', 'act-feelings', 'usr-mehta', 11, 'obs-assembly'),
+    assignment('asg-arjun-story', 'stu-arjun', 'act-story', 'usr-mehta', 6, 'obs-dinner'),
+    assignment('asg-lila-homework', 'stu-lila', 'act-homework', 'usr-mehta', 13, 'obs-blocks'),
+    // Direct from teachers.
+    assignment('asg-maya-story', 'stu-maya', 'act-story', 'usr-rao', 5),
+    assignment('asg-maya-homework', 'stu-maya', 'act-homework', 'usr-rao', 4),
+    assignment('asg-devan-video', 'stu-devan', 'act-video', 'usr-rao', 3),
+    assignment('asg-noor-feelings', 'stu-noor', 'act-feelings', 'usr-rao', 3),
+    assignment('asg-tara-story', 'stu-tara', 'act-story', 'usr-kapoor', 5),
+  ];
 
-export const MONTHLY_SUMMARIES: MonthlySummary[] = [
-  {
-    id: 'sum-maya-09',
-    studentId: 'stu-maya',
-    month: '2026-09',
-    headline: 'Maya is holding her attention for longer, and noticing when she drifts',
-    body: 'Over September, Maya finished three of the four activities set for her, and both her teacher and you noticed her staying with harder tasks for longer. Turn-taking is still the harder of her two growth areas: she manages it once or twice, then finds it difficult to keep going. Next month’s activities lean into that.',
-    activitiesCompleted: 3,
-    observationsLogged: 3,
-  },
-  {
-    id: 'sum-arjun-09',
-    studentId: 'stu-arjun',
-    month: '2026-09',
-    headline: 'Arjun’s storytelling is getting longer and better organised',
-    body: 'Arjun completed two activities this month. The clearest change is in how he tells a story: he now holds the order from beginning to end, and is reaching for words he did not use before. Writing has not caught up with speaking yet, which is normal at this stage.',
-    activitiesCompleted: 2,
-    observationsLogged: 1,
-  },
-];
+  const completions: MockCompletion[] = [
+    { id: 'cmp-1', assignmentId: 'asg-maya-feelings', answer: { type: 'image_pick', optionId: 'happy' }, completedAt: daysAgo(2, 11) },
+    {
+      id: 'cmp-2',
+      assignmentId: 'asg-maya-story',
+      answer: { type: 'text', text: 'We built a volcano in science and it really fizzed!' },
+      completedAt: daysAgo(1, 11),
+    },
+    {
+      id: 'cmp-3',
+      assignmentId: 'asg-arjun-story',
+      answer: { type: 'text', text: 'Telling everyone about the museum trip.' },
+      completedAt: daysAgo(0, 9),
+    },
+    {
+      id: 'cmp-4',
+      assignmentId: 'asg-tara-story',
+      answer: { type: 'text', text: 'Art, because I finished my painting.' },
+      completedAt: daysAgo(3, 11),
+    },
+  ];
 
-/** Level names, from level 1 up. The last one holds for every level past it. */
-export const LEVEL_TITLES = [
-  'First Steps',
-  'Busy Bee',
-  'Bright Spark',
-  'Curious Explorer',
-  'Brave Builder',
-  'Story Weaver',
-  'Puzzle Solver',
-  'Rising Star',
-  'Trailblazer',
-  'Growth Champion',
-] as const;
-
-/**
- * Where each demo child stands. A level needs 100 XP more than the one before
- * it, so the next level starts at `level × 100`. Children not listed here
- * start at level 1 with no XP.
- */
-export const STUDENT_LEVELS: StudentLevel[] = [
-  { studentId: 'stu-maya', level: 4, title: 'Curious Explorer', xp: 340, xpForNextLevel: 400 },
-  { studentId: 'stu-arjun', level: 3, title: 'Bright Spark', xp: 230, xpForNextLevel: 300 },
-  { studentId: 'stu-devan', level: 4, title: 'Curious Explorer', xp: 310, xpForNextLevel: 400 },
-];
-
-/**
- * EvolvIQ Holistic Index for every demo child. Each
- * score is the rounded mean of its five pillars, and each history ends with
- * the year in progress. The playbooks echo what teachers and parents have
- * actually written about these children elsewhere in the fixtures.
- */
-export const HOLISTIC_INDEXES: HolisticIndex[] = [
-  {
-    studentId: 'stu-maya',
-    score: 78,
-    dimensions: [
-      { dimension: 'education', score: 82 },
-      { dimension: 'skills', score: 76 },
-      { dimension: 'physical', score: 80 },
-      { dimension: 'wellbeing', score: 74 },
-      { dimension: 'character', score: 79 },
-    ],
-    history: [
-      { schoolYear: '2022–23', grade: 'KG', score: 58, isCurrent: false },
-      { schoolYear: '2023–24', grade: 'Year 1', score: 63, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 2', score: 69, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 3', score: 74, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 4', score: 78, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 84 },
-      { skill: 'Creativity', score: 88 },
-      { skill: 'Physical', score: 78 },
-      { skill: 'Social', score: 68 },
-      { skill: 'Focus', score: 66 },
-    ],
-    strengths: ['Creative arts', 'Logical reasoning', 'Reading aloud', 'Kindness to others'],
-    playbook: [
-      'Break homework into ten-minute blocks with a short stretch between them. Her focus is growing, and small wins help it grow.',
-      'Play a turn-taking game together twice a week, and praise the waiting rather than the winning.',
-      'She has started asking to join the reading group. Let her choose a book to read aloud to you at bedtime.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-  {
-    studentId: 'stu-arjun',
-    score: 76,
-    dimensions: [
-      { dimension: 'education', score: 72 },
-      { dimension: 'skills', score: 78 },
-      { dimension: 'physical', score: 82 },
-      { dimension: 'wellbeing', score: 76 },
-      { dimension: 'character', score: 73 },
-    ],
-    history: [
-      { schoolYear: '2022–23', grade: 'KG', score: 61, isCurrent: false },
-      { schoolYear: '2023–24', grade: 'Year 1', score: 65, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 2', score: 69, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 3', score: 72, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 4', score: 76, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 70 },
-      { skill: 'Creativity', score: 84 },
-      { skill: 'Physical', score: 82 },
-      { skill: 'Social', score: 79 },
-      { skill: 'Focus', score: 72 },
-    ],
-    strengths: ['Storytelling', 'Vocabulary', 'Team games', 'Curiosity'],
-    playbook: [
-      'Let him tell a story out loud before he writes it down. His spoken stories are ahead of his written ones.',
-      'After a trip or a film, ask him to retell it in order: the start, the middle and the end.',
-      'Keep a list of new words on the fridge that he can add to whenever he hears one.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-  {
-    studentId: 'stu-devan',
-    score: 73,
-    dimensions: [
-      { dimension: 'education', score: 76 },
-      { dimension: 'skills', score: 74 },
-      { dimension: 'physical', score: 79 },
-      { dimension: 'wellbeing', score: 66 },
-      { dimension: 'character', score: 70 },
-    ],
-    history: [
-      { schoolYear: '2022–23', grade: 'KG', score: 57, isCurrent: false },
-      { schoolYear: '2023–24', grade: 'Year 1', score: 61, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 2', score: 64, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 3', score: 69, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 4', score: 73, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 82 },
-      { skill: 'Creativity', score: 70 },
-      { skill: 'Physical', score: 79 },
-      { skill: 'Social', score: 64 },
-      { skill: 'Focus', score: 75 },
-    ],
-    strengths: ['Maths', 'Puzzles', 'Keeping to routines', 'Football'],
-    playbook: [
-      'Give him a few minutes’ warning before a plan changes. His teacher has seen the same thing help at school.',
-      'When something does change, name it together: what is happening now, and what comes next.',
-      'Notice out loud when he asks what is happening instead of shutting down. That is the skill growing.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-{
-    studentId: 'stu-lila',
-    score: 75,
-    dimensions: [
-      { dimension: 'education', score: 78 },
-      { dimension: 'skills', score: 80 },
-      { dimension: 'physical', score: 72 },
-      { dimension: 'wellbeing', score: 75 },
-      { dimension: 'character', score: 70 },
-    ],
-    history: [
-      { schoolYear: '2023–24', grade: 'KG', score: 62, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 1', score: 67, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 2', score: 71, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 3', score: 75, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 82 },
-      { skill: 'Creativity', score: 78 },
-      { skill: 'Physical', score: 72 },
-      { skill: 'Social', score: 70 },
-      { skill: 'Focus', score: 74 },
-    ],
-    strengths: ['Problem solving', 'Building and making', 'Persistence', 'Curiosity'],
-    playbook: [
-      'Leave out building toys with no instructions. She plans her own fixes when something falls.',
-      'Ask her why her second try worked better than her first, and let her explain it fully.',
-      'Give her small jobs with a clear start and finish, such as setting the table.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-  {
-    studentId: 'stu-noor',
-    score: 66,
-    dimensions: [
-      { dimension: 'education', score: 68 },
-      { dimension: 'skills', score: 62 },
-      { dimension: 'physical', score: 58 },
-      { dimension: 'wellbeing', score: 72 },
-      { dimension: 'character', score: 70 },
-    ],
-    history: [
-      { schoolYear: '2023–24', grade: 'KG', score: 55, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 1', score: 59, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 2', score: 63, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 3', score: 66, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 66 },
-      { skill: 'Creativity', score: 74 },
-      { skill: 'Physical', score: 58 },
-      { skill: 'Social', score: 72 },
-      { skill: 'Focus', score: 62 },
-    ],
-    strengths: ['Kindness', 'Drawing', 'Listening', 'Helping others'],
-    playbook: [
-      'Play with playdough or clothes pegs for a few minutes a day to build hand strength.',
-      'Let her draw with chunky crayons before moving on to a pencil.',
-      'Keep writing tasks short, and celebrate each one she finishes.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-  {
-    studentId: 'stu-ibrahim',
-    score: 71,
-    dimensions: [
-      { dimension: 'education', score: 70 },
-      { dimension: 'skills', score: 68 },
-      { dimension: 'physical', score: 80 },
-      { dimension: 'wellbeing', score: 72 },
-      { dimension: 'character', score: 65 },
-    ],
-    history: [
-      { schoolYear: '2021–22', grade: 'KG', score: 60, isCurrent: false },
-      { schoolYear: '2022–23', grade: 'Year 1', score: 63, isCurrent: false },
-      { schoolYear: '2023–24', grade: 'Year 2', score: 65, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 3', score: 68, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 4', score: 70, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 5', score: 71, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 72 },
-      { skill: 'Creativity', score: 69 },
-      { skill: 'Physical', score: 80 },
-      { skill: 'Social', score: 74 },
-      { skill: 'Focus', score: 61 },
-    ],
-    strengths: ['Sport', 'Teamwork', 'Drawing maps', 'Sense of humour'],
-    playbook: [
-      'Give instructions one step at a time, and ask him to say each one back.',
-      'Use a checklist he can tick off for anything with more than two steps.',
-      'Notice out loud when he remembers something without a reminder.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-  {
-    studentId: 'stu-tara',
-    score: 82,
-    dimensions: [
-      { dimension: 'education', score: 84 },
-      { dimension: 'skills', score: 80 },
-      { dimension: 'physical', score: 78 },
-      { dimension: 'wellbeing', score: 85 },
-      { dimension: 'character', score: 83 },
-    ],
-    history: [
-      { schoolYear: '2021–22', grade: 'KG', score: 64, isCurrent: false },
-      { schoolYear: '2022–23', grade: 'Year 1', score: 68, isCurrent: false },
-      { schoolYear: '2023–24', grade: 'Year 2', score: 72, isCurrent: false },
-      { schoolYear: '2024–25', grade: 'Year 3', score: 76, isCurrent: false },
-      { schoolYear: '2025–26', grade: 'Year 4', score: 79, isCurrent: false },
-      { schoolYear: '2026–27', grade: 'Year 5', score: 82, isCurrent: true },
-    ],
-    skills: [
-      { skill: 'Maths & logic', score: 83 },
-      { skill: 'Creativity', score: 78 },
-      { skill: 'Physical', score: 76 },
-      { skill: 'Social', score: 81 },
-      { skill: 'Focus', score: 86 },
-    ],
-    strengths: ['Independence', 'Organisation', 'Reading', 'Leadership'],
-    playbook: [
-      'Hand her a small responsibility at home, such as planning one family meal a week.',
-      'Let her help a younger child get ready in the morning. It builds on her independence.',
-      'Encourage her to set her own reading goal for the weekend.',
-    ],
-    updatedAt: '2026-10-06T08:00:00.000Z',
-  },
-];
+  return {
+    users,
+    schools,
+    classes,
+    classTeachers,
+    classStudents,
+    parentLinks,
+    observations,
+    activities,
+    assignments,
+    completions,
+    monthlySummaries: {},
+  };
+}

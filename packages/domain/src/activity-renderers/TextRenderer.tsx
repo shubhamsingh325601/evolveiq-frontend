@@ -1,15 +1,19 @@
-import type { TextStep } from '@evolveiq/api-client';
 import { Textarea } from '@evolveiq/ui';
-import type { ActivityStepRendererProps } from './renderer-types';
+import type { ActivityRendererProps } from './renderer-types';
 
-export function TextRenderer({ step, value, onChange }: ActivityStepRendererProps<TextStep>) {
+/** The longest answer the backend accepts. */
+export const ANSWER_TEXT_MAX = 2000;
+
+export function TextRenderer({ content, answer, onAnswer }: ActivityRendererProps<'text'>) {
   return (
     <Textarea
       rows={5}
+      maxLength={ANSWER_TEXT_MAX}
+      aria-label={content.prompt}
       className="rounded-2xl px-4 py-3.5 text-lg leading-8"
-      placeholder={step.placeholder ?? 'Type your answer'}
-      value={typeof value === 'string' ? value : ''}
-      onChange={(event) => onChange(event.target.value)}
+      placeholder="Type your answer"
+      value={answer?.text ?? ''}
+      onChange={(event) => onAnswer({ type: 'text', text: event.target.value })}
     />
   );
 }

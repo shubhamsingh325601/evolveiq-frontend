@@ -1,77 +1,129 @@
 import type {
-  ActivityStepKind,
-  AssignmentStatus,
+  ActivityType,
   DevelopmentArea,
   HolisticDimension,
   LearningBehaviourArea,
-  ObservationContext,
+  ObservationArea,
   ObservationFrequency,
+  ObservationLevel,
   ObservationStatus,
+  ObservationWhen,
+  ReviewOutcome,
 } from '@evolveiq/api-client';
 
 /**
  * The product's vocabulary, in one place. Screens never hand-write these
- * strings, so a wording change lands everywhere at once.
+ * strings, so a wording change lands everywhere at once. The value lists are
+ * the lead-confirmed ones the backend stores, and the labels are the
+ * backend's own (`observation-options.ts`), so the API docs and the screens
+ * read the same.
  */
 
+/** What an observation is about, as the parent or teacher sees it. */
+export const OBSERVATION_AREA_LABELS: Record<ObservationArea, string> = {
+  emotions: 'Emotions & feelings',
+  behaviour: 'Behaviour',
+  social: 'Friends & social',
+  learning: 'Learning & focus',
+  communication: 'Communication',
+  physical: 'Physical & movement',
+  routines: 'Sleep, eating & routines',
+  other: 'Other',
+};
+
+export const OBSERVATION_AREAS = Object.keys(OBSERVATION_AREA_LABELS) as ObservationArea[];
+
+export const OBSERVATION_WHEN_LABELS: Record<ObservationWhen, string> = {
+  today: 'Today',
+  this_week: 'This week',
+  this_month: 'This month',
+  over_a_month: 'More than a month ago',
+};
+
+export const OBSERVATION_FREQUENCY_LABELS: Record<ObservationFrequency, string> = {
+  once: 'Just once',
+  sometimes: 'Sometimes',
+  often: 'Often',
+  daily: 'Every day',
+};
+
+/** Teachers only; never shown to a parent. */
+export const OBSERVATION_LEVEL_LABELS: Record<ObservationLevel, string> = {
+  minor: 'Minor',
+  moderate: 'Moderate',
+  significant: 'Significant',
+};
+
+export const OBSERVATION_LEVELS = Object.keys(OBSERVATION_LEVEL_LABELS) as ObservationLevel[];
+
+/** Teachers only; never shown to a parent. */
+export const LEARNING_BEHAVIOUR_LABELS: Record<LearningBehaviourArea, string> = {
+  attention: 'Attention & focus',
+  participation: 'Class participation',
+  following_instructions: 'Following instructions',
+  task_completion: 'Finishing classwork & homework',
+  organisation: 'Organisation',
+  working_with_others: 'Working with others',
+  self_control: 'Self-control in class',
+  other: 'Other',
+};
+
+export const LEARNING_BEHAVIOUR_AREAS = Object.keys(LEARNING_BEHAVIOUR_LABELS) as LearningBehaviourArea[];
+
+/**
+ * The psychologist's review tag. Growth areas are named with these labels —
+ * the API sends a growth area's name, not its value.
+ */
 export const DEVELOPMENT_AREA_LABELS: Record<DevelopmentArea, string> = {
-  'focus-and-attention': 'Focus and attention',
-  'emotional-regulation': 'Emotional regulation',
-  'social-interaction': 'Social interaction',
-  'language-and-expression': 'Language and expression',
-  'motor-skills': 'Motor skills',
-  'problem-solving': 'Problem solving',
-  independence: 'Independence',
-  'memory-and-recall': 'Memory and recall',
+  managing_feelings: 'Managing feelings',
+  social_skills: 'Friendships & social skills',
+  communication: 'Communication',
+  focus_attention: 'Focus & attention',
+  self_control: 'Self-control',
+  confidence: 'Confidence & self-esteem',
+  resilience: 'Coping & resilience',
+  independence: 'Independence & routines',
+  learning_skills: 'Learning skills',
+  motor_skills: 'Movement & coordination',
 };
 
 export const DEVELOPMENT_AREAS = Object.keys(DEVELOPMENT_AREA_LABELS) as DevelopmentArea[];
 
-export const LEARNING_BEHAVIOUR_LABELS: Record<LearningBehaviourArea, string> = {
-  engagement: 'Engagement',
-  persistence: 'Persistence',
-  'self-direction': 'Self-direction',
-  collaboration: 'Collaboration',
-  'following-instructions': 'Following instructions',
-};
+const DEVELOPMENT_AREA_BY_LABEL = new Map(
+  DEVELOPMENT_AREAS.map((area) => [DEVELOPMENT_AREA_LABELS[area], area] as const),
+);
 
-export const LEARNING_BEHAVIOUR_AREAS = Object.keys(
-  LEARNING_BEHAVIOUR_LABELS,
-) as LearningBehaviourArea[];
+/** The development area a growth area's name stands for, if it is one of ours. */
+export function developmentAreaForName(name: string): DevelopmentArea | undefined {
+  return DEVELOPMENT_AREA_BY_LABEL.get(name);
+}
 
-export const OBSERVATION_CONTEXT_LABELS: Record<ObservationContext, string> = {
-  'at-home': 'At home',
-  'in-class': 'In class',
-  'during-play': 'During play',
-  'during-transitions': 'During transitions',
-};
-
-export const OBSERVATION_FREQUENCY_LABELS: Record<ObservationFrequency, string> = {
-  'first-time': 'First time I have seen it',
-  occasionally: 'Every so often',
-  weekly: 'About once a week',
-  daily: 'Most days',
-};
-
+/** Staff wording. Parents only ever see "Awaiting review" or "Read by the school". */
 export const OBSERVATION_STATUS_LABELS: Record<ObservationStatus, string> = {
   pending: 'Awaiting review',
   reviewed: 'Reviewed',
-  'no-action-needed': 'No action needed',
 };
 
-export const ASSIGNMENT_STATUS_LABELS: Record<AssignmentStatus, string> = {
-  assigned: 'To do',
-  'in-progress': 'Started',
-  completed: 'Done',
+/** How a parent is told where their observation stands. */
+export const PARENT_OBSERVATION_STATUS_LABELS: Record<ObservationStatus, string> = {
+  pending: 'Awaiting review',
+  reviewed: 'Read by the school',
 };
 
-export const ACTIVITY_STEP_LABELS: Record<ActivityStepKind, string> = {
+export const REVIEW_OUTCOME_LABELS: Record<ReviewOutcome, string> = {
+  assigned: 'Assigned and reviewed',
+  no_action: 'No action needed',
+};
+
+export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   mcq: 'Multiple choice',
   text: 'Written answer',
-  'image-pick': 'Pick an image',
+  image_pick: 'Pick an image',
   rating: 'Rating, 1 to 5',
-  'media-response': 'Media and response',
+  media_response: 'Media and response',
 };
+
+export const ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_LABELS) as ActivityType[];
 
 /**
  * The EvolvIQ Holistic Index's five pillars. "Wellbeing" draws on engagement,
@@ -84,13 +136,4 @@ export const HOLISTIC_DIMENSION_LABELS: Record<HolisticDimension, string> = {
   physical: 'Physical',
   wellbeing: 'Wellbeing',
   character: 'Character',
-};
-
-/** Level is a teacher-entered 1-5 judgement; never shown to a parent. */
-export const LEVEL_LABELS: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: '1 — Needs full support',
-  2: '2 — Needs frequent prompting',
-  3: '3 — Manages with reminders',
-  4: '4 — Mostly independent',
-  5: '5 — Fully independent',
 };

@@ -1,56 +1,55 @@
-import { useMemo, useState } from 'react';
-import type { Activity, ActivityResponse, ActivityStep } from '@evolveiq/api-client';
-import { Button, Card, ChevronLeft, cn } from '@evolveiq/ui';
+import { useState } from 'react';
+import type { ActivityAnswer, ActivityContent } from '@evolveiq/api-client';
+import { Button, Card } from '@evolveiq/ui';
+import { isAnswerComplete } from './activity-answers';
 import {
   ImagePickRenderer,
   McqRenderer,
   MediaResponseRenderer,
   RatingRenderer,
   TextRenderer,
-  type StepValue,
 } from './activity-renderers';
 
 /**
  * One player shell for every activity type.
  *
- * The shell owns progress, answers, validation and the Back/Next controls;
- * each step kind only has to render its own input. Adding a sixth type means
- * writing one renderer and adding a line to `renderStep` — never a new player.
+ * The shell owns the question, the answer so far, the check that there is an
+ * answer, and the controls; each type only renders its own input. Adding a
+ * sixth type means writing one renderer and one line in `renderContent` —
+ * never a new player.
  */
 
 export interface ActivityPlayerProps {
-  activity: Activity;
-  onComplete: (responses: ActivityResponse[]) => void | Promise<unknown>;
+  activity: { title: string; content: ActivityContent };
+  onComplete: (answer: ActivityAnswer) => void | Promise<unknown>;
   onExit?: () => void;
   isSubmitting?: boolean;
+  /** Shown beside the controls when the answer could not be saved. */
+  submitError?: string;
 }
 
-function renderStep(
-  step: ActivityStep,
-  value: StepValue | undefined,
-  onChange: (value: StepValue) => void,
+function renderContent(
+  content: ActivityContent,
+  answer: ActivityAnswer | undefined,
+  onAnswer: (answer: ActivityAnswer) => void,
 ) {
-  switch (step.kind) {
+  // An answer of another type (impossible from these renderers) counts as none.
+  const own = <T extends ActivityAnswer['type']>(type: T) =>
+    answer?.type === type ? (answer as Extract<ActivityAnswer, { type: T }>) : undefined;
+  switch (content.type) {
     case 'mcq':
-      return <McqRenderer step={step} value={value} onChange={onChange} />;
+      return <McqRenderer content={content} answer={own('mcq')} onAnswer={onAnswer} />;
     case 'text':
-      return <TextRenderer step={step} value={value} onChange={onChange} />;
-    case 'image-pick':
-      return <ImagePickRenderer step={step} value={value} onChange={onChange} />;
+      return <TextRenderer content={content} answer={own('text')} onAnswer={onAnswer} />;
+    case 'image_pick':
+      return <ImagePickRenderer content={content} answer={own('image_pick')} onAnswer={onAnswer} />;
     case 'rating':
-      return <RatingRenderer step={step} value={value} onChange={onChange} />;
-    case 'media-response':
-      return <MediaResponseRenderer step={step} value={value} onChange={onChange} />;
+      return <RatingRenderer content={content} answer={own('rating')} onAnswer={onAnswer} />;
+    case 'media_response':
+      return <MediaResponseRenderer content={content} answer={own('media_response')} onAnswer={onAnswer} />;
     default:
       return null;
   }
-}
-
-function hasAnswer(value: StepValue | undefined): boolean {
-  if (value === undefined || value === null) return false;
-  if (typeof value === 'string') return value.trim().length > 0;
-  if (Array.isArray(value)) return value.length > 0;
-  return true;
 }
 
 export function ActivityPlayer({
@@ -58,106 +57,42 @@ export function ActivityPlayer({
   onComplete,
   onExit,
   isSubmitting = false,
+  submitError,
 }: ActivityPlayerProps) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, StepValue>>({});
+  const [answer, setAnswer] = useState<ActivityAnswer>();
+  const canFinish = answer !== undefined && isAnswerComplete(answer);
 
-  const step = activity.steps[stepIndex];
-  const isLastStep = stepIndex === activity.steps.length - 1;
-  const currentValue = step ? answers[step.id] : undefined;
-  const canContinue = hasAnswer(currentValue);
-
-  const responses = useMemo<ActivityResponse[]>(
-    () =>
-      activity.steps
-        .filter((activityStep) => answers[activityStep.id] !== undefined)
-        .map((activityStep) => ({
-          stepId: activityStep.id,
-          value: answers[activityStep.id] as StepValue,
-        })),
-    [activity.steps, answers],
-  );
-
-  if (!step) {
-    return <p className="text-sm text-ink-muted">This activity has no steps yet.</p>;
-  }
-
-  const goBack = () => setStepIndex((index) => Math.max(0, index - 1));
-  const goNext = () => {
-    if (isLastStep) {
-      void onComplete(responses);
-      return;
-    }
-    setStepIndex((index) => Math.min(activity.steps.length - 1, index + 1));
+  const finish = () => {
+    if (!answer || !canFinish) return;
+    // Free text goes up trimmed, as the backend stores it.
+    const cleaned: ActivityAnswer =
+      answer.type === 'text' || answer.type === 'media_response' ? { ...answer, text: answer.text.trim() } : answer;
+    void onComplete(cleaned);
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <div className="flex items-center gap-2" aria-hidden="true">
-          {activity.steps.map((activityStep, index) => (
-            <span
-              key={activityStep.id}
-              className={cn(
-                'h-2 flex-1 rounded-full transition-colors duration-300',
-                index < stepIndex && 'bg-jade-400',
-                index === stepIndex && 'bg-iris-500',
-                index > stepIndex && 'bg-iris-100',
-              )}
-            />
-          ))}
-        </div>
-        <p className="mt-3 text-sm font-medium text-ink-muted">
-          Step {stepIndex + 1} of {activity.steps.length}
-        </p>
-      </div>
-
       <Card isPlayful className="p-6 sm:p-8">
         <h2 className="max-w-prose text-2xl font-black tracking-tight text-ink sm:text-3xl">
-          {step.prompt}
+          {activity.content.prompt}
         </h2>
-        <div className="mt-6">
-          {renderStep(step, currentValue, (value) =>
-            setAnswers((previous) => ({ ...previous, [step.id]: value })),
-          )}
-        </div>
+        <div className="mt-6">{renderContent(activity.content, answer, setAnswer)}</div>
       </Card>
 
+      {submitError ? (
+        <p role="alert" className="text-sm text-coral-700">
+          {submitError}
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
-        {stepIndex > 0 ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            isPlayful
-            icon={ChevronLeft}
-            onClick={goBack}
-          >
-            Back
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          size="lg"
-          isPlayful
-          onClick={goNext}
-          disabled={!canContinue}
-          isLoading={isSubmitting}
-        >
-          {isLastStep ? 'Finish activity' : 'Next'}
+        <Button type="button" size="lg" isPlayful onClick={finish} disabled={!canFinish} isLoading={isSubmitting}>
+          Finish activity
         </Button>
-        {!canContinue ? (
-          <p className="text-sm text-ink-muted">Answer this one to carry on.</p>
-        ) : null}
+        {!canFinish ? <p className="text-sm text-ink-muted">Answer this one to finish.</p> : null}
         {onExit ? (
-          <Button
-            type="button"
-            variant="quiet"
-            size="lg"
-            className="sm:ml-auto"
-            onClick={onExit}
-          >
-            Save and come back later
+          <Button type="button" variant="quiet" size="lg" className="sm:ml-auto" onClick={onExit}>
+            Come back later
           </Button>
         ) : null}
       </div>

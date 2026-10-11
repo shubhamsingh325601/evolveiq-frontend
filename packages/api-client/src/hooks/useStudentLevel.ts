@@ -1,17 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
-import { ENDPOINTS } from '../endpoints';
-import { request } from '../http-client';
-import { queryKeys } from '../query-keys';
+import { levelForCompletedCount } from '../student-level';
 import type { StudentLevel } from '../types';
+import { useMyAssignments } from './useAssignments';
 
 /**
- * Level and XP. Finishing an assignment invalidates every student query, so
- * this refreshes on its own after `useCompleteAssignment`.
+ * The signed-in student's level and XP, worked out from the activities they
+ * have finished. It shares the student's assignment list, so finishing an
+ * activity (which refreshes that list) moves it on by itself.
  */
-export function useStudentLevel(studentId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.students.level(studentId ?? ''),
-    queryFn: () => request<StudentLevel>('GET', ENDPOINTS.students.level(studentId!)),
-    enabled: Boolean(studentId),
-  });
+export function useStudentLevel(options: { isEnabled?: boolean } = {}) {
+  const assignments = useMyAssignments(options);
+  const data: StudentLevel | undefined = assignments.data
+    ? levelForCompletedCount(assignments.data.filter((assignment) => assignment.isDone).length)
+    : undefined;
+  return { data, isLoading: assignments.isLoading, isError: assignments.isError };
 }

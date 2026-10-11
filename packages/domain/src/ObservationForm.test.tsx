@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ObservationForm } from './ObservationForm';
 
 const STUDENTS = [
-  { id: 'stu-maya', name: 'Maya Ahluwalia' },
-  { id: 'stu-arjun', name: 'Arjun Ahluwalia' },
+  { id: 'stu-maya', fullName: 'Maya Ahluwalia' },
+  { id: 'stu-arjun', fullName: 'Arjun Ahluwalia' },
 ];
 
 describe('ObservationForm', () => {
@@ -15,35 +15,28 @@ describe('ObservationForm', () => {
 
     render(<ObservationForm variant="parent" students={STUDENTS} onSubmit={onSubmit} />);
 
-    await user.selectOptions(
-      screen.getByLabelText('Which area does this fit'),
-      'social-interaction',
-    );
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'social');
     await user.type(
       screen.getByLabelText('What did you notice'),
       'She waited for her turn twice at the party before getting upset.',
     );
-    await user.click(screen.getByLabelText('During play'));
-    await user.click(screen.getByLabelText('About once a week'));
+    await user.click(screen.getByLabelText('This week'));
+    await user.click(screen.getByLabelText('Often'));
     await user.click(screen.getByRole('button', { name: 'Send observation' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
 
-    const submitted = onSubmit.mock.calls[0]![0];
-    expect(submitted).toMatchObject({
+    expect(onSubmit.mock.calls[0]![0]).toEqual({
       studentId: 'stu-maya',
-      area: 'social-interaction',
-      context: 'during-play',
-      frequency: 'weekly',
+      area: 'social',
+      description: 'She waited for her turn twice at the party before getting upset.',
+      when: 'this_week',
+      howOften: 'often',
     });
-    expect(submitted).not.toHaveProperty('level');
-    expect(submitted).not.toHaveProperty('learningBehaviourArea');
   });
 
   it('hides Level and learning behaviour from parents and shows them to teachers', () => {
-    const { unmount } = render(
-      <ObservationForm variant="parent" students={STUDENTS} onSubmit={vi.fn()} />,
-    );
+    const { unmount } = render(<ObservationForm variant="parent" students={STUDENTS} onSubmit={vi.fn()} />);
     expect(screen.queryByLabelText(/^Level/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Learning-behaviour area/)).not.toBeInTheDocument();
     unmount();
@@ -57,29 +50,41 @@ describe('ObservationForm', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
-    render(<ObservationForm variant="teacher" students={STUDENTS} onSubmit={onSubmit} />);
+    render(<ObservationForm variant="teacher" students={STUDENTS} defaultStudentId="stu-arjun" onSubmit={onSubmit} />);
 
-    await user.selectOptions(
-      screen.getByLabelText('Which area does this fit'),
-      'focus-and-attention',
-    );
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'learning');
     await user.type(
       screen.getByLabelText('What did you notice'),
       'Stayed with the tangram puzzle for ten minutes without prompting.',
     );
-    await user.selectOptions(screen.getByLabelText(/^Level/), '4');
-    await user.selectOptions(screen.getByLabelText(/Learning-behaviour area/), 'persistence');
-    await user.click(
-      screen.getByLabelText('Flag this for a psychologist to look at sooner'),
-    );
+    await user.selectOptions(screen.getByLabelText(/^Level/), 'significant');
+    await user.selectOptions(screen.getByLabelText(/Learning-behaviour area/), 'attention');
     await user.click(screen.getByRole('button', { name: 'Send observation' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls[0]![0]).toMatchObject({
-      level: 4,
-      learningBehaviourArea: 'persistence',
-      isSignificant: true,
+      studentId: 'stu-arjun',
+      area: 'learning',
+      when: 'today',
+      howOften: 'once',
+      level: 'significant',
+      learningBehaviourArea: 'attention',
     });
+  });
+
+  it('leaves out the teacher fields a teacher did not record', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(<ObservationForm variant="teacher" students={STUDENTS} onSubmit={onSubmit} />);
+
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'behaviour');
+    await user.type(screen.getByLabelText('What did you notice'), 'Tidied the reading corner without being asked.');
+    await user.click(screen.getByRole('button', { name: 'Send observation' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty('level');
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty('learningBehaviourArea');
   });
 
   it('asks for more detail rather than submitting a one-word observation', async () => {
@@ -88,13 +93,11 @@ describe('ObservationForm', () => {
 
     render(<ObservationForm variant="parent" students={STUDENTS} onSubmit={onSubmit} />);
 
-    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'independence');
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'routines');
     await user.type(screen.getByLabelText('What did you notice'), 'Good');
     await user.click(screen.getByRole('button', { name: 'Send observation' }));
 
-    expect(
-      await screen.findByText(/Add a little more detail/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Add a little more detail/)).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

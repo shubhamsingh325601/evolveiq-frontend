@@ -1,32 +1,62 @@
-import { Link } from 'react-router-dom';
-import { useActivities, useActivityQueue } from '@evolveiq/api-client';
-import type { Activity } from '@evolveiq/api-client';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useActivities, useArchiveActivity, type Activity } from '@evolveiq/api-client';
 import {
-  ACTIVITY_STEP_LABELS,
-  DEVELOPMENT_AREA_ICONS,
-  DEVELOPMENT_AREA_LABELS,
-  RecordsTable,
+  ACTIVITY_TYPE_ICONS,
+  ACTIVITY_TYPE_LABELS,
+  ACTIVITY_TYPES,
   formatDay,
+  RecordsTable,
   type RecordsTableColumn,
 } from '@evolveiq/domain';
 import {
+  Archive,
   Badge,
   BookOpen,
+  Button,
   buttonClasses,
-  ClipboardList,
-  Clock,
   ErrorState,
   LayoutGrid,
+  Lock,
   PageHeader,
   Plus,
+  SegmentedControl,
   StatTile,
 } from '@evolveiq/ui';
 
-export function ActivityLibraryScreen() {
-  const activities = useActivities();
-  const assignments = useActivityQueue();
+type View = 'active' | 'archived';
 
-  if (activities.isError) return <ErrorState onRetry={() => void activities.refetch()} />;
+/**
+ * The one activity library, shared by every school. Psychologists write,
+ * edit and archive (never delete); once an activity has been assigned its
+ * type and options are frozen, so changing them means archiving it and
+ * writing a new one.
+ */
+export function ActivityLibraryScreen() {
+  const navigate = useNavigate();
+  const [view, setView] = useState<View>('active');
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [error, setError] = useState<string>();
+  const active = useActivities();
+  const archived = useActivities({ isArchived: true });
+  const archiveActivity = useArchiveActivity();
+
+  const shown = view === 'active' ? active : archived;
+  if (shown.isError) return <ErrorState onRetry={() => void shown.refetch()} />;
+
+  const library = active.data ?? [];
+  const typesCovered = new Set(library.map((activity) => activity.content.type)).size;
+  const assignedCount = library.filter((activity) => activity.isAssigned).length;
+
+  const archive = async (activity: Activity) => {
+    setError(undefined);
+    try {
+      await archiveActivity.mutateAsync(activity.id);
+      setConfirmingId(null);
+    } catch {
+      setError(`We could not archive “${activity.title}”. Try again.`);
+    }
+  };
 
   const columns: RecordsTableColumn<Activity>[] = [
     {
@@ -36,44 +66,32 @@ export function ActivityLibraryScreen() {
       cell: (activity) => (
         <span className="block min-w-[14rem]">
           <span className="block font-bold text-ink">{activity.title}</span>
-          <span className="mt-0.5 block max-w-sm text-ink-muted">{activity.description}</span>
+          <span className="mt-0.5 line-clamp-2 block max-w-sm text-ink-muted">{activity.content.prompt}</span>
         </span>
       ),
     },
     {
-      id: 'area',
-      header: 'Area',
-      sortValue: (activity) => DEVELOPMENT_AREA_LABELS[activity.area],
+      id: 'type',
+      header: 'Type',
+      sortValue: (activity) => ACTIVITY_TYPE_LABELS[activity.content.type],
       cell: (activity) => (
-        <Badge icon={DEVELOPMENT_AREA_ICONS[activity.area]}>
-          {DEVELOPMENT_AREA_LABELS[activity.area]}
-        </Badge>
+        <Badge icon={ACTIVITY_TYPE_ICONS[activity.content.type]}>{ACTIVITY_TYPE_LABELS[activity.content.type]}</Badge>
       ),
     },
     {
-      id: 'steps',
-      header: 'Steps',
+      id: 'assigned',
+      header: 'Assigned',
       isSecondary: true,
-      sortValue: (activity) => activity.steps.length,
-      cell: (activity) => (
-        <span className="text-ink-muted">
-          {activity.steps.map((step) => ACTIVITY_STEP_LABELS[step.kind]).join(', ')}
-        </span>
-      ),
-    },
-    {
-      id: 'age',
-      header: 'Ages',
-      isSecondary: true,
-      sortValue: (activity) => activity.ageRange,
-      cell: (activity) => <span className="whitespace-nowrap">{activity.ageRange}</span>,
-    },
-    {
-      id: 'minutes',
-      header: 'Minutes',
-      align: 'right',
-      sortValue: (activity) => activity.estimatedMinutes,
-      cell: (activity) => <span className="tabular-nums">{activity.estimatedMinutes}</span>,
+      sortValue: (activity) => Number(activity.isAssigned),
+      cell: (activity) =>
+        activity.isAssigned ? (
+          <span className="inline-flex items-center gap-1.5 text-ink-muted">
+            <Lock className="size-3.5" />
+            Yes, so its options are fixed
+          </span>
+        ) : (
+          <span className="text-ink-faint">Not yet</span>
+        ),
     },
     {
       id: 'created',
@@ -84,14 +102,6 @@ export function ActivityLibraryScreen() {
       cell: (activity) => <span className="whitespace-nowrap">{formatDay(activity.createdAt)}</span>,
     },
   ];
-
-  const library = activities.data ?? [];
-  const areasCovered = new Set(library.map((activity) => activity.area)).size;
-  const averageMinutes =
-    library.length === 0
-      ? 0
-      : Math.round(library.reduce((sum, activity) => sum + activity.estimatedMinutes, 0) / library.length);
-  const inProgress = (assignments.data ?? []).filter((assignment) => assignment.status !== 'completed').length;
 
   const newActivityLink = (
     <Link to="/activities/new" className={buttonClasses({ size: 'sm' })}>
@@ -104,7 +114,7 @@ export function ActivityLibraryScreen() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Activity library"
-        subtitle="Everything that can be assigned to a student."
+        subtitle="One library for every school. Teachers assign from it; you recommend from it when you review."
         actions={newActivityLink}
       />
 
@@ -113,37 +123,80 @@ export function ActivityLibraryScreen() {
         <StatTile
           icon={LayoutGrid}
           tone="lilac"
-          label="Areas covered"
-          value={`${areasCovered} of 8`}
-          detail="Development areas with an activity"
+          label="Types covered"
+          value={`${typesCovered} of ${ACTIVITY_TYPES.length}`}
+          detail="Activity types in use"
         />
+        <StatTile icon={Lock} tone="jade" label="Assigned" value={assignedCount} detail="Set at least once" />
         <StatTile
-          icon={Clock}
-          tone="jade"
-          label="Typical length"
-          value={`${averageMinutes} min`}
-          detail="Average across the library"
-        />
-        <StatTile
-          icon={ClipboardList}
+          icon={Archive}
           tone="honey"
-          label="Set and not finished"
-          value={inProgress}
-          detail="Assignments still open"
+          label="Archived"
+          value={archived.data?.length ?? '–'}
+          detail="No longer assignable"
         />
       </div>
 
+      <SegmentedControl
+        label="Which activities to show"
+        value={view}
+        onChange={(next) => {
+          setView(next);
+          setConfirmingId(null);
+        }}
+        options={[
+          { value: 'active' as const, label: 'In use', count: active.data?.length ?? 0 },
+          { value: 'archived' as const, label: 'Archived', count: archived.data?.length ?? 0 },
+        ]}
+      />
+
+      {error ? <ErrorState title="That did not save" description={error} /> : null}
+
       <RecordsTable
-        caption="Activity library"
-        rows={activities.data ?? []}
+        caption={view === 'active' ? 'Activity library' : 'Archived activities'}
+        rows={shown.data ?? []}
         columns={columns}
         getRowId={(activity) => activity.id}
-        searchableText={(activity) => `${activity.title} ${activity.description}`}
+        searchableText={(activity) => `${activity.title} ${activity.content.prompt}`}
         searchPlaceholder="Search activities"
-        isLoading={activities.isLoading}
-        emptyTitle="The library is empty"
-        emptyDescription="Write the first activity and teachers can start assigning it."
-        emptyAction={newActivityLink}
+        isLoading={shown.isLoading}
+        {...(view === 'active' ? { onRowClick: (activity: Activity) => navigate(`/activities/${activity.id}/edit`) } : {})}
+        {...(view === 'active'
+          ? {
+              rowActions: (activity: Activity) =>
+                confirmingId === activity.id ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Button
+                      variant="danger-quiet"
+                      size="sm"
+                      isLoading={archiveActivity.isPending}
+                      onClick={() => void archive(activity)}
+                    >
+                      Archive for good
+                    </Button>
+                    <Button variant="quiet" size="sm" onClick={() => setConfirmingId(null)}>
+                      Keep
+                    </Button>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <Button variant="quiet" size="sm" onClick={() => navigate(`/activities/${activity.id}/edit`)}>
+                      Edit
+                    </Button>
+                    <Button variant="danger-quiet" size="sm" onClick={() => setConfirmingId(activity.id)}>
+                      Archive
+                    </Button>
+                  </span>
+                ),
+            }
+          : {})}
+        emptyTitle={view === 'active' ? 'The library is empty' : 'Nothing archived'}
+        emptyDescription={
+          view === 'active'
+            ? 'Write the first activity and teachers can start assigning it.'
+            : 'Archived activities stay here, so past assignments still make sense.'
+        }
+        {...(view === 'active' ? { emptyAction: newActivityLink } : {})}
       />
     </div>
   );

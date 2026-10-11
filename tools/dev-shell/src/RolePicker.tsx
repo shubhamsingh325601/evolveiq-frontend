@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isUsingMockBackend } from '@evolveiq/api-client';
 import { ROLE_APP, ROLE_HOME_PATH, ROLE_LABELS, useAuth } from '@evolveiq/auth';
 import {
   Avatar,
@@ -28,18 +29,22 @@ const GROUP_ICONS: Record<(typeof APP_GROUPS)[number]['id'], IconComponent> = {
 export function RolePicker() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
-  const [busyEmail, setBusyEmail] = useState<string | null>(null);
+  const [busyName, setBusyName] = useState<string | null>(null);
   const [error, setError] = useState<string>();
 
   const open = async (person: DemoPerson) => {
-    setBusyEmail(person.email);
+    setBusyName(person.name);
     setError(undefined);
     try {
-      const user = await signIn(person.email);
+      const user = await signIn(person.credentials);
       navigate(ROLE_HOME_PATH[user.role], { replace: true });
     } catch {
-      setError(`Could not sign in as ${person.name}. Is the mock backend still in use?`);
-      setBusyEmail(null);
+      setError(
+        isUsingMockBackend
+          ? `Could not sign in as ${person.name}.`
+          : `Could not sign in as ${person.name}. Has the backend been filled with “npm run db:seed-demo”?`,
+      );
+      setBusyName(null);
     }
   };
 
@@ -85,11 +90,11 @@ export function RolePicker() {
 
                 <ul className="mt-4 grid gap-4 sm:grid-cols-2">
                   {people.map((person) => (
-                    <li key={person.email}>
+                    <li key={person.name}>
                       <button
                         type="button"
                         onClick={() => void open(person)}
-                        disabled={busyEmail !== null}
+                        disabled={busyName !== null}
                         className="group flex h-full w-full items-start gap-4 rounded-3xl border border-line/70 bg-white/85 p-5 text-left shadow-card transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-iris-200 hover:shadow-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Avatar name={person.name} size="lg" />
@@ -98,7 +103,7 @@ export function RolePicker() {
                             <span className="text-lg font-black tracking-tight text-ink">
                               {person.name}
                             </span>
-                            {busyEmail === person.email ? (
+                            {busyName === person.name ? (
                               <span className="text-sm font-semibold text-iris-600">Opening…</span>
                             ) : null}
                           </span>

@@ -1,70 +1,69 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import type { NewObservation } from '@evolveiq/api-client';
+import type {
+  LearningBehaviourArea,
+  NewObservation,
+  ObservationArea,
+  ObservationFrequency,
+  ObservationLevel,
+  ObservationWhen,
+} from '@evolveiq/api-client';
 import {
   Button,
   Card,
-  Checkbox,
   Fieldset,
   FormField,
-  Input,
   RadioCardGroup,
   Select,
   Send,
   Textarea,
 } from '@evolveiq/ui';
 import {
-  DEVELOPMENT_AREA_LABELS,
-  DEVELOPMENT_AREAS,
   LEARNING_BEHAVIOUR_AREAS,
   LEARNING_BEHAVIOUR_LABELS,
-  LEVEL_LABELS,
-  OBSERVATION_CONTEXT_LABELS,
+  OBSERVATION_AREA_LABELS,
+  OBSERVATION_AREAS,
   OBSERVATION_FREQUENCY_LABELS,
+  OBSERVATION_LEVEL_LABELS,
+  OBSERVATION_LEVELS,
+  OBSERVATION_WHEN_LABELS,
 } from './labels';
 
 /**
  * One observation form for the whole product.
  *
- * `variant="teacher"` adds the two fields only teachers submit (Level and
- * Learning-behaviour area) plus the significance flag. Parents never see them,
- * and never see the values either — the api-client strips them on the way out.
+ * `variant="teacher"` adds the two fields only teachers submit: Level (where
+ * "Significant" raises it in the psychologist's queue) and the
+ * learning-behaviour area. Parents never see them, and the parent's request
+ * never carries them — the backend would refuse it.
  */
 
-const CONTEXT_VALUES = Object.keys(OBSERVATION_CONTEXT_LABELS) as [
-  keyof typeof OBSERVATION_CONTEXT_LABELS,
-  ...(keyof typeof OBSERVATION_CONTEXT_LABELS)[],
-];
+const keysOf = <T extends string>(labels: Record<T, string>) => Object.keys(labels) as [T, ...T[]];
 
-const FREQUENCY_VALUES = Object.keys(OBSERVATION_FREQUENCY_LABELS) as [
-  keyof typeof OBSERVATION_FREQUENCY_LABELS,
-  ...(keyof typeof OBSERVATION_FREQUENCY_LABELS)[],
-];
+const DESCRIPTION_MAX = 2000;
 
 const observationSchema = z.object({
   studentId: z.string().min(1, 'Choose who this is about'),
-  area: z.enum(DEVELOPMENT_AREAS as [string, ...string[]], {
+  area: z.enum(OBSERVATION_AREAS as [ObservationArea, ...ObservationArea[]], {
     errorMap: () => ({ message: 'Choose the area this fits best' }),
   }),
-  body: z
+  description: z
     .string()
     .trim()
     .min(15, 'Add a little more detail — what happened, and what you saw')
-    .max(1200, 'Keep it under 1200 characters'),
-  context: z.enum(CONTEXT_VALUES),
-  frequency: z.enum(FREQUENCY_VALUES),
-  observedAt: z.string().min(1, 'Add the date you saw this'),
+    .max(DESCRIPTION_MAX, `Keep it under ${DESCRIPTION_MAX} characters`),
+  when: z.enum(keysOf(OBSERVATION_WHEN_LABELS)),
+  howOften: z.enum(keysOf(OBSERVATION_FREQUENCY_LABELS)),
   level: z.string().optional(),
   learningBehaviourArea: z.string().optional(),
-  isSignificant: z.boolean().optional(),
 });
 
 type ObservationFormValues = z.infer<typeof observationSchema>;
 
 export interface ObservationFormStudentOption {
   id: string;
-  name: string;
+  fullName: string;
 }
 
 export interface ObservationFormProps {
@@ -77,8 +76,6 @@ export interface ObservationFormProps {
   /** Shown above the actions when the submission failed. */
   submitError?: string;
 }
-
-const todayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 export function ObservationForm({
   variant,
@@ -100,36 +97,29 @@ export function ObservationForm({
     resolver: zodResolver(observationSchema),
     defaultValues: {
       studentId: defaultStudentId ?? students[0]?.id ?? '',
-      area: '',
-      body: '',
-      context: isTeacher ? 'in-class' : 'at-home',
-      frequency: 'first-time',
-      observedAt: todayIsoDate(),
+      area: '' as ObservationArea,
+      description: '',
+      when: 'today',
+      howOften: 'once',
       level: '',
       learningBehaviourArea: '',
-      isSignificant: false,
     },
   });
 
   const submit = handleSubmit((values) => {
     const observation: NewObservation = {
       studentId: values.studentId,
-      area: values.area as NewObservation['area'],
-      body: values.body.trim(),
-      context: values.context,
-      frequency: values.frequency,
-      observedAt: new Date(`${values.observedAt}T12:00:00`).toISOString(),
+      area: values.area,
+      description: values.description.trim(),
+      when: values.when as ObservationWhen,
+      howOften: values.howOften as ObservationFrequency,
     };
 
     if (isTeacher) {
-      if (values.level) {
-        observation.level = Number(values.level) as NonNullable<NewObservation['level']>;
-      }
+      if (values.level) observation.level = values.level as ObservationLevel;
       if (values.learningBehaviourArea) {
-        observation.learningBehaviourArea =
-          values.learningBehaviourArea as NewObservation['learningBehaviourArea'];
+        observation.learningBehaviourArea = values.learningBehaviourArea as LearningBehaviourArea;
       }
-      observation.isSignificant = values.isSignificant ?? false;
     }
 
     return onSubmit(observation);
@@ -137,33 +127,27 @@ export function ObservationForm({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-7">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField label="Who is this about" error={errors.studentId?.message}>
-          <Select {...register('studentId')}>
-            {students.length === 0 ? <option value="">No students available</option> : null}
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-
-        <FormField label="When did you see it" error={errors.observedAt?.message}>
-          <Input type="date" max={todayIsoDate()} {...register('observedAt')} />
-        </FormField>
-      </div>
+      <FormField label="Who is this about" error={errors.studentId?.message}>
+        <Select {...register('studentId')}>
+          {students.length === 0 ? <option value="">No students available</option> : null}
+          {students.map((student) => (
+            <option key={student.id} value={student.id}>
+              {student.fullName}
+            </option>
+          ))}
+        </Select>
+      </FormField>
 
       <FormField
         label="Which area does this fit"
-        hint="Pick the closest one. A psychologist will confirm it when they review."
+        hint="Pick the closest one. A psychologist will look at it when they review."
         error={errors.area?.message}
       >
         <Select {...register('area')}>
           <option value="">Choose an area</option>
-          {DEVELOPMENT_AREAS.map((area) => (
+          {OBSERVATION_AREAS.map((area) => (
             <option key={area} value={area}>
-              {DEVELOPMENT_AREA_LABELS[area]}
+              {OBSERVATION_AREA_LABELS[area]}
             </option>
           ))}
         </Select>
@@ -176,49 +160,46 @@ export function ObservationForm({
             ? 'Describe what happened and what you saw, in your own words.'
             : 'Write it the way you would tell someone. There is no right way to put it.'
         }
-        error={errors.body?.message}
+        error={errors.description?.message}
       >
         <Textarea
           rows={6}
-          placeholder={
-            isTeacher
-              ? 'During the group task, she...'
-              : 'At breakfast this morning, he...'
-          }
-          {...register('body')}
+          maxLength={DESCRIPTION_MAX}
+          placeholder={isTeacher ? 'During the group task, she...' : 'At breakfast this morning, he...'}
+          {...register('description')}
         />
       </FormField>
 
-      <Fieldset legend="Where did this happen" error={errors.context?.message}>
+      <Fieldset legend="When did you see it" error={errors.when?.message}>
         <Controller
           control={control}
-          name="context"
+          name="when"
           render={({ field }) => (
             <RadioCardGroup
               columns={2}
               value={field.value}
               onChange={field.onChange}
-              options={Object.entries(OBSERVATION_CONTEXT_LABELS).map(([value, label]) => ({
-                value: value as ObservationFormValues['context'],
-                label,
+              options={keysOf(OBSERVATION_WHEN_LABELS).map((value) => ({
+                value,
+                label: OBSERVATION_WHEN_LABELS[value],
               }))}
             />
           )}
         />
       </Fieldset>
 
-      <Fieldset legend="How often does it happen" error={errors.frequency?.message}>
+      <Fieldset legend="How often does it happen" error={errors.howOften?.message}>
         <Controller
           control={control}
-          name="frequency"
+          name="howOften"
           render={({ field }) => (
             <RadioCardGroup
               columns={2}
               value={field.value}
               onChange={field.onChange}
-              options={Object.entries(OBSERVATION_FREQUENCY_LABELS).map(([value, label]) => ({
-                value: value as ObservationFormValues['frequency'],
-                label,
+              options={keysOf(OBSERVATION_FREQUENCY_LABELS).map((value) => ({
+                value,
+                label: OBSERVATION_FREQUENCY_LABELS[value],
               }))}
             />
           )}
@@ -229,22 +210,20 @@ export function ObservationForm({
         <Card as="section" tone="tinted" className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
           <div className="sm:col-span-2">
             <h3 className="text-base font-bold text-ink">For the school team</h3>
-            <p className="mt-1 text-sm text-ink-muted">
-              Parents never see these fields or the flag.
-            </p>
+            <p className="mt-1 text-sm text-ink-muted">Parents never see these fields.</p>
           </div>
 
           <FormField
             label="Level"
-            hint="How much support was needed."
+            hint="Significant goes to the top of the psychologist’s queue."
             isOptional
             error={errors.level?.message}
           >
             <Select {...register('level')}>
               <option value="">Not recorded</option>
-              {(Object.keys(LEVEL_LABELS) as unknown as (1 | 2 | 3 | 4 | 5)[]).map((level) => (
+              {OBSERVATION_LEVELS.map((level) => (
                 <option key={level} value={level}>
-                  {LEVEL_LABELS[level]}
+                  {OBSERVATION_LEVEL_LABELS[level]}
                 </option>
               ))}
             </Select>
@@ -265,21 +244,6 @@ export function ObservationForm({
               ))}
             </Select>
           </FormField>
-
-          <div className="sm:col-span-2">
-            <Controller
-              control={control}
-              name="isSignificant"
-              render={({ field }) => (
-                <Checkbox
-                  variant="chip"
-                  label="Flag this for a psychologist to look at sooner"
-                  checked={field.value ?? false}
-                  onChange={(event) => field.onChange(event.target.checked)}
-                />
-              )}
-            />
-          </div>
         </Card>
       ) : null}
 
@@ -301,7 +265,7 @@ export function ObservationForm({
         <p className="text-sm text-ink-muted">
           {isTeacher
             ? 'It goes to the review queue straight away.'
-            : 'Your child’s teacher and school psychologist will see this.'}
+            : 'It goes to the school psychologist, who reads every observation.'}
         </p>
       </div>
     </form>

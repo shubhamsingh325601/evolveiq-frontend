@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import {
-  useClasses,
+  useClassRoster,
   useCreateClass,
-  useDeleteClass,
-  useUpdateClass,
+  useRenameClass,
+  useUpdateClassMembers,
   useUsers,
+  type ClassDetail,
 } from '@evolveiq/api-client';
-import type { ClassGroup } from '@evolveiq/api-client';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
 import {
   Backpack,
@@ -19,84 +19,95 @@ import {
   StatTile,
   UsersRound,
 } from '@evolveiq/ui';
-import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
+import { saveErrorMessage } from '../../components/account-fields';
+import { ClassEditor, type ClassDraft } from '../../components/ClassEditor';
 
+const difference = (left: string[], right: string[]) => left.filter((id) => !right.includes(id));
+
+/**
+ * Class groups at the school: a name, any number of teachers, and students
+ * (each in one class). Classes are not deleted in the MVP.
+ */
 export function ManageClassesScreen() {
-  const classes = useClasses();
+  const roster = useClassRoster();
   const teachers = useUsers({ role: 'teacher' });
+  const students = useUsers({ role: 'student' });
   const createClass = useCreateClass();
-  const updateClass = useUpdateClass();
-  const deleteClass = useDeleteClass();
+  const renameClass = useRenameClass();
+  const updateMembers = useUpdateClassMembers();
 
-  const [editing, setEditing] = useState<ClassGroup | 'new' | null>(null);
+  const [editing, setEditing] = useState<ClassDetail | 'new' | null>(null);
   const [error, setError] = useState<string>();
 
-  if (classes.isError) return <ErrorState onRetry={() => void classes.refetch()} />;
+  if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
 
-  const teacherOptions = (teachers.data ?? []).map((teacher) => ({
-    value: teacher.id,
-    label: teacher.name,
-  }));
-  const teacherNameById = new Map(
-    (teachers.data ?? []).map((teacher) => [teacher.id, teacher.name]),
-  );
-
-  const groups = classes.data ?? [];
-  const studentsPlaced = groups.reduce((sum, group) => sum + group.studentIds.length, 0);
+  const groups = roster.classes;
+  const studentsPlaced = groups.reduce((sum, detail) => sum + detail.students.length, 0);
   const averageSize = groups.length === 0 ? 0 : Math.round(studentsPlaced / groups.length);
-  const withoutTeacher = groups.filter((group) => !teacherNameById.has(group.teacherId)).length;
+  const withoutTeacher = groups.filter((detail) => detail.teachers.length === 0).length;
+  const classNameByStudentId = new Map(roster.students.map((student) => [student.id, student.className]));
 
-  const save = async (values: RecordValues) => {
+  const save = async (draft: ClassDraft) => {
     setError(undefined);
-    const changes = {
-      name: values.name ?? '',
-      yearLevel: values.yearLevel ?? '',
-      teacherId: values.teacherId ?? '',
-    };
     try {
       if (editing === 'new') {
-        await createClass.mutateAsync(changes);
+        const created = await createClass.mutateAsync({ name: draft.name });
+        await updateMembers.mutateAsync({
+          classId: created.id,
+          addTeacherIds: draft.teacherIds,
+          addStudentIds: draft.studentIds,
+          currentClassIdByStudentId: roster.classIdByStudentId,
+        });
       } else if (editing) {
-        await updateClass.mutateAsync({ classId: editing.id, changes });
+        if (draft.name !== editing.class.name) await renameClass.mutateAsync({ classId: editing.class.id, name: draft.name });
+        const teacherIds = editing.teachers.map((teacher) => teacher.id);
+        const studentIds = editing.students.map((student) => student.id);
+        await updateMembers.mutateAsync({
+          classId: editing.class.id,
+          addTeacherIds: difference(draft.teacherIds, teacherIds),
+          removeTeacherIds: difference(teacherIds, draft.teacherIds),
+          addStudentIds: difference(draft.studentIds, studentIds),
+          removeStudentIds: difference(studentIds, draft.studentIds),
+          currentClassIdByStudentId: roster.classIdByStudentId,
+        });
       }
       setEditing(null);
-    } catch {
-      setError('We could not save that class. Try again.');
+    } catch (caught) {
+      setError(saveErrorMessage(caught, 'We could not save that class. Try again.'));
     }
   };
 
-  const columns: RecordsTableColumn<ClassGroup>[] = [
+  const columns: RecordsTableColumn<ClassDetail>[] = [
     {
       id: 'name',
       header: 'Class',
-      sortValue: (group) => group.name,
-      cell: (group) => (
+      sortValue: (detail) => detail.class.name,
+      cell: (detail) => (
         <span className="flex items-center gap-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-iris-50 text-iris-600">
             <LayoutGrid className="size-4" />
           </span>
-          <span className="font-bold text-ink">{group.name}</span>
+          <span className="font-bold text-ink">{detail.class.name}</span>
         </span>
       ),
     },
     {
-      id: 'year',
-      header: 'Year',
-      sortValue: (group) => group.yearLevel,
-      cell: (group) => group.yearLevel || 'Not set',
-    },
-    {
-      id: 'teacher',
-      header: 'Class teacher',
-      sortValue: (group) => teacherNameById.get(group.teacherId) ?? '',
-      cell: (group) => teacherNameById.get(group.teacherId) ?? 'Unassigned',
+      id: 'teachers',
+      header: 'Teachers',
+      sortValue: (detail) => detail.teachers.map((teacher) => teacher.fullName).join(', '),
+      cell: (detail) =>
+        detail.teachers.length > 0 ? (
+          detail.teachers.map((teacher) => teacher.fullName).join(', ')
+        ) : (
+          <span className="text-ink-faint">No teacher yet</span>
+        ),
     },
     {
       id: 'students',
       header: 'Students',
       align: 'right',
-      sortValue: (group) => group.studentIds.length,
-      cell: (group) => <span className="tabular-nums">{group.studentIds.length}</span>,
+      sortValue: (detail) => detail.students.length,
+      cell: (detail) => <span className="tabular-nums">{detail.students.length}</span>,
     },
   ];
 
@@ -104,7 +115,7 @@ export function ManageClassesScreen() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Classes"
-        subtitle="Class groups and the teacher responsible for each."
+        subtitle="Class groups, their teachers and their students."
         actions={
           <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a class
@@ -114,51 +125,28 @@ export function ManageClassesScreen() {
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatTile icon={LayoutGrid} label="Classes" value={groups.length} detail="At your school" />
-        <StatTile
-          icon={Backpack}
-          tone="jade"
-          label="Students placed"
-          value={studentsPlaced}
-          detail="Across every class"
-        />
-        <StatTile
-          icon={UsersRound}
-          tone="lilac"
-          label="Typical class"
-          value={averageSize}
-          detail="Students per class, on average"
-        />
+        <StatTile icon={Backpack} tone="jade" label="Students placed" value={studentsPlaced} detail="Across every class" />
+        <StatTile icon={UsersRound} tone="lilac" label="Typical class" value={averageSize} detail="Students per class, on average" />
         <StatTile
           icon={Presentation}
           tone="honey"
           label="Without a teacher"
           value={withoutTeacher}
-          detail={withoutTeacher === 0 ? 'Every class has one' : 'Give these a class teacher'}
+          detail={withoutTeacher === 0 ? 'Every class has one' : 'Give these a teacher'}
         />
       </div>
 
-      {error ? <ErrorState title="That did not save" description={error} /> : null}
-
       <RecordsTable
         caption="Classes at this school"
-        rows={classes.data ?? []}
+        rows={groups}
         columns={columns}
-        getRowId={(group) => group.id}
-        searchableText={(group) => `${group.name} ${group.yearLevel}`}
+        getRowId={(detail) => detail.class.id}
+        searchableText={(detail) => `${detail.class.name} ${detail.teachers.map((teacher) => teacher.fullName).join(' ')}`}
         searchPlaceholder="Search classes"
-        isLoading={classes.isLoading}
-        onRowClick={(group) => setEditing(group)}
-        rowActions={(group) => (
-          <Button
-            variant="danger-quiet"
-            size="sm"
-            onClick={() => void deleteClass.mutateAsync(group.id)}
-          >
-            Remove
-          </Button>
-        )}
+        isLoading={roster.isLoading}
+        onRowClick={(detail) => setEditing(detail)}
         emptyTitle="No classes yet"
-        emptyDescription="Add a class, then place students in it."
+        emptyDescription="Add a class, then choose its teachers and students."
         emptyAction={
           <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
             Add a class
@@ -166,27 +154,18 @@ export function ManageClassesScreen() {
         }
       />
 
-      <RecordEditor
+      <ClassEditor
         isOpen={editing !== null}
-        onClose={() => setEditing(null)}
-        title={editing === 'new' ? 'Add a class' : 'Edit class'}
-        saveLabel={editing === 'new' ? 'Add class' : 'Save changes'}
-        isSaving={createClass.isPending || updateClass.isPending}
-        fields={[
-          { name: 'name', label: 'Class name', isRequired: true, placeholder: '4B' },
-          { name: 'yearLevel', label: 'Year', placeholder: 'Year 4' },
-          { name: 'teacherId', label: 'Class teacher', type: 'select', options: teacherOptions },
-        ]}
-        {...(editing && editing !== 'new'
-          ? {
-              initialValues: {
-                name: editing.name,
-                yearLevel: editing.yearLevel,
-                teacherId: editing.teacherId,
-              },
-            }
-          : {})}
+        onClose={() => {
+          setEditing(null);
+          setError(undefined);
+        }}
+        {...(editing && editing !== 'new' ? { detail: editing } : {})}
+        teachers={(teachers.data ?? []).filter((teacher) => teacher.isActive)}
+        students={(students.data ?? []).filter((student) => student.isActive)}
+        classNameByStudentId={classNameByStudentId}
         onSave={save}
+        isSaving={createClass.isPending || renameClass.isPending || updateMembers.isPending}
         {...(error ? { error } : {})}
       />
     </div>

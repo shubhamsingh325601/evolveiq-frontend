@@ -1,68 +1,63 @@
 import { Link } from 'react-router-dom';
-import type { Activity, Assignment } from '@evolveiq/api-client';
-import { formatRelativeDay } from '@evolveiq/domain';
 import { Card, Check, cn } from '@evolveiq/ui';
 
-export interface AssignmentChecklistItem {
-  assignment: Assignment;
-  activity: Activity;
+/** One line of the checklist, already worded by the screen that owns the data. */
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  isDone: boolean;
+  /** e.g. "Finished yesterday", "Set 3 days ago". */
+  detail?: string;
+  /** Students: where an unfinished mission opens. */
+  href?: string;
+  /** Students: what finishing it is worth. */
+  xp?: number;
 }
 
 export interface AssignmentChecklistProps {
-  items: AssignmentChecklistItem[];
+  items: ChecklistItem[];
   /**
    * `student` is the Daily Missions list: round checks, XP, and each mission
    * still to do opens in the activity player. `parent` is the read-only list
    * of what their child has been set.
    */
   variant: 'student' | 'parent';
-  /** Where a student's unfinished mission opens. */
-  linkFor?: (assignment: Assignment) => string;
   className?: string;
 }
 
-function finishedLabel(assignment: Assignment): string {
-  return assignment.completedAt ? `Finished ${formatRelativeDay(assignment.completedAt)}` : 'Finished';
-}
-
-export function AssignmentChecklist({ items, variant, linkFor, className }: AssignmentChecklistProps) {
+export function AssignmentChecklist({ items, variant, className }: AssignmentChecklistProps) {
   return (
     <ul className={cn('flex flex-col gap-3', className)}>
-      {items.map(({ assignment, activity }) => {
-        const isDone = assignment.status === 'completed';
-
+      {items.map((item) => {
         if (variant === 'parent') {
           return (
-            <Card as="li" isPlayful key={assignment.id} className="flex items-start gap-4 p-4">
+            <Card as="li" isPlayful key={item.id} className="flex items-start gap-4 p-4">
               <span
                 aria-hidden="true"
                 className={cn(
                   'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[5px] border-2',
-                  isDone ? 'border-jade-500 bg-jade-500 text-white' : 'border-line-strong bg-white',
+                  item.isDone ? 'border-jade-500 bg-jade-500 text-white' : 'border-line-strong bg-white',
                 )}
               >
-                {isDone ? <Check className="size-3" strokeWidth={3.5} /> : null}
+                {item.isDone ? <Check className="size-3" strokeWidth={3.5} /> : null}
               </span>
               <div className="min-w-0">
-                <p className={cn('text-sm font-bold', isDone ? 'text-ink-faint line-through' : 'text-ink')}>
-                  {activity.title}
-                  <span className="sr-only">{isDone ? ', done' : ', to do'}</span>
+                <p className={cn('text-sm font-bold', item.isDone ? 'text-ink-faint line-through' : 'text-ink')}>
+                  {item.title}
+                  <span className="sr-only">{item.isDone ? ', done' : ', to do'}</span>
                 </p>
-                <p className="mt-1 text-xs text-ink-muted">{activity.description}</p>
-                <p className="mt-1.5 text-[0.6875rem] text-ink-faint">
-                  {isDone ? finishedLabel(assignment) : `Set by ${assignment.assignedByName}`}
-                </p>
+                {item.detail ? <p className="mt-1 text-[0.6875rem] text-ink-faint">{item.detail}</p> : null}
               </div>
             </Card>
           );
         }
 
-        const href = !isDone && linkFor ? linkFor(assignment) : undefined;
+        const href = !item.isDone ? item.href : undefined;
         return (
           <Card
             as="li"
             isPlayful
-            key={assignment.id}
+            key={item.id}
             className={cn(
               'relative flex items-center gap-4 p-4',
               href && 'transition-[border-color,transform] hover:border-iris-200 active:scale-[0.98]',
@@ -72,10 +67,10 @@ export function AssignmentChecklist({ items, variant, linkFor, className }: Assi
               aria-hidden="true"
               className={cn(
                 'flex size-7 shrink-0 items-center justify-center rounded-full border-2',
-                isDone ? 'border-jade-500 bg-jade-500 text-white' : 'border-line-strong bg-white',
+                item.isDone ? 'border-jade-500 bg-jade-500 text-white' : 'border-line-strong bg-white',
               )}
             >
-              {isDone ? <Check className="size-4" strokeWidth={3} /> : null}
+              {item.isDone ? <Check className="size-4" strokeWidth={3} /> : null}
             </span>
             <div className="min-w-0 flex-1">
               {href ? (
@@ -83,31 +78,26 @@ export function AssignmentChecklist({ items, variant, linkFor, className }: Assi
                   to={href}
                   className="text-sm font-bold leading-tight text-ink after:absolute after:inset-0 after:rounded-3xl focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-iris-500"
                 >
-                  {activity.title}
+                  {item.title}
                 </Link>
               ) : (
-                <p
-                  className={cn(
-                    'text-sm font-bold leading-tight',
-                    isDone ? 'text-ink-faint line-through' : 'text-ink',
-                  )}
-                >
-                  {activity.title}
-                  {isDone ? <span className="sr-only">, done</span> : null}
+                <p className={cn('text-sm font-bold leading-tight', item.isDone ? 'text-ink-faint line-through' : 'text-ink')}>
+                  {item.title}
+                  {item.isDone ? <span className="sr-only">, done</span> : null}
                 </p>
               )}
-              <p className="mt-0.5 text-[0.6875rem] font-medium text-ink-muted">
-                {isDone ? finishedLabel(assignment) : `About ${activity.estimatedMinutes} min`}
-              </p>
+              {item.detail ? <p className="mt-0.5 text-[0.6875rem] font-medium text-ink-muted">{item.detail}</p> : null}
             </div>
-            <span
-              className={cn(
-                'shrink-0 rounded-lg px-2 py-1 text-[0.625rem] font-black',
-                isDone ? 'bg-surface-sunk text-ink-faint' : 'bg-iris-50 text-iris-600',
-              )}
-            >
-              +{assignment.xp} XP
-            </span>
+            {item.xp !== undefined ? (
+              <span
+                className={cn(
+                  'shrink-0 rounded-lg px-2 py-1 text-[0.625rem] font-black',
+                  item.isDone ? 'bg-surface-sunk text-ink-faint' : 'bg-iris-50 text-iris-600',
+                )}
+              >
+                +{item.xp} XP
+              </span>
+            ) : null}
           </Card>
         );
       })}

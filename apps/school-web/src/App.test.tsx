@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createQueryClient, resetMockStore } from '@evolveiq/api-client';
+import { createQueryClient, DEMO_PASSWORD, resetMockStore } from '@evolveiq/api-client';
 import { AuthProvider } from '@evolveiq/auth';
 import { App } from './App';
 
@@ -23,6 +23,7 @@ async function signInAs(email: string) {
   const user = userEvent.setup();
   renderApp();
   await user.type(screen.getByLabelText('Email address'), email);
+  await user.type(screen.getByLabelText('Password'), DEMO_PASSWORD);
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
   return user;
 }
@@ -37,26 +38,38 @@ describe('School app', () => {
     window.localStorage.clear();
   });
 
-  it('takes a teacher to their own students', async () => {
+  it('takes a teacher to the students of their own classes', async () => {
     await signInAs('rao@school.test');
 
     expect(await screen.findByRole('heading', { name: 'My students' })).toBeInTheDocument();
     expect(await screen.findByText('Maya Ahluwalia')).toBeInTheDocument();
-    // Ritu Kapoor's students belong to another teacher.
+    // Ritu Kapoor's class.
     expect(screen.queryByText('Tara Bhatt')).not.toBeInTheDocument();
   });
 
-  it('takes a psychologist to the review queue', async () => {
+  it('records a teacher’s observation and shows it on the student’s profile', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /New observation/ })[0]!);
+    await screen.findByRole('heading', { name: 'New observation' });
+    await user.selectOptions(await screen.findByLabelText('Who is this about'), 'stu-lila');
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'social');
+    await user.type(screen.getByLabelText('What did you notice'), 'Invited a new classmate to join the game at break.');
+    await user.click(screen.getByRole('button', { name: 'Send observation' }));
+
+    expect(await screen.findByRole('heading', { name: 'Lila Menon' })).toBeInTheDocument();
+    expect(await screen.findByText(/Invited a new classmate/)).toBeInTheDocument();
+  });
+
+  it('takes a psychologist to the review queue, on Pending', async () => {
     await signInAs('mehta@school.test');
 
     expect(await screen.findByRole('heading', { name: 'Review queue' })).toBeInTheDocument();
-    expect(await screen.findByRole('tab', { name: /Pending/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    expect(await screen.findByRole('tab', { name: /Pending/ })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('filters the queue down to what parents submitted', async () => {
+  it('filters the queue down to what parents wrote', async () => {
     const user = await signInAs('mehta@school.test');
     await screen.findByRole('heading', { name: 'Review queue' });
 
@@ -69,18 +82,26 @@ describe('School app', () => {
     });
   });
 
-  it('opens one observation from the queue', async () => {
+  it('closes an observation with “No action needed”', async () => {
     const user = await signInAs('mehta@school.test');
     await screen.findByRole('heading', { name: 'Review queue' });
 
-    const firstRow = await screen.findByText(/Devan left the room without asking/);
-    await user.click(firstRow);
+    await user.click(await screen.findByText(/waited for her turn at the game twice/));
+    expect(await screen.findByRole('heading', { name: 'Development area' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'No action needed' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Development areas' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Mark reviewed' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'No action needed' })).toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Review queue' });
+    await waitFor(() => expect(screen.queryByText(/waited for her turn at the game twice/)).not.toBeInTheDocument());
+  });
+
+  it('asks for a development area before closing a Significant observation', async () => {
+    const user = await signInAs('mehta@school.test');
+    await screen.findByRole('heading', { name: 'Review queue' });
+
+    await user.click(await screen.findByText(/Devan left the room without asking/));
+    await user.click(await screen.findByRole('button', { name: 'No action needed' }));
+
+    expect(await screen.findByText(/a Significant observation needs one/)).toBeInTheDocument();
   });
 
   it('keeps a teacher out of the psychologist screens', async () => {

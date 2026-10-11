@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import { useStudents } from '@evolveiq/api-client';
+import { useChildren } from '@evolveiq/api-client';
 import { EmptyState, ErrorState, LoadingState, UsersRound } from '@evolveiq/ui';
 
 /**
@@ -7,12 +7,12 @@ import { EmptyState, ErrorState, LoadingState, UsersRound } from '@evolveiq/ui';
  * opens the first one; the switcher at the top of it reaches the others.
  */
 export function ChildrenScreen() {
-  const students = useStudents();
+  const children = useChildren();
 
-  if (students.isLoading) return <LoadingState label="Loading your children" />;
-  if (students.isError) return <ErrorState onRetry={() => void students.refetch()} />;
+  if (children.isLoading) return <LoadingState label="Loading your children" />;
+  if (children.isError) return <ErrorState onRetry={() => void children.refetch()} />;
 
-  const firstChild = students.data?.[0];
+  const firstChild = children.data?.[0];
   if (firstChild) return <Navigate to={`/parent/children/${firstChild.id}`} replace />;
 
   return (

@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import {
   useCreateUser,
-  useDeleteUser,
+  useDeactivateUser,
+  useReactivateUser,
   useSchools,
   useUpdateUser,
+  useUserCounts,
   useUsers,
+  type NewUser,
+  type Role,
+  type User,
+  type UserChanges,
 } from '@evolveiq/api-client';
-import type { Role, User } from '@evolveiq/api-client';
-import { ROLE_LABELS } from '@evolveiq/auth';
+import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
 import {
   Avatar,
@@ -23,60 +28,127 @@ import {
   SegmentedControl,
   StatTile,
 } from '@evolveiq/ui';
-import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
+import { AccountStatusBadge } from '../../components/AccountStatusBadge';
+import {
+  EMAIL_FIELD,
+  FULL_NAME_FIELD,
+  PASSWORD_FIELD,
+  PIN_FIELD,
+  saveErrorMessage,
+  STUDENT_ID_FIELD,
+} from '../../components/account-fields';
+import { RecordEditor, type RecordEditorField, type RecordValues } from '../../components/RecordEditor';
 
-const ALL_ROLES: Role[] = [
-  'student',
-  'parent',
-  'teacher',
-  'psychologist',
-  'school-admin',
-  'platform-admin',
-];
+const ALL_ROLES: Role[] = ['student', 'parent', 'teacher', 'school_admin', 'psychologist', 'platform_admin'];
+
+/** Psychologists and platform admins work across schools; everyone else belongs to one. */
+const isSchoolScoped = (role: Role) => role !== 'psychologist' && role !== 'platform_admin';
 
 /** Platform admins manage accounts across every role and every school. */
 export function ManageUsersScreen() {
+  const { user: me } = useAuth();
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
   const users = useUsers(roleFilter === 'all' ? {} : { role: roleFilter });
-  const allUsers = useUsers();
   const schools = useSchools();
+  const counts = useUserCounts({
+    all: {},
+    student: { role: 'student' },
+    parent: { role: 'parent' },
+    teacher: { role: 'teacher' },
+    school_admin: { role: 'school_admin' },
+    psychologist: { role: 'psychologist' },
+    platform_admin: { role: 'platform_admin' },
+  });
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
-  const deleteUser = useDeleteUser();
+  const deactivateUser = useDeactivateUser();
+  const reactivateUser = useReactivateUser();
 
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   const [error, setError] = useState<string>();
+  const [rowError, setRowError] = useState<string>();
 
   if (users.isError) return <ErrorState onRetry={() => void users.refetch()} />;
 
-  const schoolOptions = [
-    { value: '', label: 'No school' },
-    ...(schools.data ?? []).map((school) => ({ value: school.id, label: school.name })),
-  ];
   const schoolNameById = new Map((schools.data ?? []).map((school) => [school.id, school.name]));
-  const everyone = allUsers.data ?? [];
-  const staffCount = everyone.filter((person) =>
-    ['teacher', 'psychologist', 'school-admin'].includes(person.role),
-  ).length;
-  const familyCount = everyone.filter((person) => ['parent', 'student'].includes(person.role)).length;
+  const schoolOptions = (schools.data ?? []).map((school) => ({ value: school.id, label: school.name }));
+  const staffCount = (counts.teacher ?? 0) + (counts.school_admin ?? 0) + (counts.psychologist ?? 0);
+  const familyCount = (counts.parent ?? 0) + (counts.student ?? 0);
+
+  const newAccountFields = (values: RecordValues): RecordEditorField[] => {
+    const role = (values.role as Role | undefined) ?? 'teacher';
+    return [
+      {
+        name: 'role',
+        label: 'Role',
+        type: 'select',
+        options: ALL_ROLES.map((value) => ({ value, label: ROLE_LABELS[value] })),
+      },
+      FULL_NAME_FIELD,
+      ...(role === 'student' ? [STUDENT_ID_FIELD, PIN_FIELD] : [EMAIL_FIELD, PASSWORD_FIELD]),
+      ...(isSchoolScoped(role)
+        ? [
+            {
+              name: 'schoolId',
+              label: 'School',
+              type: 'select' as const,
+              isRequired: true,
+              options: [{ value: '', label: 'Choose a school' }, ...schoolOptions],
+            },
+          ]
+        : []),
+    ];
+  };
+
+  const editFields = (person: User): RecordEditorField[] => [
+    FULL_NAME_FIELD,
+    person.role === 'student' ? STUDENT_ID_FIELD : EMAIL_FIELD,
+    {
+      name: 'role',
+      label: 'Role',
+      isDisabled: true,
+      hint: 'An account’s role and school never change. Create a new account instead.',
+    },
+    ...(person.schoolId ? [{ name: 'school', label: 'School', isDisabled: true }] : []),
+  ];
 
   const save = async (values: RecordValues) => {
     setError(undefined);
     try {
-      const changes = {
-        name: values.name ?? '',
-        email: values.email ?? '',
-        role: (values.role ?? 'teacher') as Role,
-        schoolId: values.schoolId ? values.schoolId : null,
-      };
       if (editing === 'new') {
-        await createUser.mutateAsync(changes);
+        const role = (values.role as Role | undefined) ?? 'teacher';
+        const fullName = (values.fullName ?? '').trim();
+        const schoolId = values.schoolId || undefined;
+        const account: NewUser =
+          role === 'student'
+            ? { role, fullName, studentId: (values.studentId ?? '').trim(), pin: values.pin ?? '', ...(schoolId ? { schoolId } : {}) }
+            : role === 'psychologist' || role === 'platform_admin'
+              ? { role, fullName, email: (values.email ?? '').trim(), password: values.password ?? '' }
+              : { role, fullName, email: (values.email ?? '').trim(), password: values.password ?? '', ...(schoolId ? { schoolId } : {}) };
+        await createUser.mutateAsync(account);
       } else if (editing) {
-        await updateUser.mutateAsync({ userId: editing.id, changes });
+        const changes: UserChanges = {};
+        if (values.fullName?.trim() !== editing.fullName) changes.fullName = values.fullName?.trim();
+        if (editing.role === 'student') {
+          if (values.studentId?.trim().toUpperCase() !== editing.studentId) changes.studentId = values.studentId?.trim();
+        } else if (values.email?.trim().toLowerCase() !== editing.email) {
+          changes.email = values.email?.trim();
+        }
+        if (Object.keys(changes).length > 0) await updateUser.mutateAsync({ userId: editing.id, changes });
       }
       setEditing(null);
-    } catch {
-      setError('We could not save that account. The email address may already be in use.');
+    } catch (caught) {
+      setError(saveErrorMessage(caught, 'We could not save that account. Try again.'));
+    }
+  };
+
+  const toggleActive = async (person: User) => {
+    setRowError(undefined);
+    try {
+      if (person.isActive) await deactivateUser.mutateAsync(person.id);
+      else await reactivateUser.mutateAsync(person.id);
+    } catch (caught) {
+      setRowError(saveErrorMessage(caught, `We could not change ${person.fullName}’s account. Try again.`));
     }
   };
 
@@ -84,19 +156,16 @@ export function ManageUsersScreen() {
     {
       id: 'name',
       header: 'Name',
-      sortValue: (person) => person.name,
+      sortValue: (person) => person.fullName,
       cell: (person) => (
         <span className="flex items-center gap-3">
-          <Avatar name={person.name} size="sm" />
-          <span className="font-bold text-ink">{person.name}</span>
+          <Avatar name={person.fullName} size="sm" />
+          <span className="min-w-0">
+            <span className="block font-bold text-ink">{person.fullName}</span>
+            <span className="block text-xs text-ink-muted">{person.email ?? `Student ID ${person.studentId}`}</span>
+          </span>
         </span>
       ),
-    },
-    {
-      id: 'email',
-      header: 'Email address',
-      sortValue: (person) => person.email,
-      cell: (person) => <span className="text-ink-muted">{person.email}</span>,
     },
     {
       id: 'role',
@@ -110,7 +179,14 @@ export function ManageUsersScreen() {
       isSecondary: true,
       sortValue: (person) => (person.schoolId ? (schoolNameById.get(person.schoolId) ?? '') : ''),
       cell: (person) =>
-        person.schoolId ? (schoolNameById.get(person.schoolId) ?? 'Unknown') : 'Platform',
+        person.schoolId ? (schoolNameById.get(person.schoolId) ?? 'Unknown') : <span className="text-ink-faint">Every school</span>,
+    },
+    {
+      id: 'status',
+      header: 'Account',
+      align: 'right',
+      sortValue: (person) => Number(person.isActive),
+      cell: (person) => <AccountStatusBadge user={person} />,
     },
   ];
 
@@ -127,28 +203,10 @@ export function ManageUsersScreen() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatTile icon={Contact} label="Accounts" value={everyone.length} detail="Across every role" />
-        <StatTile
-          icon={Presentation}
-          tone="lilac"
-          label="School staff"
-          value={staffCount}
-          detail="Teachers, psychologists and admins"
-        />
-        <StatTile
-          icon={HeartHandshake}
-          tone="jade"
-          label="Families"
-          value={familyCount}
-          detail="Parents and students"
-        />
-        <StatTile
-          icon={School}
-          tone="honey"
-          label="Schools"
-          value={(schools.data ?? []).length}
-          detail="Accounts can belong to one"
-        />
+        <StatTile icon={Contact} label="Accounts" value={counts.all ?? '–'} detail="Across every role" />
+        <StatTile icon={Presentation} tone="lilac" label="School staff" value={staffCount} detail="Teachers, psychologists and admins" />
+        <StatTile icon={HeartHandshake} tone="jade" label="Families" value={familyCount} detail="Parents and students" />
+        <StatTile icon={School} tone="honey" label="Schools" value={(schools.data ?? []).length} detail="Accounts belong to one" />
       </div>
 
       <SegmentedControl
@@ -156,63 +214,61 @@ export function ManageUsersScreen() {
         value={roleFilter}
         onChange={setRoleFilter}
         options={[
-          { value: 'all' as const, label: 'Everyone', count: (allUsers.data ?? []).length },
-          ...ALL_ROLES.map((role) => ({
-            value: role,
-            label: ROLE_LABELS[role],
-            count: (allUsers.data ?? []).filter((person) => person.role === role).length,
-          })),
+          { value: 'all' as const, label: 'Everyone', count: counts.all ?? 0 },
+          ...ALL_ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role], count: counts[role] ?? 0 })),
         ]}
       />
 
-      {error ? <ErrorState title="That did not save" description={error} /> : null}
+      {rowError ? <ErrorState title="That did not save" description={rowError} /> : null}
 
       <RecordsTable
         caption="All accounts"
         rows={users.data ?? []}
         columns={columns}
         getRowId={(person) => person.id}
-        searchableText={(person) => `${person.name} ${person.email}`}
-        searchPlaceholder="Search by name or email"
+        searchableText={(person) => `${person.fullName} ${person.email ?? ''} ${person.studentId ?? ''}`}
+        searchPlaceholder="Search by name, email or student ID"
         isLoading={users.isLoading}
         onRowClick={(person) => setEditing(person)}
-        rowActions={(person) => (
-          <Button
-            variant="danger-quiet"
-            size="sm"
-            onClick={() => void deleteUser.mutateAsync(person.id)}
-          >
-            Remove
-          </Button>
-        )}
+        rowActions={(person) =>
+          person.id === me?.id ? (
+            <span className="text-xs text-ink-faint">You</span>
+          ) : (
+            <Button
+              variant={person.isActive ? 'danger-quiet' : 'quiet'}
+              size="sm"
+              onClick={() => void toggleActive(person)}
+            >
+              {person.isActive ? 'Switch off' : 'Switch on'}
+            </Button>
+          )
+        }
         emptyTitle="No accounts in this filter"
         emptyDescription="Switch roles, or add a new account."
       />
 
       <RecordEditor
         isOpen={editing !== null}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setError(undefined);
+        }}
         title={editing === 'new' ? 'Add an account' : 'Edit account'}
+        {...(editing === 'new'
+          ? { description: 'Students sign in with a student ID and PIN; everyone else with an email and password.' }
+          : {})}
         saveLabel={editing === 'new' ? 'Create account' : 'Save changes'}
         isSaving={createUser.isPending || updateUser.isPending}
-        fields={[
-          { name: 'name', label: 'Full name', isRequired: true },
-          { name: 'email', label: 'Email address', type: 'email', isRequired: true },
-          {
-            name: 'role',
-            label: 'Role',
-            type: 'select',
-            options: ALL_ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] })),
-          },
-          { name: 'schoolId', label: 'School', type: 'select', options: schoolOptions },
-        ]}
+        fields={editing === 'new' || editing === null ? newAccountFields : editFields(editing)}
+        {...(editing === 'new' ? { initialValues: { role: 'teacher' } } : {})}
         {...(editing && editing !== 'new'
           ? {
               initialValues: {
-                name: editing.name,
-                email: editing.email,
-                role: editing.role,
-                schoolId: editing.schoolId ?? '',
+                fullName: editing.fullName,
+                email: editing.email ?? '',
+                studentId: editing.studentId ?? '',
+                role: ROLE_LABELS[editing.role],
+                school: editing.schoolId ? (schoolNameById.get(editing.schoolId) ?? '') : '',
               },
             }
           : {})}

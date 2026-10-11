@@ -1,16 +1,21 @@
 import react from '@vitejs/plugin-react';
+import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { apiProxy } from '@evolveiq/config/vite-api-proxy';
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
   // One .env at the repo root configures all three apps.
-  envDir: '../../',
-  server: { port: 5173 },
-  preview: { port: 5173 },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
-    css: false,
-  },
+  const env = loadEnv(mode, '../../', '');
+  return {
+    plugins: [react()],
+    envDir: '../../',
+    server: { port: 5173, proxy: apiProxy(env) },
+    preview: { port: 5173, proxy: apiProxy(env) },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./vitest.setup.ts'],
+      css: false,
+    },
+  };
 });

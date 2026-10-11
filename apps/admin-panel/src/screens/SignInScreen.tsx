@@ -1,26 +1,9 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ROLE_HOME_PATH, useAuth } from '@evolveiq/auth';
+import { DEMO_PASSWORD } from '@evolveiq/api-client';
+import { useSignInForApp } from '@evolveiq/auth';
 import { SignInLayout } from '@evolveiq/domain';
 
 export function SignInScreen() {
-  const { signIn } = useAuth();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string>();
-  const [isSigningIn, setIsSigningIn] = useState(false);
-
-  const handleSignIn = async (email: string) => {
-    setIsSigningIn(true);
-    setError(undefined);
-    try {
-      const user = await signIn(email);
-      navigate(ROLE_HOME_PATH[user.role], { replace: true });
-    } catch {
-      setError('We could not find an account with that email address.');
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
+  const { signInToApp, error, isSigningIn } = useSignInForApp('admin');
 
   return (
     <SignInLayout
@@ -28,13 +11,13 @@ export function SignInScreen() {
       audienceLine="For school administrators and the platform team."
       showcase={{
         body: 'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
-        attribution: 'Ritu Kapoor, class 5C, 17 September',
+        attribution: 'Ritu Kapoor, class 5C',
       }}
       demoAccounts={[
-        { label: 'Clara Fernandes, school admin', email: 'clara@school.test' },
-        { label: 'Tunde Oyelaran, platform admin', email: 'tunde@evolveiq.test' },
+        { label: 'Clara Fernandes, school admin', credentials: { email: 'clara@school.test', password: DEMO_PASSWORD } },
+        { label: 'Tunde Oyelaran, platform admin', credentials: { email: 'tunde@evolveiq.test', password: DEMO_PASSWORD } },
       ]}
-      onSignIn={handleSignIn}
+      onSignIn={signInToApp}
       isSigningIn={isSigningIn}
       {...(error ? { error } : {})}
     />

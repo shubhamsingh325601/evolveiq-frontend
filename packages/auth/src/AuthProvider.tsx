@@ -1,51 +1,42 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  ENDPOINTS,
-  request,
-  setAuthTokenProvider,
-  setMockCurrentUser,
+  refreshRequest,
+  setSessionBridge,
+  signInRequest,
+  signOutRequest,
   useClearCachedData,
-  type User,
+  type Credentials,
+  type SessionUser,
 } from '@evolveiq/api-client';
 import { AuthContext, type AuthState } from './auth-context';
+import { createSessionStore, SESSION_STORAGE_KEY } from './session-store';
 
-const SESSION_STORAGE_KEY = 'evolveiq.session';
-
-interface StoredSession {
-  token: string;
-  user: User;
-}
-
-function readStoredSession(): StoredSession | null {
+function browserStorage(): Storage | null {
   try {
-    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as StoredSession) : null;
+    return window.localStorage;
   } catch {
     return null;
   }
 }
 
-function writeStoredSession(session: StoredSession | null): void {
-  try {
-    if (session) {
-      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-    } else {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    }
-  } catch {
-    // A blocked storage API must not stop someone signing in for this session.
-  }
+/** One renewal at a time across every tab, where the browser supports the Web Locks API. */
+async function acrossTabs<T>(task: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
+  if (!locks) return task();
+  // The lock is held until the task settles, and its promise settles with the task's result.
+  return await locks.request('evolveiq.session.refresh', task);
 }
 
-let activeToken: string | null = null;
-setAuthTokenProvider(() => activeToken);
+const store = createSessionStore({ storage: browserStorage(), refresh: refreshRequest, lock: acrossTabs });
+
+setSessionBridge({ accessToken: store.accessToken, refresh: store.renew });
 
 export interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
   // Cached responses belong to whoever loaded them. Without this, someone
   // signing in straight after someone else could be shown the first person's
@@ -53,31 +44,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const clearCachedData = useClearCachedData();
 
   useEffect(() => {
-    const stored = readStoredSession();
-    if (stored) {
-      activeToken = stored.token;
-      setMockCurrentUser(stored.user.id);
-      setUser(stored.user);
-    }
+    const stored = store.restore();
+    if (stored) setUser(stored.user);
     setIsRestoring(false);
   }, []);
 
-  const signIn = useCallback(async (email: string) => {
-    const session = await request<StoredSession>('POST', ENDPOINTS.session.login, {
-      body: { email },
+  useEffect(() => {
+    // The server ended the session (a renewal was refused), or another tab signed out.
+    store.onEnded(() => {
+      clearCachedData();
+      setUser(null);
     });
-    clearCachedData();
-    activeToken = session.token;
-    writeStoredSession(session);
-    setUser(session.user);
-    return session.user;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === SESSION_STORAGE_KEY) store.syncFromStorage();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      store.onEnded(() => {});
+      window.removeEventListener('storage', onStorage);
+    };
   }, [clearCachedData]);
 
+  const signIn = useCallback(
+    async (credentials: Credentials) => {
+      const result = await signInRequest(credentials);
+      clearCachedData();
+      store.start({ accessToken: result.accessToken, refreshToken: result.refreshToken, user: result.user });
+      setUser(result.user);
+      return result.user;
+    },
+    [clearCachedData],
+  );
+
   const signOut = useCallback(() => {
+    const ending = store.current();
+    // Tell the server so this session's refresh token stops working, without
+    // making the person wait for the answer. The request reads the access
+    // token before the session is cleared below.
+    if (ending) void signOutRequest(ending.refreshToken).catch(() => undefined);
     clearCachedData();
-    activeToken = null;
-    writeStoredSession(null);
-    setMockCurrentUser(null);
+    store.clear();
     setUser(null);
   }, [clearCachedData]);
 

@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ROLE_HOME_PATH, RoleGuard, useAuth } from '@evolveiq/auth';
+import { ROLE_APP, ROLE_HOME_PATH, RoleGuard, useAuth } from '@evolveiq/auth';
 import { AppFrame } from './AppFrame';
 import { SignInScreen } from './screens/SignInScreen';
 import { ManageStudentsScreen } from './screens/school/ManageStudentsScreen';
@@ -17,7 +17,7 @@ export function App() {
     <Routes>
       <Route path="/sign-in" element={<SignInScreen />} />
 
-      <Route element={<RoleGuard allow={['school-admin']} />}>
+      <Route element={<RoleGuard allow={['school_admin']} />}>
         <Route element={<AppFrame />}>
           <Route path="/school/students" element={<ManageStudentsScreen />} />
           <Route path="/school/teachers" element={<ManageTeachersScreen />} />
@@ -26,7 +26,7 @@ export function App() {
         </Route>
       </Route>
 
-      <Route element={<RoleGuard allow={['platform-admin']} />}>
+      <Route element={<RoleGuard allow={['platform_admin']} />}>
         <Route element={<AppFrame />}>
           <Route path="/platform/schools" element={<ManageSchoolsScreen />} />
           <Route path="/platform/users" element={<ManageUsersScreen />} />
@@ -37,7 +37,8 @@ export function App() {
         path="*"
         element={
           isRestoring ? null : (
-            <Navigate to={user ? ROLE_HOME_PATH[user.role] : '/sign-in'} replace />
+            // Someone signed in for another app has no home here: back to sign-in, not a redirect loop.
+            <Navigate to={user && ROLE_APP[user.role] === 'admin' ? ROLE_HOME_PATH[user.role] : '/sign-in'} replace />
           )
         }
       />

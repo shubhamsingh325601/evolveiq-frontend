@@ -1,11 +1,9 @@
 import { Outlet } from 'react-router-dom';
 import {
-  useActivities,
-  useActivityQueue,
-  useHolisticIndexes,
+  useChildren,
+  useChildrenAssignments,
+  useMyAssignments,
   useStudentLevel,
-  useStudents,
-  useTeacherNotesForStudents,
 } from '@evolveiq/api-client';
 import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
 import { AppLayout } from '@evolveiq/domain';
@@ -17,19 +15,19 @@ import { familyNotifications } from './family-notifications';
 /** Wraps every signed-in route in the shared sidebar layout. */
 export function AppFrame() {
   const { user, signOut } = useAuth();
-  const students = useStudents();
   const isParent = user?.role === 'parent';
-  const childIds = isParent ? (students.data ?? []).map((student) => student.id) : [];
-  const indexes = useHolisticIndexes(childIds);
-  const notes = useTeacherNotesForStudents(childIds);
-  const assignments = useActivityQueue();
-  const activities = useActivities();
-  const level = useStudentLevel(user?.role === 'student' ? user.linkedStudentIds[0] : undefined);
+  const isStudent = user?.role === 'student';
+
+  const children = useChildren({ isEnabled: isParent });
+  const childList = children.data ?? [];
+  const assignmentsByChild = useChildrenAssignments(childList.map((child) => child.id));
+  const missions = useMyAssignments({ isEnabled: isStudent });
+  const level = useStudentLevel({ isEnabled: isStudent });
 
   if (!user) return null;
 
   const contextCard = isParent ? (
-    <ChildrenSidebarCard students={students.data ?? []} indexes={indexes.byStudentId} />
+    <ChildrenSidebarCard students={childList} assignmentsByChild={assignmentsByChild} />
   ) : level.data ? (
     <LevelSidebarCard level={level.data} />
   ) : null;
@@ -39,16 +37,15 @@ export function AppFrame() {
       appName="EvolvIQ"
       roleLabel={ROLE_LABELS[user.role]}
       sections={menuForRole(user.role)}
-      userName={user.name}
+      userName={user.fullName}
       onSignOut={signOut}
       contextCard={contextCard}
       notificationsKey={user.id}
       notifications={familyNotifications({
         user,
-        students: students.data ?? [],
-        notes,
-        assignments: assignments.data ?? [],
-        activities: activities.data ?? [],
+        missions: missions.data ?? [],
+        children: childList,
+        assignmentsByChild,
       })}
     >
       <Outlet />

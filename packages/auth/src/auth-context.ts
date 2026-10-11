@@ -1,11 +1,12 @@
 import { createContext } from 'react';
-import type { Role, User } from '@evolveiq/api-client';
+import type { Credentials, Role, SessionUser } from '@evolveiq/api-client';
 
 export interface AuthState {
-  user: User | null;
+  user: SessionUser | null;
   role: Role | undefined;
   isRestoring: boolean;
-  signIn: (email: string) => Promise<User>;
+  /** Adults: email and password. Students: student ID and PIN. */
+  signIn: (credentials: Credentials) => Promise<SessionUser>;
   signOut: () => void;
 }
 

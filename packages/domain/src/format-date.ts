@@ -31,21 +31,17 @@ export function formatRelativeDay(isoDate: string): string {
   return formatDay(isoDate);
 }
 
+/** The same, to finish a sentence: "Finished today", "Set 3 days ago", "Set on 12 September". */
+export function relativeDayPhrase(isoDate: string): string {
+  const day = formatRelativeDay(isoDate);
+  if (day === 'Today' || day === 'Yesterday') return day.toLowerCase();
+  return day.endsWith(' ago') ? day : `on ${day}`;
+}
+
 /** "Good morning" until noon, "Good afternoon" until six, then "Good evening". */
 export function greetingFor(date: Date = new Date()): string {
   const hour = date.getHours();
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
-}
-
-export function ageFromDateOfBirth(dateOfBirth: string): number {
-  const birth = new Date(dateOfBirth);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const hasHadBirthday =
-    now.getMonth() > birth.getMonth() ||
-    (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
-  if (!hasHadBirthday) age -= 1;
-  return age;
 }

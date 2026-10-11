@@ -1,63 +1,75 @@
 import { describe, expect, it } from 'vitest';
-import { canSeeClinicalDetail, redactObservationForRole } from './redaction';
-import type { Observation } from './types';
+import { canSeeClinicalDetail, toFamilyAssignment, toParentObservation } from './redaction';
+import type { FamilyAssignment, ParentObservation, TeacherObservation } from './types';
 
-const FULL_OBSERVATION: Observation = {
+// A teacher's observation, with every clinical field set: what a parent must never receive.
+const CLINICAL: TeacherObservation & Record<string, unknown> = {
   id: 'obs-001',
   studentId: 'stu-maya',
-  authorId: 'usr-rao',
-  authorName: 'Sunita Rao',
-  authorRole: 'teacher',
-  area: 'focus-and-attention',
-  body: 'Stayed with the tangram puzzle for almost ten minutes without being prompted.',
-  context: 'in-class',
-  frequency: 'occasionally',
-  observedAt: '2026-09-18T10:15:00.000Z',
-  createdAt: '2026-09-18T11:02:00.000Z',
+  area: 'learning',
+  description: 'Stayed with the tangram puzzle for almost ten minutes without being prompted.',
+  when: 'this_week',
+  howOften: 'sometimes',
   status: 'reviewed',
-  isSignificant: true,
-  level: 4,
-  learningBehaviourArea: 'persistence',
+  createdAt: '2026-09-18T11:02:00.000Z',
+  level: 'significant',
+  learningBehaviourArea: 'attention',
+  teacherOnlyNote: 'CLINICAL-NOTE',
   reviewedAt: '2026-09-19T08:30:00.000Z',
-  reviewedById: 'usr-mehta',
-  taggedAreas: ['focus-and-attention'],
-  teacherOnlyNote: 'Repeat the same task next week to see whether the duration holds.',
+  developmentArea: 'focus_attention',
+  reviewedBy: { id: 'usr-mehta', fullName: 'REVIEWER-NAME' },
 };
 
-describe('parent and student visibility', () => {
-  it.each(['parent', 'student'] as const)(
-    'strips every clinical field before a %s sees an observation',
-    (role) => {
-      const redacted = redactObservationForRole(FULL_OBSERVATION, role);
+describe('what a parent can receive', () => {
+  it('keeps exactly the parent fields of an observation, whatever else arrives', () => {
+    const safe = toParentObservation(CLINICAL as unknown as ParentObservation);
 
-      expect(redacted).not.toHaveProperty('level');
-      expect(redacted).not.toHaveProperty('learningBehaviourArea');
-      expect(redacted).not.toHaveProperty('teacherOnlyNote');
-      expect(redacted).not.toHaveProperty('taggedAreas');
-      expect(redacted).not.toHaveProperty('reviewedById');
-      expect(redacted.isSignificant).toBe(false);
-    },
-  );
-
-  it('keeps the words the observer actually wrote', () => {
-    const redacted = redactObservationForRole(FULL_OBSERVATION, 'parent');
-
-    expect(redacted.body).toBe(FULL_OBSERVATION.body);
-    expect(redacted.authorName).toBe('Sunita Rao');
-    expect(redacted.area).toBe('focus-and-attention');
-    expect(redacted.status).toBe('reviewed');
+    expect(Object.keys(safe).sort()).toEqual(
+      ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'when'],
+    );
+    const raw = JSON.stringify(safe);
+    for (const secret of ['significant', 'attention', 'CLINICAL-NOTE', 'REVIEWER-NAME', 'focus_attention']) {
+      expect(raw, secret).not.toContain(secret);
+    }
   });
 
-  it.each(['teacher', 'psychologist', 'school-admin', 'platform-admin'] as const)(
-    'leaves the observation intact for a %s',
-    (role) => {
-      expect(redactObservationForRole(FULL_OBSERVATION, role)).toEqual(FULL_OBSERVATION);
-      expect(canSeeClinicalDetail(role)).toBe(true);
-    },
-  );
+  it('keeps the words the parent actually wrote, and the status', () => {
+    const safe = toParentObservation(CLINICAL as unknown as ParentObservation);
 
-  it('reports that parents and students cannot see clinical detail', () => {
-    expect(canSeeClinicalDetail('parent')).toBe(false);
-    expect(canSeeClinicalDetail('student')).toBe(false);
+    expect(safe.description).toBe(CLINICAL.description);
+    expect(safe.status).toBe('reviewed');
+  });
+
+  it('keeps a child’s activity to its title, done flag and dates — never the answer', () => {
+    const fromApi = {
+      id: 'asg-1',
+      title: 'Tell me about your day',
+      isDone: true,
+      assignedAt: '2026-10-01T08:00:00.000Z',
+      completedAt: '2026-10-02T10:00:00.000Z',
+      answer: { type: 'text', text: 'PRIVATE-ANSWER' },
+      source: 'recommended',
+      assignedBy: { id: 'usr-mehta', fullName: 'Dr. Anand Mehta' },
+    } as unknown as FamilyAssignment;
+
+    const safe = toFamilyAssignment(fromApi);
+
+    expect(safe).toEqual({
+      id: 'asg-1',
+      title: 'Tell me about your day',
+      isDone: true,
+      assignedAt: '2026-10-01T08:00:00.000Z',
+      completedAt: '2026-10-02T10:00:00.000Z',
+    });
+  });
+});
+
+describe('who may see clinical detail', () => {
+  it.each(['parent', 'student'] as const)('a %s never does', (role) => {
+    expect(canSeeClinicalDetail(role)).toBe(false);
+  });
+
+  it.each(['teacher', 'psychologist', 'school_admin', 'platform_admin'] as const)('a %s does', (role) => {
+    expect(canSeeClinicalDetail(role)).toBe(true);
   });
 });

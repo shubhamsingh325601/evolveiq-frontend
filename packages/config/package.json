@@ -6,12 +6,18 @@
   "exports": {
     "./tailwind-preset": "./tailwind-preset.js",
     "./eslint-preset": "./eslint-preset.js",
-    "./tsconfig.base.json": "./tsconfig.base.json"
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./vite-api-proxy": {
+      "types": "./vite-api-proxy.d.ts",
+      "default": "./vite-api-proxy.js"
+    }
   },
   "files": [
     "tailwind-preset.js",
     "eslint-preset.js",
-    "tsconfig.base.json"
+    "tsconfig.base.json",
+    "vite-api-proxy.js",
+    "vite-api-proxy.d.ts"
   ],
   "dependencies": {
     "@eslint/js": "^9.14.0",

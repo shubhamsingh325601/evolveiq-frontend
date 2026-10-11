@@ -1,41 +1,25 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ROLE_HOME_PATH, useAuth } from '@evolveiq/auth';
+import { DEMO_PASSWORD, DEMO_PIN } from '@evolveiq/api-client';
+import { useSignInForApp } from '@evolveiq/auth';
 import { SignInLayout } from '@evolveiq/domain';
 
 export function SignInScreen() {
-  const { signIn } = useAuth();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string>();
-  const [isSigningIn, setIsSigningIn] = useState(false);
-
-  const handleSignIn = async (email: string) => {
-    setIsSigningIn(true);
-    setError(undefined);
-    try {
-      const user = await signIn(email);
-      navigate(ROLE_HOME_PATH[user.role], { replace: true });
-    } catch {
-      setError('We could not find an account with that email address.');
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
+  const { signInToApp, error, isSigningIn } = useSignInForApp('family');
 
   return (
     <SignInLayout
       appName="EvolvIQ"
       audienceLine="For parents and their children."
+      allowsStudents
       showcase={{
         body: 'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
-        attribution: 'Sunita Rao, her teacher, 18 September',
+        attribution: 'Sunita Rao, her teacher',
       }}
       demoAccounts={[
-        { label: 'Priya Ahluwalia, parent of two', email: 'priya@family.test' },
-        { label: 'Maya Ahluwalia, student', email: 'maya@family.test' },
-        { label: 'Neil D\u2019Souza, parent', email: 'neil@family.test' },
+        { label: 'Priya Ahluwalia, parent of two', credentials: { email: 'priya@family.test', password: DEMO_PASSWORD } },
+        { label: 'Maya Ahluwalia, student', credentials: { studentId: 'RV-1001', pin: DEMO_PIN } },
+        { label: 'Neil D’Souza, parent', credentials: { email: 'neil@family.test', password: DEMO_PASSWORD } },
       ]}
-      onSignIn={handleSignIn}
+      onSignIn={signInToApp}
       isSigningIn={isSigningIn}
       {...(error ? { error } : {})}
     />

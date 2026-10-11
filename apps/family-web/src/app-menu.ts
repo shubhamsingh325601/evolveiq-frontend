@@ -1,6 +1,6 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { FileText, House, NotebookPen, Plus, Sprout } from '@evolveiq/ui';
+import { House, NotebookPen, Plus, Sprout } from '@evolveiq/ui';
 
 /**
  * The family app's menu, by role. `AppSidebar` and `AppBottomNav` are shared
@@ -13,7 +13,6 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
         title: 'Learning',
         items: [
           { label: 'Home', to: '/student/today', icon: House },
-          { label: 'My report', shortLabel: 'Report', to: '/student/report', icon: FileText },
           { label: 'My progress', shortLabel: 'Progress', to: '/student/progress', icon: Sprout },
         ],
       },

@@ -1,67 +1,40 @@
-import { Link } from 'react-router-dom';
-import {
-  useActivities,
-  useActivityQueue,
-  useHolisticIndex,
-  useStreak,
-  useStudentLevel,
-} from '@evolveiq/api-client';
+import { useGrowthAreas, useMyAssignments, useStreak, useStudentLevel, XP_PER_ACTIVITY } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
-import {
-  firstNameOf,
-  ReportOverviewCard,
-  SkillProfileCard,
-  yearsTracked,
-} from '@evolveiq/domain';
-import {
-  ChevronRight,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  SectionTitle,
-  Sun,
-  Target,
-} from '@evolveiq/ui';
-import {
-  AssignmentChecklist,
-  type AssignmentChecklistItem,
-} from '../../components/AssignmentChecklist';
+import { ACTIVITY_TYPE_LABELS, firstNameOf, GrowthAreaList, relativeDayPhrase } from '@evolveiq/domain';
+import { EmptyState, ErrorState, LoadingState, SectionTitle, Sprout, Sun, Target } from '@evolveiq/ui';
+import { AssignmentChecklist, type ChecklistItem } from '../../components/AssignmentChecklist';
 import { LevelProgress } from '../../components/LevelProgress';
 import { StreakFlame } from '../../components/StreakFlame';
 
 /**
  * The student's home: a personal growth companion. A student sees only their
- * own work and their own report; the api-client scopes every query to them.
+ * own work; every request here is answered for them alone.
  */
 export function TodayScreen() {
   const { user } = useAuth();
-  const studentId = user?.linkedStudentIds[0];
+  const missions = useMyAssignments();
+  const streak = useStreak(user?.id);
+  const level = useStudentLevel();
+  const growthAreas = useGrowthAreas(user?.id);
 
-  const assignments = useActivityQueue(studentId ? { studentId } : {});
-  const activities = useActivities();
-  const streak = useStreak(studentId);
-  const level = useStudentLevel(studentId);
-  const holisticIndex = useHolisticIndex(studentId);
+  if (missions.isLoading) return <LoadingState label="Getting your missions" />;
+  if (missions.isError) return <ErrorState onRetry={() => void missions.refetch()} />;
 
-  if (assignments.isLoading || activities.isLoading) {
-    return <LoadingState label="Getting your missions" />;
-  }
-  if (assignments.isError || activities.isError) {
-    return <ErrorState onRetry={() => void assignments.refetch()} />;
-  }
-
-  const activityById = new Map((activities.data ?? []).map((activity) => [activity.id, activity]));
-  const missions: AssignmentChecklistItem[] = (assignments.data ?? [])
-    .flatMap((assignment) => {
-      const activity = activityById.get(assignment.activityId);
-      return activity ? [{ assignment, activity }] : [];
-    })
-    .sort(
-      (a, b) =>
-        Number(a.assignment.status === 'completed') - Number(b.assignment.status === 'completed'),
-    );
-  const index = holisticIndex.data;
-  const firstName = user ? firstNameOf(user.name) : 'there';
+  // Still to do first; within each, the newest first (the order they arrive in).
+  const items: ChecklistItem[] = [...(missions.data ?? [])]
+    .sort((a, b) => Number(a.isDone) - Number(b.isDone))
+    .map((mission) => ({
+      id: mission.id,
+      title: mission.activity.title,
+      isDone: mission.isDone,
+      detail: mission.completion
+        ? `Finished ${relativeDayPhrase(mission.completion.completedAt)}`
+        : ACTIVITY_TYPE_LABELS[mission.activity.content.type],
+      href: `/student/activities/${mission.id}`,
+      xp: XP_PER_ACTIVITY,
+    }));
+  const firstName = user ? firstNameOf(user.fullName) : 'there';
+  const areas = growthAreas.data ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,61 +47,43 @@ export function TodayScreen() {
             </p>
           ) : null}
         </div>
-        {streak.data ? <StreakFlame streak={streak.data} /> : null}
+        {streak.data ? <StreakFlame days={streak.data.days} /> : null}
       </header>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        {index ? (
-          <ReportOverviewCard
-            className="lg:col-span-7"
-            strengths={index.strengths}
-            yearsTracked={yearsTracked(index)}
-            to="/student/report"
-          />
-        ) : null}
+        <div className="flex flex-col gap-6 lg:col-span-7">
+          {level.data ? <LevelProgress level={level.data} /> : null}
 
-        {level.data ? (
-          <div className="lg:col-span-7">
-            <LevelProgress level={level.data} />
-          </div>
-        ) : null}
+          <section>
+            <SectionTitle icon={Target} iconClassName="text-coral-500">
+              Daily missions
+            </SectionTitle>
+            {items.length === 0 ? (
+              <EmptyState
+                className="mt-4"
+                icon={Sun}
+                title="All done for now"
+                description="When your teacher sets something new, it will show up here."
+              />
+            ) : (
+              <AssignmentChecklist className="mt-4" variant="student" items={items} />
+            )}
+          </section>
+        </div>
 
-        {index ? (
-          <SkillProfileCard
-            className="lg:col-span-5 lg:col-start-8 lg:row-span-3 lg:row-start-1 lg:self-start"
-            title="My superpowers"
-            skills={index.skills}
-            hasAccentStrip
-            action={
-              <Link
-                to="/student/report"
-                className="inline-flex items-center gap-0.5 rounded-md text-[0.625rem] font-bold uppercase tracking-widest text-iris-600 hover:text-iris-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500"
-              >
-                Deep dive
-                <ChevronRight className="size-3" />
-              </Link>
-            }
-          />
-        ) : null}
-
-        <section className="lg:col-span-7">
-          <SectionTitle icon={Target} iconClassName="text-coral-500">
-            Daily missions
+        <section className="lg:col-span-5">
+          <SectionTitle icon={Sprout} iconClassName="text-jade-500">
+            What you are working on
           </SectionTitle>
-          {missions.length === 0 ? (
+          {areas.length === 0 && !growthAreas.isLoading ? (
             <EmptyState
               className="mt-4"
-              icon={Sun}
-              title="All done for now"
-              description="When your teacher sets something new, it will show up here."
+              icon={Sprout}
+              title="Nothing set yet"
+              description="When your school picks something to work on with you, it shows up here."
             />
           ) : (
-            <AssignmentChecklist
-              className="mt-4"
-              variant="student"
-              items={missions}
-              linkFor={(assignment) => `/student/activities/${assignment.id}`}
-            />
+            <GrowthAreaList className="mt-4" growthAreas={areas} />
           )}
         </section>
       </div>

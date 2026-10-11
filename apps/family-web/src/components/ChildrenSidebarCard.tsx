@@ -1,21 +1,20 @@
 import { NavLink } from 'react-router-dom';
-import type { HolisticIndex, Student } from '@evolveiq/api-client';
-import { changeSinceLastYear, firstNameOf, SidebarCard } from '@evolveiq/domain';
-import { ArrowUp, Avatar, cn } from '@evolveiq/ui';
+import type { FamilyAssignment, Person } from '@evolveiq/api-client';
+import { firstNameOf, SidebarCard } from '@evolveiq/domain';
+import { Avatar, cn } from '@evolveiq/ui';
 
 export interface ChildrenSidebarCardProps {
-  students: Student[];
-  indexes: Map<string, HolisticIndex>;
+  students: Person[];
+  assignmentsByChild: Map<string, FamilyAssignment[]>;
 }
 
-/** A parent's children on the rail, each with their EvolvIQ Holistic Index, one tap from their dashboard. */
-export function ChildrenSidebarCard({ students, indexes }: ChildrenSidebarCardProps) {
+/** A parent's children on the rail, each with what is still to do, one tap from their dashboard. */
+export function ChildrenSidebarCard({ students, assignmentsByChild }: ChildrenSidebarCardProps) {
   return (
     <SidebarCard title="Your children">
       <ul className="-mx-1.5 flex flex-col gap-1">
         {students.map((student) => {
-          const index = indexes.get(student.id);
-          const change = index ? changeSinceLastYear(index) : null;
+          const toDo = (assignmentsByChild.get(student.id) ?? []).filter((assignment) => !assignment.isDone).length;
           return (
             <li key={student.id}>
               <NavLink
@@ -28,17 +27,14 @@ export function ChildrenSidebarCard({ students, indexes }: ChildrenSidebarCardPr
                   )
                 }
               >
-                <Avatar name={student.name} size="sm" className="ring-night" />
+                <Avatar name={student.fullName} size="sm" className="ring-night" />
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
-                  {firstNameOf(student.name)}
+                  {firstNameOf(student.fullName)}
                 </span>
-                {index ? (
-                  <span className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-0.5 text-xs font-black tabular-nums text-jade-300">
-                    {change !== null && change > 0 ? (
-                      <ArrowUp aria-hidden="true" className="size-3" strokeWidth={3} />
-                    ) : null}
-                    {index.score}
-                    <span className="sr-only"> EvolvIQ Holistic Index</span>
+                {toDo > 0 ? (
+                  <span className="rounded-lg bg-white/10 px-2 py-0.5 text-xs font-black tabular-nums text-white">
+                    {toDo}
+                    <span className="sr-only"> {toDo === 1 ? 'activity' : 'activities'} to do</span>
                   </span>
                 ) : null}
               </NavLink>

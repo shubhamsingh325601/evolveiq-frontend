@@ -1,107 +1,284 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { businessMonth } from '../business-time';
 import { ENDPOINTS } from '../endpoints';
-import { request } from '../http-client';
-import type { Assignment, HolisticDimension, HolisticIndex, StudentLevel } from '../types';
-import { HOLISTIC_INDEXES } from './fixtures';
-import { resetMockStore, setMockCurrentUser } from './mock-transport';
+import type { HttpMethod } from '../http-client';
+import { DEMO_PASSWORD, DEMO_PIN, handleMockRequest, resetMockStore } from './mock-transport';
 
-const PILLAR_ORDER: HolisticDimension[] = ['education', 'skills', 'physical', 'wellbeing', 'character'];
+/**
+ * The mock stands in for evolveiq-backend in the demo and in every app test,
+ * so it has to keep the backend's rules. These check the ones screens rely on.
+ */
 
-describe('mock backend: levels and XP', () => {
-  beforeEach(() => {
-    resetMockStore();
+interface Call {
+  token?: string;
+  body?: unknown;
+  query?: Record<string, string | number | boolean | undefined>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function call(method: HttpMethod, path: string, { token, body, query }: Call = {}): Promise<{ status: number; body: any }> {
+  return handleMockRequest(method, path, {
+    query,
+    body,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}
+
+async function signIn(credentials: { email: string } | { studentId: string }) {
+  const body = 'email' in credentials ? { ...credentials, password: DEMO_PASSWORD } : { ...credentials, pin: DEMO_PIN };
+  const response = await call('POST', ENDPOINTS.auth.login, { body });
+  expect(response.status).toBe(200);
+  return response.body as { accessToken: string; refreshToken: string; user: { id: string; role: string } };
+}
+
+const tokenFor = async (email: string) => (await signIn({ email })).accessToken;
+
+describe('mock backend: signing in', () => {
+  beforeEach(() => resetMockStore());
+
+  it('signs adults in with an email and password, and students with their ID and PIN', async () => {
+    const parent = await signIn({ email: 'PRIYA@family.test' });
+    expect(parent.user).toEqual({ id: 'usr-priya', role: 'parent', fullName: 'Priya Ahluwalia', schoolId: 'sch-ridgeview' });
+
+    const student = await signIn({ studentId: 'rv-1001' });
+    expect(student.user).toMatchObject({ id: 'stu-maya', role: 'student' });
   });
 
-  it('awards an assignment’s XP once, and levels up at the threshold', async () => {
-    setMockCurrentUser('usr-maya');
-    const levelPath = ENDPOINTS.students.level('stu-maya');
-
-    expect(await request<StudentLevel>('GET', levelPath)).toMatchObject({
-      level: 4,
-      xp: 340,
-      xpForNextLevel: 400,
-    });
-
-    // "Sort the morning" is worth 60 XP, which takes Maya to exactly 400.
-    await request('POST', ENDPOINTS.assignments.complete('asg-001'), { body: { responses: [] } });
-    expect(await request<StudentLevel>('GET', levelPath)).toMatchObject({
-      level: 5,
-      title: 'Brave Builder',
-      xp: 400,
-      xpForNextLevel: 500,
-    });
-
-    // Doing it again is fine, but earns nothing more.
-    await request('POST', ENDPOINTS.assignments.complete('asg-001'), { body: { responses: [] } });
-    expect((await request<StudentLevel>('GET', levelPath)).xp).toBe(400);
+  it('gives one answer for an unknown account and a wrong secret', async () => {
+    for (const body of [
+      { email: 'nobody@family.test', password: DEMO_PASSWORD },
+      { email: 'priya@family.test', password: 'not-the-password' },
+      { studentId: 'RV-1001', pin: '000000' },
+    ]) {
+      const response = await call('POST', ENDPOINTS.auth.login, { body });
+      expect(response.status).toBe(401);
+      expect(response.body.error.code).toBe('INVALID_CREDENTIALS');
+    }
   });
 
-  it('starts a child with no history at level 1', async () => {
-    setMockCurrentUser('usr-rao');
-    expect(await request<StudentLevel>('GET', ENDPOINTS.students.level('stu-lila'))).toEqual({
-      studentId: 'stu-lila',
-      level: 1,
-      title: 'First Steps',
-      xp: 0,
-      xpForNextLevel: 100,
+  it('rotates refresh tokens: the spent one is refused, and logout ends the session', async () => {
+    const session = await signIn({ email: 'rao@school.test' });
+
+    const renewed = await call('POST', ENDPOINTS.auth.refresh, { body: { refreshToken: session.refreshToken } });
+    expect(renewed.status).toBe(200);
+    expect((await call('POST', ENDPOINTS.auth.refresh, { body: { refreshToken: session.refreshToken } })).status).toBe(401);
+
+    const logout = await call('POST', ENDPOINTS.auth.logout, {
+      token: renewed.body.accessToken,
+      body: { refreshToken: renewed.body.refreshToken },
     });
+    expect(logout.status).toBe(204);
+    expect((await call('POST', ENDPOINTS.auth.refresh, { body: { refreshToken: renewed.body.refreshToken } })).status).toBe(401);
   });
 
-  it('makes a longer activity worth more XP when it is assigned', async () => {
-    setMockCurrentUser('usr-rao');
-    const assignment = await request<Assignment>('POST', ENDPOINTS.assignments.create, {
-      body: { activityId: 'act-story', studentId: 'stu-maya' },
-    });
-    expect(assignment.xp).toBe(100);
+  it('refuses a deactivated account, even with a token issued before', async () => {
+    const teacher = await tokenFor('ritu@school.test');
+    const admin = await tokenFor('clara@school.test');
+
+    expect((await call('POST', ENDPOINTS.users.deactivate('usr-kapoor'), { token: admin })).status).toBe(200);
+
+    expect((await call('GET', ENDPOINTS.classes.list, { token: teacher })).status).toBe(401);
+    const again = await call('POST', ENDPOINTS.auth.login, { body: { email: 'ritu@school.test', password: DEMO_PASSWORD } });
+    expect(again.body.error.code).toBe('ACCOUNT_DISABLED');
   });
 });
 
-describe('mock backend: EvolvIQ Holistic Index', () => {
-  beforeEach(() => {
-    resetMockStore();
+describe('mock backend: who may call what', () => {
+  beforeEach(() => resetMockStore());
+
+  it('answers 401 without a token and 403 for a role outside the route', async () => {
+    expect((await call('GET', ENDPOINTS.observations.list)).status).toBe(401);
+
+    const parent = await tokenFor('priya@family.test');
+    const response = await call('GET', ENDPOINTS.observations.list, { token: parent });
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
   });
 
-  it('serves a parent their child’s EHI with no clinical field on it', async () => {
-    setMockCurrentUser('usr-priya');
-    const index = await request<HolisticIndex>(
-      'GET',
-      ENDPOINTS.students.holisticIndex('stu-maya'),
+  it('serves a parent only what they wrote, with no clinical field on it', async () => {
+    const parent = await tokenFor('priya@family.test');
+
+    const response = await call('GET', ENDPOINTS.family.observations, { token: parent, query: { limit: 100 } });
+
+    expect(response.body.observations.length).toBeGreaterThan(0);
+    for (const observation of response.body.observations) {
+      expect(Object.keys(observation).sort()).toEqual(
+        ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'when'],
+      );
+    }
+  });
+
+  it('keeps a teacher to the students of their own classes', async () => {
+    const teacher = await tokenFor('rao@school.test');
+    const observation = {
+      area: 'learning',
+      description: 'Finished the reading task early.',
+      when: 'today',
+      howOften: 'once',
+    };
+
+    const own = await call('POST', ENDPOINTS.observations.list, { token: teacher, body: { ...observation, studentId: 'stu-maya' } });
+    expect(own.status).toBe(201);
+
+    // Tara is in Ritu Kapoor's class, not Sunita Rao's.
+    const other = await call('POST', ENDPOINTS.observations.list, { token: teacher, body: { ...observation, studentId: 'stu-tara' } });
+    expect(other.status).toBe(422);
+    expect((await call('GET', ENDPOINTS.students.streak('stu-tara'), { token: teacher })).status).toBe(404);
+  });
+
+  it('refuses level and learning-behaviour area from a parent', async () => {
+    const parent = await tokenFor('priya@family.test');
+
+    const response = await call('POST', ENDPOINTS.family.observations, {
+      token: parent,
+      body: { studentId: 'stu-maya', area: 'social', description: 'Shared her lunch.', when: 'today', howOften: 'once', level: 'minor' },
+    });
+
+    expect(response.status).toBe(400);
+  });
+});
+
+describe('mock backend: review, assign, do, see', () => {
+  beforeEach(() => resetMockStore());
+
+  it('assigns the recommended activities and opens a growth area when an observation is reviewed', async () => {
+    const psychologist = await tokenFor('mehta@school.test');
+
+    const review = await call('POST', ENDPOINTS.observations.review('obs-birthday'), {
+      token: psychologist,
+      body: { outcome: 'assigned', developmentArea: 'social_skills', activityIds: ['act-story'] },
+    });
+    expect(review.status).toBe(200);
+    expect(review.body.observation.review).toMatchObject({ outcome: 'assigned', activityIds: ['act-story'] });
+
+    const assignments = await call('GET', ENDPOINTS.students.assignments('stu-maya'), { token: psychologist, query: { limit: 100 } });
+    expect(assignments.body.assignments).toContainEqual(
+      expect.objectContaining({ source: 'recommended', observationId: 'obs-birthday', activity: expect.objectContaining({ id: 'act-story' }) }),
     );
 
-    expect(Object.keys(index).sort()).toEqual([
-      'dimensions',
-      'history',
-      'playbook',
-      'score',
-      'skills',
-      'strengths',
-      'studentId',
-      'updatedAt',
-    ]);
-  });
+    const growth = await call('GET', ENDPOINTS.students.growthAreas('stu-maya'), { token: psychologist });
+    expect(growth.body.growthAreas[0]).toEqual({ name: 'Friendships & social skills' });
 
-  it('answers null for a child whose first EHI is not worked out yet', async () => {
-    setMockCurrentUser('usr-fernandes');
-    const newcomer = await request<{ id: string }>('POST', ENDPOINTS.students.list, {
-      body: { name: 'Rhea Kulkarni', classId: 'cls-4b' },
+    const again = await call('POST', ENDPOINTS.observations.review('obs-birthday'), {
+      token: psychologist,
+      body: { outcome: 'no_action' },
     });
-    expect(await request('GET', ENDPOINTS.students.holisticIndex(newcomer.id))).toBeNull();
+    expect(again.status).toBe(409);
   });
 
-  it.each(HOLISTIC_INDEXES.map((index) => [index.studentId, index] as const))(
-    'keeps %s’s EHI consistent with its pillars and its history',
-    (_studentId, index) => {
-      const mean =
-        index.dimensions.reduce((sum, pillar) => sum + pillar.score, 0) / index.dimensions.length;
-      expect(index.score).toBe(Math.round(mean));
+  it('needs a development area to close a Significant observation', async () => {
+    const psychologist = await tokenFor('mehta@school.test');
 
-      // The rings and their validated colours assume this order.
-      expect(index.dimensions.map((pillar) => pillar.dimension)).toEqual(PILLAR_ORDER);
+    const response = await call('POST', ENDPOINTS.observations.review('obs-fire-drill'), {
+      token: psychologist,
+      body: { outcome: 'no_action' },
+    });
 
-      const lastYear = index.history[index.history.length - 1];
-      expect(lastYear?.isCurrent).toBe(true);
-      expect(lastYear?.score).toBe(index.score);
-      expect(index.history.filter((year) => year.isCurrent)).toHaveLength(1);
-    },
-  );
+    expect(response.status).toBe(400);
+    expect(response.body.error.details).toEqual([{ field: 'developmentArea', message: 'is required for Significant observations' }]);
+  });
+
+  it('takes one answer per assignment, of the activity’s own type', async () => {
+    const student = (await signIn({ studentId: 'RV-1001' })).accessToken;
+
+    const wrongType = await call('POST', ENDPOINTS.activityCompletions.create, {
+      token: student,
+      body: { assignmentId: 'asg-maya-sorting', answer: { type: 'text', text: 'Wake up' } },
+    });
+    expect(wrongType.status).toBe(400);
+
+    const done = await call('POST', ENDPOINTS.activityCompletions.create, {
+      token: student,
+      body: { assignmentId: 'asg-maya-sorting', answer: { type: 'mcq', optionId: 'wake' } },
+    });
+    expect(done.status).toBe(201);
+
+    const twice = await call('POST', ENDPOINTS.activityCompletions.create, {
+      token: student,
+      body: { assignmentId: 'asg-maya-sorting', answer: { type: 'mcq', optionId: 'wake' } },
+    });
+    expect(twice.status).toBe(409);
+
+    const streak = await call('GET', ENDPOINTS.students.streak('stu-maya'), { token: student });
+    // Finished something the day before yesterday, yesterday and now today.
+    expect(streak.body.streak.days).toBe(3);
+  });
+
+  it('shows a parent their child’s activities as done or not, with dates and never the answer', async () => {
+    const parent = await tokenFor('priya@family.test');
+
+    const response = await call('GET', ENDPOINTS.family.childAssignments('stu-maya'), { token: parent, query: { limit: 100 } });
+
+    expect(response.status).toBe(200);
+    for (const assignment of response.body.assignments) {
+      expect(Object.keys(assignment).sort()).toEqual(['assignedAt', 'completedAt', 'id', 'isDone', 'title']);
+    }
+    expect((await call('GET', ENDPOINTS.family.childAssignments('stu-devan'), { token: parent })).status).toBe(404);
+  });
+
+  it('writes this month’s summary in plain language, live', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const month = businessMonth();
+
+    const response = await call('GET', ENDPOINTS.students.monthlySummary('stu-arjun', month), { token: parent });
+
+    expect(response.status).toBe(200);
+    expect(response.body.summary).toMatchObject({ studentId: 'stu-arjun', month, isFinal: false });
+    expect(response.body.summary.text).toContain('Arjun Ahluwalia');
+    expect(response.body.summary.text).toContain('Areas Arjun Ahluwalia is working on: Communication.');
+  });
+});
+
+describe('mock backend: administration', () => {
+  beforeEach(() => resetMockStore());
+
+  it('lets a school admin create a student with a PIN, who can then sign in', async () => {
+    const admin = await tokenFor('clara@school.test');
+
+    const created = await call('POST', ENDPOINTS.auth.register, {
+      token: admin,
+      body: { role: 'student', fullName: 'Rhea Kulkarni', studentId: 'RV-1099', pin: '135790' },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.user).toMatchObject({ role: 'student', schoolId: 'sch-ridgeview' });
+
+    const login = await call('POST', ENDPOINTS.auth.login, { body: { studentId: 'RV-1099', pin: '135790' } });
+    expect(login.status).toBe(200);
+
+    const duplicate = await call('POST', ENDPOINTS.auth.register, {
+      token: admin,
+      body: { role: 'student', fullName: 'Someone Else', studentId: 'rv-1099', pin: '135790' },
+    });
+    expect(duplicate.status).toBe(409);
+  });
+
+  it('keeps a student to one class: moving them means leaving the old class first', async () => {
+    const admin = await tokenFor('clara@school.test');
+
+    expect((await call('PUT', ENDPOINTS.classes.student('cls-3a', 'stu-maya'), { token: admin })).status).toBe(409);
+    expect((await call('DELETE', ENDPOINTS.classes.student('cls-4b', 'stu-maya'), { token: admin })).status).toBe(204);
+    expect((await call('PUT', ENDPOINTS.classes.student('cls-3a', 'stu-maya'), { token: admin })).status).toBe(204);
+  });
+
+  it('lets a psychologist list every school, and anyone else only see their own', async () => {
+    const psychologist = await tokenFor('mehta@school.test');
+    const teacher = await tokenFor('rao@school.test');
+
+    const list = await call('GET', ENDPOINTS.schools.list, { token: psychologist });
+    expect(list.body.schools.map((school: { name: string }) => school.name)).toEqual(['Halden Grove School', 'Ridgeview Primary']);
+
+    expect((await call('GET', ENDPOINTS.schools.list, { token: teacher })).status).toBe(403);
+    expect((await call('GET', ENDPOINTS.schools.detail('sch-ridgeview'), { token: teacher })).status).toBe(200);
+    expect((await call('GET', ENDPOINTS.schools.detail('sch-halden'), { token: teacher })).status).toBe(404);
+  });
+
+  it('pages every list the way the backend does', async () => {
+    const platform = await tokenFor('tunde@evolveiq.test');
+
+    const response = await call('GET', ENDPOINTS.users.list, { token: platform, query: { page: 2, limit: 5 } });
+
+    expect(response.body.users).toHaveLength(5);
+    expect(response.body.pagination).toMatchObject({ page: 2, limit: 5, hasPreviousPage: true });
+    expect(response.body.pagination.total).toBeGreaterThan(10);
+  });
 });

@@ -1,13 +1,11 @@
-import type { StreakInfo } from '@evolveiq/api-client';
 import { Flame } from '@evolveiq/ui';
 
 export interface StreakFlameProps {
-  streak: StreakInfo;
+  days: number;
 }
 
 /** The streak as a flame and a count, beside the student's greeting. */
-export function StreakFlame({ streak }: StreakFlameProps) {
-  const days = streak.currentStreak;
+export function StreakFlame({ days }: StreakFlameProps) {
   return (
     <p className="flex shrink-0 flex-col items-center rounded-2xl border border-flame-200 bg-flame-50 px-3 py-1.5 shadow-card">
       <Flame aria-hidden="true" className="size-5 fill-flame-500 text-flame-500" />

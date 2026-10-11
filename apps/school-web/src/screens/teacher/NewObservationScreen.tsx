@@ -1,29 +1,29 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useCreateObservation, useStudents, type NewObservation } from '@evolveiq/api-client';
+import { useClassRoster, useCreateTeacherObservation, type NewObservation } from '@evolveiq/api-client';
 import { BackLink, ObservationForm } from '@evolveiq/domain';
 import { Card, ErrorState, LoadingState, PageHeader } from '@evolveiq/ui';
 
 /** What happens to an observation after a teacher sends it, in order. */
 const NEXT_STEPS = [
-  'It joins the review queue straight away. Flagged ones go to the top.',
-  'A psychologist confirms the development area and decides what should happen.',
-  'If an activity is recommended, it is set for the student and you can follow it on their profile.',
+  'It joins the review queue straight away. Significant ones stand out at the top.',
+  'A psychologist reviews it, tags the development area and decides what should happen.',
+  'If activities are recommended they are set for the student, and any note for you shows on their profile.',
 ];
 
 /**
- * Same `ObservationForm` the parent app uses — `variant="teacher"` adds Level,
- * the learning-behaviour area and the significance flag.
+ * Same `ObservationForm` the parent app uses — `variant="teacher"` adds Level
+ * and the learning-behaviour area.
  */
 export function NewObservationScreen() {
-  const students = useStudents();
-  const createObservation = useCreateObservation();
+  const roster = useClassRoster();
+  const createObservation = useCreateTeacherObservation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [submitError, setSubmitError] = useState<string>();
 
-  if (students.isLoading) return <LoadingState label="Loading" />;
-  if (students.isError) return <ErrorState onRetry={() => void students.refetch()} />;
+  if (roster.isLoading) return <LoadingState label="Loading" />;
+  if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
 
   const defaultStudentId = searchParams.get('studentId') ?? undefined;
 
@@ -49,7 +49,7 @@ export function NewObservationScreen() {
         <Card isPlayful className="p-6 sm:p-8">
           <ObservationForm
             variant="teacher"
-            students={students.data ?? []}
+            students={roster.students}
             {...(defaultStudentId ? { defaultStudentId } : {})}
             onSubmit={handleSubmit}
             onCancel={() => navigate('/teacher/students')}

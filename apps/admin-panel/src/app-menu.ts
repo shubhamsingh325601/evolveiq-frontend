@@ -4,7 +4,7 @@ import { Backpack, Contact, HeartHandshake, LayoutGrid, Presentation, School } f
 
 /** The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`. */
 export function menuForRole(role: Role): SidebarMenuSection[] {
-  if (role === 'school-admin') {
+  if (role === 'school_admin') {
     return [
       {
         title: 'My school',
@@ -18,7 +18,7 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
     ];
   }
 
-  if (role === 'platform-admin') {
+  if (role === 'platform_admin') {
     return [
       {
         title: 'Platform',

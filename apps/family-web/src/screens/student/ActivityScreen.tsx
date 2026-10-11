@@ -1,43 +1,57 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  useActivity,
-  useActivityQueue,
+  businessDate,
+  isApiError,
+  lastSevenDays,
   useCompleteAssignment,
+  useMyAssignments,
   useStreak,
-  type ActivityResponse,
+  XP_PER_ACTIVITY,
+  type ActivityAnswer,
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
-import { ActivityPlayer, StreakIndicator } from '@evolveiq/domain';
-import { Button, Card, ErrorState, LoadingState, PageHeader, Sparkles, Star } from '@evolveiq/ui';
+import { ActivityPlayer, BackLink, describeAnswer, relativeDayPhrase, StreakIndicator } from '@evolveiq/domain';
+import { Button, Card, Check, ErrorState, LoadingState, PageHeader, Quote, Sparkles, Star } from '@evolveiq/ui';
 
 export function ActivityScreen() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const { user } = useAuth();
-  const studentId = user?.linkedStudentIds[0];
   const navigate = useNavigate();
-  const [isFinished, setIsFinished] = useState(false);
-
-  const queue = useActivityQueue(studentId ? { studentId } : {});
-  const assignment = (queue.data ?? []).find((candidate) => candidate.id === assignmentId);
-  const activity = useActivity(assignment?.activityId);
+  const missions = useMyAssignments();
   const completeAssignment = useCompleteAssignment();
-  const streak = useStreak(studentId);
+  const streak = useStreak(user?.id);
+  const [isFinished, setIsFinished] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
-  if (queue.isLoading || activity.isLoading) return <LoadingState label="Opening the activity" />;
-  if (queue.isError || activity.isError || !assignment || !activity.data) {
+  if (missions.isLoading) return <LoadingState label="Opening the activity" />;
+  const mission = (missions.data ?? []).find((candidate) => candidate.id === assignmentId);
+  if (missions.isError || !mission) {
     return (
       <ErrorState
         title="That activity is not here"
-        description="It may have been unassigned. Go back to today and pick another one."
+        description="Go back to today and pick another one."
         onRetry={() => navigate('/student/today')}
       />
     );
   }
 
-  const handleComplete = async (responses: ActivityResponse[]) => {
-    await completeAssignment.mutateAsync({ assignmentId: assignment.id, responses });
-    setIsFinished(true);
+  const finishedDays = (missions.data ?? []).flatMap((candidate) =>
+    candidate.completion ? [businessDate(candidate.completion.completedAt)] : [],
+  );
+
+  const handleComplete = async (answer: ActivityAnswer) => {
+    setSubmitError(undefined);
+    try {
+      await completeAssignment.mutateAsync({ assignmentId: mission.id, answer });
+      setIsFinished(true);
+    } catch (error) {
+      setSubmitError(
+        isApiError(error) && error.status === 409
+          ? 'You have already finished this one.'
+          : 'We could not save your answer. Check your connection and try again.',
+      );
+    }
   };
 
   if (isFinished) {
@@ -54,15 +68,15 @@ export function ActivityScreen() {
         <div>
           <h1 className="text-4xl font-black tracking-tight text-ink sm:text-5xl">Finished</h1>
           <p className="mx-auto mt-3 max-w-prose text-lg text-ink-muted">
-            You have finished {activity.data.title}. Your teacher will see it.
+            You have finished {mission.activity.title}. Your teacher will see it.
           </p>
           <p className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-iris-50 px-4 py-1.5 text-sm font-black text-iris-700 ring-1 ring-inset ring-iris-100">
-            <Sparkles className="size-4" />+{assignment.xp} XP
+            <Sparkles className="size-4" />+{XP_PER_ACTIVITY} XP
           </p>
         </div>
         {streak.data ? (
           <Card isPlayful className="px-6 py-5">
-            <StreakIndicator streak={streak.data} />
+            <StreakIndicator days={streak.data.days} lastSevenDays={lastSevenDays(finishedDays, businessDate())} />
           </Card>
         ) : null}
         <Button size="lg" isPlayful onClick={() => navigate('/student/today')}>
@@ -72,18 +86,36 @@ export function ActivityScreen() {
     );
   }
 
+  if (mission.completion) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+        <BackLink to="/student/today" className="self-start">
+          Today
+        </BackLink>
+        <PageHeader title={mission.activity.title} subtitle={`You finished this ${relativeDayPhrase(mission.completion.completedAt)}.`} />
+        <Card isPlayful className="flex flex-col gap-4 p-6 sm:p-8">
+          <p className="text-lg font-bold text-ink">{mission.activity.content.prompt}</p>
+          <div className="flex items-start gap-3">
+            <span className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-jade-500 text-white">
+              <Check className="size-4" strokeWidth={3} />
+            </span>
+            <Quote>{describeAnswer(mission.completion.answer, mission.activity.content)}</Quote>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <PageHeader
-        title={activity.data.title}
-        subtitle={`Set by ${assignment.assignedByName}`}
-      />
+      <PageHeader back={<BackLink to="/student/today">Today</BackLink>} title={mission.activity.title} />
 
       <ActivityPlayer
-        activity={activity.data}
+        activity={mission.activity}
         isSubmitting={completeAssignment.isPending}
         onComplete={handleComplete}
         onExit={() => navigate('/student/today')}
+        {...(submitError ? { submitError } : {})}
       />
     </div>
   );

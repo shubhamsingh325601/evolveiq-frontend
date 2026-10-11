@@ -1,25 +1,25 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useCreateObservation, useStudents, type NewObservation } from '@evolveiq/api-client';
+import { useChildren, useCreateFamilyObservation, type NewObservation } from '@evolveiq/api-client';
 import { BackLink, ObservationForm } from '@evolveiq/domain';
 import { Card, ErrorState, LoadingState, PageHeader } from '@evolveiq/ui';
 
 /** What happens to an observation after a parent sends it, in order. */
 const NEXT_STEPS = [
-  'Your child’s teacher and the school psychologist can read it straight away.',
-  'A psychologist reviews it and notes which areas of development it touches.',
-  'If a pattern shows up across observations, the school may open a growth area. You will see it on your child’s page.',
+  'The school psychologist reads every observation that comes in.',
+  'They note which area of development it touches and decide what would help.',
+  'If an activity would help, your child’s school sets it, and it shows up on your child’s page.',
 ];
 
 export function NewObservationScreen() {
-  const students = useStudents();
-  const createObservation = useCreateObservation();
+  const children = useChildren();
+  const createObservation = useCreateFamilyObservation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [submitError, setSubmitError] = useState<string>();
 
-  if (students.isLoading) return <LoadingState label="Loading" />;
-  if (students.isError) return <ErrorState onRetry={() => void students.refetch()} />;
+  if (children.isLoading) return <LoadingState label="Loading" />;
+  if (children.isError) return <ErrorState onRetry={() => void children.refetch()} />;
 
   const defaultStudentId = searchParams.get('childId') ?? undefined;
 
@@ -45,7 +45,7 @@ export function NewObservationScreen() {
         <Card className="p-6 sm:p-8">
           <ObservationForm
             variant="parent"
-            students={students.data ?? []}
+            students={children.data ?? []}
             {...(defaultStudentId ? { defaultStudentId } : {})}
             onSubmit={handleSubmit}
             onCancel={() => navigate('/parent/observations')}

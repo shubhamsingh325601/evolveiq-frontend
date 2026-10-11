@@ -1,11 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import {
-  useActivities,
-  useActivityQueue,
-  useClasses,
-  useObservations,
-  useSchools,
-  useStudents,
+  useClassRoster,
+  useReviewQueue,
+  useReviewQueueCounts,
+  useSchool,
+  useTeacherObservations,
+  type ReviewQueueFilters,
 } from '@evolveiq/api-client';
 import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
 import { AppLayout } from '@evolveiq/domain';
@@ -14,48 +14,49 @@ import { ClassesSidebarCard } from './components/ClassesSidebarCard';
 import { ReviewPulseCard } from './components/ReviewPulseCard';
 import { staffNotifications } from './staff-notifications';
 
+/** The counts behind the psychologist's review pulse; the queue's tiles share their cache entries. */
+const PULSE_FILTERS = {
+  pending: { status: 'pending' },
+  significantPending: { status: 'pending', level: 'significant' },
+  all: {},
+} satisfies Record<string, ReviewQueueFilters>;
+
 export function AppFrame() {
   const { user, signOut } = useAuth();
-  const observations = useObservations();
-  const students = useStudents();
-  const classes = useClasses();
-  const schools = useSchools();
-  const assignments = useActivityQueue();
-  const activities = useActivities();
+  const isTeacher = user?.role === 'teacher';
+  const isPsychologist = user?.role === 'psychologist';
+
+  const roster = useClassRoster({ isEnabled: isTeacher });
+  const ownObservations = useTeacherObservations({ isEnabled: isTeacher });
+  const pending = useReviewQueue({ status: 'pending' }, { isEnabled: isPsychologist });
+  const pulse = useReviewQueueCounts(PULSE_FILTERS, { isEnabled: isPsychologist });
+  const school = useSchool(isTeacher ? user?.schoolId : undefined);
 
   if (!user) return null;
 
-  const allObservations = observations.data ?? [];
-  const pending = allObservations.filter((entry) => entry.status === 'pending');
-  const schoolName = (schools.data ?? []).find((school) => school.id === user.schoolId)?.name;
-
-  const contextCard =
-    user.role === 'teacher' ? (
-      <ClassesSidebarCard
-        classes={(classes.data ?? []).filter((group) => group.teacherId === user.id)}
-        students={students.data ?? []}
-        pending={pending}
-      />
-    ) : user.role === 'psychologist' ? (
-      <ReviewPulseCard observations={allObservations} />
-    ) : null;
+  const ownPending = (ownObservations.data ?? []).filter((entry) => entry.status === 'pending').length;
+  const contextCard = isTeacher ? (
+    <ClassesSidebarCard classes={roster.classes} students={roster.students} pendingCount={ownPending} />
+  ) : isPsychologist ? (
+    <ReviewPulseCard pending={pulse.pending} significantPending={pulse.significantPending} total={pulse.all} />
+  ) : null;
+  const contextLabel = isTeacher ? school.data?.name : 'All schools';
 
   return (
     <AppLayout
       appName="EvolvIQ"
       roleLabel={ROLE_LABELS[user.role]}
-      sections={menuForRole(user.role, pending.length)}
-      userName={user.name}
+      sections={menuForRole(user.role, pulse.pending ?? 0)}
+      userName={user.fullName}
       onSignOut={signOut}
-      {...(schoolName ? { contextLabel: schoolName } : {})}
+      {...(contextLabel ? { contextLabel } : {})}
       contextCard={contextCard}
       notificationsKey={user.id}
       notifications={staffNotifications({
         user,
-        observations: allObservations,
-        students: students.data ?? [],
-        assignments: assignments.data ?? [],
-        activities: activities.data ?? [],
+        pending: pending.data ?? [],
+        ownObservations: ownObservations.data ?? [],
+        studentNameById: new Map(roster.students.map((student) => [student.id, student.fullName])),
       })}
     >
       <Outlet />

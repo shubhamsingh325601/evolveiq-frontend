@@ -10,8 +10,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   parent: 'Parent',
   teacher: 'Teacher',
   psychologist: 'Psychologist',
-  'school-admin': 'School admin',
-  'platform-admin': 'Platform admin',
+  school_admin: 'School admin',
+  platform_admin: 'Platform admin',
 };
 
 /** Where each role lands after signing in. */
@@ -20,8 +20,8 @@ export const ROLE_HOME_PATH: Record<Role, string> = {
   parent: '/parent/children',
   teacher: '/teacher/students',
   psychologist: '/review-queue',
-  'school-admin': '/school/students',
-  'platform-admin': '/platform/schools',
+  school_admin: '/school/students',
+  platform_admin: '/platform/schools',
 };
 
 /** Which app serves which role — used to explain a wrong-app sign-in. */
@@ -30,8 +30,8 @@ export const ROLE_APP: Record<Role, 'family' | 'school' | 'admin'> = {
   parent: 'family',
   teacher: 'school',
   psychologist: 'school',
-  'school-admin': 'admin',
-  'platform-admin': 'admin',
+  school_admin: 'admin',
+  platform_admin: 'admin',
 };
 
 export const APP_LABELS: Record<'family' | 'school' | 'admin', string> = {
