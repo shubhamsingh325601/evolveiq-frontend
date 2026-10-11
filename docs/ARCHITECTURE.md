@@ -66,8 +66,23 @@ new roles or permission changes are made there, not per-screen.
 
 ## API integration
 - All network calls go through `packages/api-client`, which wraps `fetch`,
-  attaches auth headers, and exposes typed TanStack Query hooks
-  (`useObservations`, `useActivityQueue`, etc.).
+  attaches the access token, and exposes typed TanStack Query hooks
+  (`useReviewQueue`, `useMyAssignments`, etc.).
+- The contract is evolveiq-backend's `/api/v1`, mirrored in `types.ts` with
+  one response shape per audience. Parent-only data comes from the backend's
+  `/family/` routes, and the family hooks copy it field by field
+  (`redaction.ts`) so nothing clinical can reach a parent's cache.
+- Sessions: an access token (1 hour) and a rotating refresh token. A 401 is
+  renewed once and resent; renewals are shared by every request in flight and
+  serialised across tabs (Web Locks), because the backend treats a refresh
+  token used twice as stolen and ends the session. The session lives in
+  `packages/auth` (`session-store.ts`), outside React.
+- Every list endpoint is paginated; hooks collect every page and
+  `RecordsTable` pages on screen. KPI counts come from list metadata
+  (`limit=1`), never from loading the rows.
+- With `VITE_API_BASE_URL` unset, the same paths are answered by the in-memory
+  mock in `api-client/src/mock`, which keeps the backend's roles and rules. It
+  backs the demo and every app-level test.
 - No app talks to the backend directly; this keeps the contract in one place
   and makes it trivial to add optimistic updates or retry logic later.
 
@@ -80,6 +95,11 @@ jsdom, styled from the same tokens, and readable without hover — every value
 is printed or listed beside its chart, and the trajectory reads with the arrow
 keys. `packages/domain` gives them their EHI meaning (`HolisticIndexCard`,
 `HolisticReport`, `SkillProfileCard`).
+
+The backend does not serve an EHI yet (there is no scoring formula), so the
+EHI views are switched off (`FEATURES.holisticIndex` in `packages/api-client`)
+and no screen shows a made-up index. The components above stay, with their
+tests, ready to be wired to an EHI endpoint.
 
 ## What's deliberately out of scope for MVP
 Per the PRD's Scope Boundaries: no charts/graphs beyond the EHI views, no
