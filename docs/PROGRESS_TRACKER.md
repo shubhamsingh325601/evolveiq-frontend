@@ -4,10 +4,9 @@ Status legend: `Not Started` / `In Progress` / `Blocked` / `Done`
 
 Update this table as work lands — keep it in sync with merged PRs, not with plans.
 
-> Every screen below is wired to evolveiq-backend's real API
-> (`feature/api-client-real-backend`, not yet merged) and still runs on the
-> built-in demo backend in `packages/api-client/src/mock` when no API URL is
-> set; see README.md.
+> Every screen below is wired to evolveiq-backend's real API and still runs
+> on the built-in demo backend in `packages/api-client/src/mock` when no API
+> URL is set; see README.md.
 
 ## Setup
 | Item | Status | Owner | Notes |
@@ -21,7 +20,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Query cache cleared on sign-in and sign-out | Done | | Fixes one person's cached data reaching the next person on the same device; dev-shell regression test |
 | `packages/auth` — session + role guards | Done | | `RoleGuard` is the only role check. Email + password or student ID + PIN; rotating refresh tokens renewed once, across tabs; sign-out revokes the session on the server; 7 tests |
 | `packages/api-client` — typed fetch + TanStack Query setup | Done | | Mirrors the backend contract (one shape per audience, paging, error codes); built-in demo backend with the backend's rules; 39 tests |
-| Real backend integration (all three apps) | Done | | Not yet merged. Verified against evolveiq-backend: every role through the full Observe → Review → Assign → Do → See loop in headless Chrome, plus token renewal, reload and two-tab checks |
+| Real backend integration (all three apps) | Done | | Verified against evolveiq-backend: every role through the full Observe → Review → Assign → Do → See loop in headless Chrome, plus token renewal, reload and two-tab checks |
 | CI: lint + typecheck + test on PR | Done | | `.github/workflows/ci.yml`, also builds |
 
 ## Shared domain components
