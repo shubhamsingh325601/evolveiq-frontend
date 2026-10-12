@@ -6,6 +6,7 @@
   "description": "Development-only launcher. Not part of the product; never deployed.",
   "scripts": {
     "dev": "vite",
+    "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src",
     "test": "vitest run"
