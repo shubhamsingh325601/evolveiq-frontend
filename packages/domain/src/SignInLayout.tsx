@@ -51,6 +51,15 @@ const EXAMPLE_PILLARS: { dimension: HolisticDimension; value: number }[] = [
   { dimension: 'character', value: 79 },
 ];
 
+/** The product's loop, in order: what happens after someone notices something. */
+const LOOP_STEPS = [
+  { name: 'Observe', detail: 'A parent or teacher notices' },
+  { name: 'Review', detail: 'A psychologist reads it' },
+  { name: 'Assign', detail: 'Activities are chosen' },
+  { name: 'Do', detail: 'The child takes part' },
+  { name: 'See', detail: 'Progress shows at home' },
+] as const;
+
 function splitLabel(label: string): { name: string; detail: string } {
   const [name = label, ...rest] = label.split(',');
   const detail = rest.join(',').trim();
@@ -97,23 +106,29 @@ export function SignInLayout({
   };
 
   return (
-    <div className="relative grid min-h-dvh lg:grid-cols-[1.08fr_1fr]">
+    <div className="relative min-h-dvh lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <DawnBackdrop />
 
-      <section className="relative isolate m-3 flex flex-col gap-10 overflow-hidden rounded-3xl bg-rail px-6 py-7 text-white shadow-raised sm:px-10 sm:py-9 lg:m-4 lg:mr-0 lg:justify-between lg:px-12 lg:py-12">
-        <GrowthRings className="absolute -bottom-48 -right-48 -z-10 size-[40rem] text-white/[0.06]" />
-        <span
-          aria-hidden="true"
-          className="absolute -left-24 top-1/3 -z-10 size-80 rounded-full bg-iris-500/25 blur-3xl"
-        />
+      {/*
+        Edge to edge: a band across the top on phones, the whole left half on
+        desktop, where it holds still while the form side scrolls. It scrolls
+        itself only on a window too short to show all of it.
+      */}
+      <section className="relative isolate flex flex-col bg-rail px-6 pb-10 pt-6 text-white sm:px-10 sm:pb-12 sm:pt-8 lg:sticky lg:top-0 lg:h-dvh lg:justify-between lg:gap-10 lg:overflow-y-auto lg:px-12 lg:py-10 xl:px-16 2xl:px-20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Clipped in a layer of their own, so the decoration never makes the panel scroll. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <GrowthRings className="absolute -bottom-64 -right-64 size-[46rem] text-white/[0.06]" />
+          <span className="absolute -left-32 top-1/4 size-96 rounded-full bg-iris-500/25 blur-3xl" />
+        </div>
 
         <div className="flex items-center gap-3">
           <BrandMark />
           <p className="text-xl font-black tracking-tight">{appName}</p>
         </div>
 
-        <div className="max-w-xl">
-          <p className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl">
+        <div className="mt-10 max-w-2xl lg:mt-0">
+          {/* Sized to the window on desktop, so the two lines stay two lines. */}
+          <p className="text-4xl font-black leading-[1.04] tracking-tight sm:text-5xl sm:leading-[1.04] lg:text-[length:clamp(2.25rem,3.6vw,3.75rem)]">
             Beyond marks.
             <br />
             Understand the child.
@@ -124,9 +139,9 @@ export function SignInLayout({
           </p>
         </div>
 
-        <figure className="hidden max-w-xl rounded-3xl bg-white/[0.07] p-6 ring-1 ring-inset ring-white/15 backdrop-blur-sm lg:block">
+        <div className="hidden max-w-xl lg:block">
           {FEATURES.holisticIndex ? (
-            <>
+            <figure className="mb-10">
               <figcaption className="text-sm font-bold text-white">
                 The EvolvIQ Holistic Index
                 <span className="mt-0.5 block text-xs font-medium text-white/60">
@@ -146,23 +161,45 @@ export function SignInLayout({
                   colorClass: HOLISTIC_DIMENSION_COLOR_CLASSES[pillar.dimension],
                 }))}
               />
-            </>
-          ) : (
-            <figcaption className="text-sm font-bold text-white">
-              Observe, review, assign, do, see
-              <span className="mt-0.5 block text-xs font-medium text-white/60">
-                Every step starts with something a person noticed
-              </span>
-            </figcaption>
-          )}
-          <blockquote className={cn(FEATURES.holisticIndex ? 'mt-6 border-t border-white/10 pt-5' : 'mt-5')}>
-            <p className="font-serif text-[0.9375rem] leading-7 text-white/90">{showcase.body}</p>
-            <footer className="mt-2 text-xs text-white/60">{showcase.attribution}.</footer>
-          </blockquote>
-        </figure>
+            </figure>
+          ) : null}
+
+          {/* Lilac and the serif: a person's own words about a child, as everywhere else. */}
+          <figure className="border-l-2 border-lilac-300/80 pl-5">
+            <blockquote>
+              <p className="font-serif text-base leading-7 text-white/90 xl:text-lg xl:leading-8">
+                {showcase.body}
+              </p>
+            </blockquote>
+            <figcaption className="mt-3 text-sm text-white/60">{showcase.attribution}</figcaption>
+          </figure>
+
+          <ol aria-label="How EvolvIQ works" className="mt-10 grid grid-cols-5">
+            {LOOP_STEPS.map((step, index) => (
+              <li key={step.name}>
+                <span aria-hidden="true" className="flex items-center">
+                  <span
+                    className={cn(
+                      'size-2.5 shrink-0 rounded-full',
+                      // Lit: the note above is where every step starts.
+                      index === 0
+                        ? 'bg-lilac-300 shadow-[0_0_0_4px_rgba(196,170,251,0.2)]'
+                        : 'ring-1 ring-inset ring-white/40',
+                    )}
+                  />
+                  {index < LOOP_STEPS.length - 1 ? (
+                    <span className="mx-2 h-px flex-1 bg-white/15" />
+                  ) : null}
+                </span>
+                <p className="mt-3 text-sm font-semibold text-white">{step.name}</p>
+                <p className="mt-0.5 hidden pr-3 text-xs text-white/55 xl:block">{step.detail}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
-      <section className="flex items-center justify-center px-6 pb-12 pt-4 sm:px-12 lg:py-12">
+      <section className="flex items-center justify-center px-6 py-10 sm:px-12 lg:min-h-dvh lg:py-12">
         <div className="w-full max-w-sm">
           <h1 className="text-4xl font-black tracking-tight text-ink">Sign in</h1>
           <p className="mt-2 text-base font-medium text-ink-muted">{audienceLine}</p>
@@ -232,6 +269,9 @@ export function SignInLayout({
               Sign in
             </Button>
           </form>
+          <p className="mt-4 text-sm text-ink-muted">
+            No account yet? Your school sets one up for you.
+          </p>
 
           {showsDemoAccounts && demoAccounts.length > 0 ? (
             <div className="mt-10">

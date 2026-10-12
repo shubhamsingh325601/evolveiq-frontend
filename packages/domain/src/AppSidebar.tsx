@@ -47,7 +47,7 @@ export interface SidebarMenuSection {
 
 export interface AppSidebarProps {
   appName: string;
-  /** The signed-in role, shown on the chip under the brand. */
+  /** The signed-in role, shown under the product name. */
   roleLabel: string;
   sections: SidebarMenuSection[];
   userName: string;
@@ -82,50 +82,59 @@ export function AppSidebar({
     .flatMap((section) => section.items);
   const linkSections = sections.filter((section) => section.kind !== 'action');
 
+  const collapseToggle = onToggleCollapsed ? (
+    <button
+      type="button"
+      onClick={onToggleCollapsed}
+      aria-expanded={!isCollapsed}
+      aria-label={isCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+      title={isCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+      className={cn(
+        'flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white',
+        FOCUS_ON_NIGHT,
+      )}
+    >
+      {isCollapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+    </button>
+  ) : null;
+
   return (
     <nav
       aria-label="Main"
       className={cn(
-        'fixed inset-y-3 left-3 z-40 hidden flex-col overflow-hidden rounded-3xl bg-rail text-white shadow-raised transition-[width] duration-300 ease-out lg:flex',
-        isCollapsed ? 'w-[5.25rem]' : 'w-[16.5rem]',
+        // Flush with the window on three sides: the rail is the page's left
+        // edge, not a card floating beside it.
+        'fixed inset-y-0 left-0 z-40 hidden flex-col overflow-hidden bg-rail text-white transition-[width] duration-300 ease-out lg:flex',
+        isCollapsed ? 'w-20' : 'w-64',
         className,
       )}
     >
       <GrowthRings className="pointer-events-none absolute -right-56 -top-56 size-[26rem] text-white/[0.05]" />
 
-      <div className={cn('relative flex items-center gap-3 pt-6', isCollapsed ? 'flex-col px-3' : 'px-5')}>
-        <BrandMark />
-        {isCollapsed ? null : (
-          <p className="min-w-0 flex-1 truncate text-lg font-black tracking-tight">{appName}</p>
+      {/* As tall as the top bar, with the same rule under it, so the two read as one band. */}
+      <div
+        className={cn(
+          'relative flex h-[4.5rem] shrink-0 items-center gap-3 border-b border-white/[0.08]',
+          isCollapsed ? 'justify-center px-3' : 'pl-5 pr-3',
         )}
-        {onToggleCollapsed ? (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-expanded={!isCollapsed}
-            aria-label={isCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
-            title={isCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
-            className={cn(
-              'flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white',
-              FOCUS_ON_NIGHT,
-            )}
-          >
-            {isCollapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
-          </button>
-        ) : null}
+      >
+        <BrandMark />
+        {isCollapsed ? (
+          <span className="sr-only">{roleLabel}</span>
+        ) : (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-black leading-6 tracking-tight">{appName}</p>
+              <p className="truncate text-xs font-medium text-white/55">{roleLabel}</p>
+            </div>
+            {collapseToggle}
+          </>
+        )}
       </div>
 
-      {isCollapsed ? null : (
-        <div className="relative px-5 pt-3">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/[0.08] px-3 py-1 text-xs font-semibold text-white/80 ring-1 ring-inset ring-white/10">
-            <span
-              aria-hidden="true"
-              className="size-1.5 rounded-full bg-jade-300 shadow-[0_0_0_3px_rgba(114,208,170,0.22)]"
-            />
-            <span>{roleLabel}</span>
-          </p>
-        </div>
-      )}
+      {isCollapsed && collapseToggle ? (
+        <div className="relative flex justify-center pt-3">{collapseToggle}</div>
+      ) : null}
 
       {contextCard && !isCollapsed ? <div className="relative px-4 pt-5">{contextCard}</div> : null}
 
@@ -179,21 +188,30 @@ export function AppSidebar({
                       title={isCollapsed ? item.label : undefined}
                       className={({ isActive }) =>
                         cn(
-                          'group relative flex items-center gap-3 rounded-2xl p-1.5 text-sm transition-[background-color,color]',
+                          'group relative flex items-center gap-3 rounded-xl p-1.5 text-sm transition-[background-color,color]',
                           isCollapsed && 'justify-center',
                           FOCUS_ON_NIGHT,
                           isActive
-                            ? 'bg-gradient-to-r from-iris-500/95 to-lilac-500/80 font-semibold text-white shadow-glow'
-                            : 'font-medium text-white/65 hover:bg-white/[0.06] hover:text-white',
+                            ? 'bg-white/[0.09] font-semibold text-white'
+                            : 'font-medium text-white/65 hover:bg-white/[0.05] hover:text-white',
                         )
                       }
                     >
                       {({ isActive }) => (
                         <>
+                          {/* The current page is marked on the window's edge itself. */}
+                          {isActive ? (
+                            <span
+                              aria-hidden="true"
+                              className="absolute -left-3 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-iris-300"
+                            />
+                          ) : null}
                           <span
                             className={cn(
-                              'relative flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors',
-                              isActive ? 'bg-white/15 text-white' : 'bg-white/[0.06] text-white/60 group-hover:text-white',
+                              'relative flex size-9 shrink-0 items-center justify-center rounded-[10px] transition-colors',
+                              isActive
+                                ? 'bg-iris-500 text-white shadow-glow'
+                                : 'bg-white/[0.06] text-white/60 group-hover:text-white',
                             )}
                           >
                             {Icon ? (
@@ -230,8 +248,8 @@ export function AppSidebar({
 
       <div
         className={cn(
-          'relative m-3 mt-0 flex items-center gap-3 rounded-2xl bg-white/[0.06] p-2.5 ring-1 ring-inset ring-white/10',
-          isCollapsed && 'flex-col',
+          'relative flex shrink-0 items-center gap-3 border-t border-white/[0.08] py-3',
+          isCollapsed ? 'flex-col px-3' : 'pl-4 pr-3',
         )}
       >
         <Avatar name={userName} />

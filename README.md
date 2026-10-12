@@ -138,7 +138,8 @@ screens lead with counts — the MVP deals in counts rather than charts — and
 give the night panel to the one figure that matters most, such as a class's
 average EHI. On the review queue the tiles are the filters.
 
-The shell is the same in every app. A floating night rail carries the brand,
+The shell is the same in every app. A night rail, flush with the left edge of
+the window and level with the top bar, carries the brand,
 the role, a context card each app fills from data it already has (a teacher's
 classes, the review pulse, a parent's children with their EHI, a student's
 level, an admin's school in counts), the role's main action and the menu. It

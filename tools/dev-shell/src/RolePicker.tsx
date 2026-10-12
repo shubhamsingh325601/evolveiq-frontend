@@ -51,9 +51,10 @@ export function RolePicker() {
   return (
     <div className="relative min-h-dvh">
       <DawnBackdrop />
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-10">
-        <header className="relative isolate overflow-hidden rounded-3xl bg-rail px-6 py-8 text-white shadow-raised sm:px-10 sm:py-10">
-          <GrowthRings className="absolute -bottom-52 -right-40 -z-10 size-[34rem] text-white/[0.07]" />
+      {/* Edge to edge, like the sign-in panel and the rail. */}
+      <header className="relative isolate overflow-hidden bg-rail text-white">
+        <GrowthRings className="absolute -bottom-52 -right-40 -z-10 size-[34rem] text-white/[0.07]" />
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
           <div className="flex items-center gap-3">
             <BrandMark />
             <p className="text-lg font-black tracking-tight">EvolvIQ</p>
@@ -68,8 +69,10 @@ export function RolePicker() {
             All three apps, on one port, with the same seed data. Pick a person and you are
             signed in as them. This launcher is for development only and is never deployed.
           </p>
-        </header>
+        </div>
+      </header>
 
+      <div className="mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6">
         {error ? <ErrorState className="mt-8" title="That did not open" description={error} /> : null}
 
         <div className="mt-10 flex flex-col gap-10">

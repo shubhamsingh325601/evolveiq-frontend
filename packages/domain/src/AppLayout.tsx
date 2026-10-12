@@ -25,8 +25,8 @@ function readIsCollapsed(): boolean {
 }
 
 /**
- * Page frame shared by all three apps. On desktop, a floating rail beside the
- * content, which narrows to its icons and remembers that choice; on phones, a
+ * Page frame shared by all three apps. On desktop, a rail flush with the
+ * window's left edge, which narrows to its icons and remembers that choice; on phones, a
  * slim header and a tab bar at the bottom. Both read the same menu config.
  * Printing drops the navigation, so a saved report is just the report.
  */
@@ -61,7 +61,7 @@ export function AppLayout({
       <div
         className={cn(
           'transition-[padding] duration-300 ease-out print:pl-0',
-          isCollapsed ? 'lg:pl-[6.75rem]' : 'lg:pl-[18rem]',
+          isCollapsed ? 'lg:pl-20' : 'lg:pl-64',
         )}
       >
         <AppTopBar
