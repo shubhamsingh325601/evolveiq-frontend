@@ -5,11 +5,16 @@ import type { Role } from '@evolveiq/api-client';
  * New roles or permission changes are made here, never inside a screen.
  */
 
+/**
+ * What each role is called on screen. The API's `psychologist` is the school
+ * counsellor to everyone using the product (client feedback, 21 Oct 2026); the
+ * role's value, routes and permissions are unchanged.
+ */
 export const ROLE_LABELS: Record<Role, string> = {
   student: 'Student',
   parent: 'Parent',
   teacher: 'Teacher',
-  psychologist: 'Psychologist',
+  psychologist: 'Counsellor',
   school_admin: 'School admin',
   platform_admin: 'Platform admin',
 };

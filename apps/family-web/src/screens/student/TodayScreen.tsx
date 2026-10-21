@@ -1,14 +1,23 @@
-import { useGrowthAreas, useMyAssignments, useStreak, useStudentLevel, XP_PER_ACTIVITY } from '@evolveiq/api-client';
+import {
+  useGrowthAreas,
+  useMyAssignments,
+  useStars,
+  useStreak,
+  useStudentLevel,
+  XP_PER_ACTIVITY,
+} from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
-import { ACTIVITY_TYPE_LABELS, firstNameOf, GrowthAreaList, relativeDayPhrase } from '@evolveiq/domain';
+import { ACTIVITY_TYPE_LABELS, firstNameOf, GrowthAreaList, relativeDayPhrase, StarBoard } from '@evolveiq/domain';
 import { EmptyState, ErrorState, LoadingState, SectionTitle, Sprout, Sun, Target } from '@evolveiq/ui';
 import { AssignmentChecklist, type ChecklistItem } from '../../components/AssignmentChecklist';
 import { LevelProgress } from '../../components/LevelProgress';
+import { StarCount } from '../../components/StarCount';
 import { StreakFlame } from '../../components/StreakFlame';
 
 /**
  * The student's home: a personal growth companion. A student sees only their
- * own work; every request here is answered for them alone.
+ * own work, and the stars they have been given for good things people noticed;
+ * every request here is answered for them alone.
  */
 export function TodayScreen() {
   const { user } = useAuth();
@@ -16,6 +25,7 @@ export function TodayScreen() {
   const streak = useStreak(user?.id);
   const level = useStudentLevel();
   const growthAreas = useGrowthAreas(user?.id);
+  const stars = useStars(user?.id);
 
   if (missions.isLoading) return <LoadingState label="Getting your missions" />;
   if (missions.isError) return <ErrorState onRetry={() => void missions.refetch()} />;
@@ -47,7 +57,10 @@ export function TodayScreen() {
             </p>
           ) : null}
         </div>
-        {streak.data ? <StreakFlame days={streak.data.days} /> : null}
+        <div className="flex shrink-0 gap-2">
+          {stars.data ? <StarCount count={stars.data.length} /> : null}
+          {streak.data ? <StreakFlame days={streak.data.days} /> : null}
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-12">
@@ -71,21 +84,25 @@ export function TodayScreen() {
           </section>
         </div>
 
-        <section className="lg:col-span-5">
-          <SectionTitle icon={Sprout} iconClassName="text-jade-500">
-            What you are working on
-          </SectionTitle>
-          {areas.length === 0 && !growthAreas.isLoading ? (
-            <EmptyState
-              className="mt-4"
-              icon={Sprout}
-              title="Nothing set yet"
-              description="When your school picks something to work on with you, it shows up here."
-            />
-          ) : (
-            <GrowthAreaList className="mt-4" growthAreas={areas} />
-          )}
-        </section>
+        <div className="flex flex-col gap-6 lg:col-span-5">
+          <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={2} />
+
+          <section>
+            <SectionTitle icon={Sprout} iconClassName="text-jade-500">
+              What you are working on
+            </SectionTitle>
+            {areas.length === 0 && !growthAreas.isLoading ? (
+              <EmptyState
+                className="mt-4"
+                icon={Sprout}
+                title="Nothing set yet"
+                description="When your school picks something to work on with you, it shows up here."
+              />
+            ) : (
+              <GrowthAreaList className="mt-4" growthAreas={areas} />
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

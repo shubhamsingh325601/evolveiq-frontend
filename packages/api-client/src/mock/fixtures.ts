@@ -8,6 +8,7 @@ import type {
   ObservationFrequency,
   ObservationLevel,
   ObservationStatus,
+  ObservationTone,
   ObservationWhen,
   ReviewOutcome,
   Role,
@@ -61,6 +62,8 @@ export interface MockObservation {
   studentId: string;
   authorId: string;
   authorRole: 'parent' | 'teacher';
+  /** Positive ⇔ status 'celebrated': a star, never reviewed. */
+  tone: ObservationTone;
   area: ObservationArea;
   description: string;
   when: ObservationWhen;
@@ -304,6 +307,7 @@ export function buildSeed(now: Date = new Date()): MockState {
     const { createdDaysAgo, ...rest } = fields;
     return {
       schoolId: RIDGEVIEW,
+      tone: 'concern',
       level: null,
       learningBehaviourArea: null,
       status: 'pending',
@@ -329,22 +333,25 @@ export function buildSeed(now: Date = new Date()): MockState {
     reviewedById: 'usr-mehta',
     reviewedAt: daysAgo(days, 12),
   });
+  /** Something good: a star on the student's profile straight away, never reviewed. */
+  const celebrated: Partial<MockObservation> = { tone: 'positive', status: 'celebrated' };
 
   const observations: MockObservation[] = [
+    // ── Concerns: what goes to the psychologist's queue ──
     observation({
-      id: 'obs-tangram',
+      id: 'obs-reading-block',
       studentId: 'stu-maya',
       authorId: 'usr-rao',
       authorRole: 'teacher',
       area: 'learning',
       when: 'this_week',
-      howOften: 'sometimes',
+      howOften: 'often',
       level: 'minor',
       learningBehaviourArea: 'attention',
       description:
-        'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
+        'Maya drifts off during the afternoon reading block and needs two or three reminders to get back to her page.',
       createdDaysAgo: 9,
-      ...reviewed(8, 'assigned', 'focus_attention', 'Worth repeating the same task next week to see whether the duration holds.'),
+      ...reviewed(8, 'assigned', 'focus_attention', 'Try the same short task at the same time each day, and see whether the reminders drop.'),
     }),
     observation({
       id: 'obs-fire-drill',
@@ -375,33 +382,33 @@ export function buildSeed(now: Date = new Date()): MockState {
       createdDaysAgo: 4,
     }),
     observation({
-      id: 'obs-blocks',
+      id: 'obs-maths-worksheet',
       studentId: 'stu-lila',
       authorId: 'usr-rao',
       authorRole: 'teacher',
       area: 'learning',
       when: 'this_month',
-      howOften: 'once',
-      level: 'minor',
-      learningBehaviourArea: 'attention',
-      description: 'When the block tower fell, Lila rebuilt it with a wider base without anyone suggesting it.',
+      howOften: 'often',
+      level: 'moderate',
+      learningBehaviourArea: 'task_completion',
+      description:
+        'Lila stops at the first tricky question on a maths worksheet and waits for help instead of trying the next one.',
       createdDaysAgo: 14,
       ...reviewed(13, 'assigned', 'learning_skills'),
     }),
     observation({
-      id: 'obs-timetable',
+      id: 'obs-lunch-queue',
       studentId: 'stu-tara',
       authorId: 'usr-kapoor',
       authorRole: 'teacher',
-      area: 'routines',
+      area: 'behaviour',
       when: 'this_week',
-      howOften: 'daily',
+      howOften: 'sometimes',
       level: 'minor',
-      learningBehaviourArea: 'organisation',
-      description:
-        'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
-      createdDaysAgo: 6,
-      ...reviewed(5, 'no_action', null, 'Lovely to see. Nothing to change; keep noticing it.'),
+      learningBehaviourArea: 'self_control',
+      description: 'Tara pushed ahead in the lunch queue twice this week and was upset when she was asked to go back.',
+      createdDaysAgo: 8,
+      ...reviewed(7, 'no_action', null, 'Worth watching, but nothing to act on yet. Tell me if it happens again.'),
     }),
     observation({
       id: 'obs-instructions',
@@ -442,6 +449,89 @@ export function buildSeed(now: Date = new Date()): MockState {
         'At her cousin’s birthday she waited for her turn at the game twice, then got upset the third time and walked away.',
       createdDaysAgo: 3,
     }),
+
+    // ── Something good: each one is a star ──
+    observation({
+      id: 'obs-tangram',
+      studentId: 'stu-maya',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'learning',
+      when: 'this_week',
+      howOften: 'once',
+      learningBehaviourArea: 'attention',
+      description:
+        'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
+      createdDaysAgo: 2,
+      ...celebrated,
+    }),
+    observation({
+      id: 'obs-museum-talk',
+      studentId: 'stu-arjun',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'communication',
+      when: 'today',
+      howOften: 'once',
+      learningBehaviourArea: 'participation',
+      description:
+        'Arjun told the class about the museum trip with a clear beginning, middle and end, and answered three questions without his notes.',
+      createdDaysAgo: 0,
+      ...celebrated,
+    }),
+    observation({
+      id: 'obs-blocks',
+      studentId: 'stu-lila',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'learning',
+      when: 'this_month',
+      howOften: 'once',
+      description: 'When the block tower fell, Lila rebuilt it with a wider base without anyone suggesting it.',
+      createdDaysAgo: 5,
+      ...celebrated,
+    }),
+    observation({
+      id: 'obs-new-friend',
+      studentId: 'stu-noor',
+      authorId: 'usr-rao',
+      authorRole: 'teacher',
+      area: 'social',
+      when: 'today',
+      howOften: 'once',
+      learningBehaviourArea: 'working_with_others',
+      description:
+        'Noor noticed a classmate sitting alone at lunch, invited her to join the table and introduced her to everyone.',
+      createdDaysAgo: 1,
+      ...celebrated,
+    }),
+    observation({
+      id: 'obs-timetable',
+      studentId: 'stu-tara',
+      authorId: 'usr-kapoor',
+      authorRole: 'teacher',
+      area: 'routines',
+      when: 'this_week',
+      howOften: 'daily',
+      learningBehaviourArea: 'organisation',
+      description:
+        'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
+      createdDaysAgo: 6,
+      ...celebrated,
+    }),
+    observation({
+      id: 'obs-art-corner',
+      studentId: 'stu-ibrahim',
+      authorId: 'usr-kapoor',
+      authorRole: 'teacher',
+      area: 'behaviour',
+      when: 'this_week',
+      howOften: 'once',
+      learningBehaviourArea: 'working_with_others',
+      description: 'Ibrahim tidied the art corner without being asked and showed a younger pupil where the brushes go.',
+      createdDaysAgo: 3,
+      ...celebrated,
+    }),
     observation({
       id: 'obs-dinner',
       studentId: 'stu-arjun',
@@ -453,7 +543,19 @@ export function buildSeed(now: Date = new Date()): MockState {
       description:
         'Arjun told the whole story of his school trip at dinner without losing track, and used words I have not heard him use before.',
       createdDaysAgo: 7,
-      ...reviewed(6, 'assigned', 'communication'),
+      ...celebrated,
+    }),
+    observation({
+      id: 'obs-uniform',
+      studentId: 'stu-maya',
+      authorId: 'usr-priya',
+      authorRole: 'parent',
+      area: 'routines',
+      when: 'this_week',
+      howOften: 'sometimes',
+      description: 'Maya laid out her uniform and packed her school bag the night before, all on her own.',
+      createdDaysAgo: 4,
+      ...celebrated,
     }),
     observation({
       id: 'obs-change-of-plan',
@@ -466,6 +568,7 @@ export function buildSeed(now: Date = new Date()): MockState {
       description:
         'He managed the change of plan on Saturday much better than he would have a month ago. He asked what was happening instead of shutting down.',
       createdDaysAgo: 2,
+      ...celebrated,
     }),
   ];
 
@@ -487,13 +590,13 @@ export function buildSeed(now: Date = new Date()): MockState {
   });
   const assignments: MockAssignment[] = [
     // Recommended through reviews.
-    assignment('asg-maya-sorting', 'stu-maya', 'act-sorting', 'usr-mehta', 8, 'obs-tangram'),
+    assignment('asg-maya-sorting', 'stu-maya', 'act-sorting', 'usr-mehta', 8, 'obs-reading-block'),
     assignment('asg-maya-feelings', 'stu-maya', 'act-feelings', 'usr-mehta', 11, 'obs-assembly'),
-    assignment('asg-arjun-story', 'stu-arjun', 'act-story', 'usr-mehta', 6, 'obs-dinner'),
-    assignment('asg-lila-homework', 'stu-lila', 'act-homework', 'usr-mehta', 13, 'obs-blocks'),
+    assignment('asg-lila-homework', 'stu-lila', 'act-homework', 'usr-mehta', 13, 'obs-maths-worksheet'),
     // Direct from teachers.
     assignment('asg-maya-story', 'stu-maya', 'act-story', 'usr-rao', 5),
     assignment('asg-maya-homework', 'stu-maya', 'act-homework', 'usr-rao', 4),
+    assignment('asg-arjun-story', 'stu-arjun', 'act-story', 'usr-rao', 6),
     assignment('asg-devan-video', 'stu-devan', 'act-video', 'usr-rao', 3),
     assignment('asg-noor-feelings', 'stu-noor', 'act-feelings', 'usr-rao', 3),
     assignment('asg-tara-story', 'stu-tara', 'act-story', 'usr-kapoor', 5),

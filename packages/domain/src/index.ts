@@ -1,5 +1,9 @@
 export { AccountMenu } from './AccountMenu';
-export type { AccountMenuProps } from './AccountMenu';
+export type { AccountMenuItem, AccountMenuProps, AccountMenuSection } from './AccountMenu';
+export { AccountSwitchProvider } from './AccountSwitchProvider';
+export type { AccountSwitchProviderProps } from './AccountSwitchProvider';
+export type { AccountSwitchState, SwitchableAccount } from './account-switch-context';
+export { useAccountSwitch } from './useAccountSwitch';
 export { ActivityCard } from './ActivityCard';
 export type { ActivityCardProps } from './ActivityCard';
 export { ActivityPlayer } from './ActivityPlayer';
@@ -32,6 +36,8 @@ export { ObservationEntry } from './ObservationEntry';
 export type { ObservationEntryData, ObservationEntryProps } from './ObservationEntry';
 export { ObservationForm } from './ObservationForm';
 export type { ObservationFormProps, ObservationFormStudentOption } from './ObservationForm';
+export { ObservationTonePicker } from './ObservationTonePicker';
+export type { ObservationTonePickerProps } from './ObservationTonePicker';
 export { RecordsTable } from './RecordsTable';
 export { ReportOverviewCard } from './ReportOverviewCard';
 export type { ReportOverviewCardProps } from './ReportOverviewCard';
@@ -41,6 +47,8 @@ export type { DemoAccount, SignInLayoutProps } from './SignInLayout';
 export type { RecordsTableColumn, RecordsTableProps } from './RecordsTable';
 export { SkillProfileCard } from './SkillProfileCard';
 export type { SkillProfileCardProps } from './SkillProfileCard';
+export { StarBoard } from './StarBoard';
+export type { StarBoardProps } from './StarBoard';
 export { StreakIndicator } from './StreakIndicator';
 export type { StreakIndicatorProps } from './StreakIndicator';
 

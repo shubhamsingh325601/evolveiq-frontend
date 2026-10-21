@@ -13,6 +13,8 @@ export interface CardProps {
    */
   tone?: 'glass' | 'tinted' | 'night';
   as?: 'div' | 'section' | 'article' | 'li' | 'aside';
+  /** The id of the heading that names it — a section with one is a landmark region. */
+  'aria-labelledby'?: string;
 }
 
 const TONE_CLASSES = {
@@ -32,9 +34,11 @@ export function Card({
   isPlayful = false,
   tone = 'glass',
   as: Tag = 'div',
+  'aria-labelledby': labelledBy,
 }: CardProps) {
   return (
     <Tag
+      aria-labelledby={labelledBy}
       className={cn(TONE_CLASSES[tone], isPlayful ? 'rounded-3xl' : 'rounded-2xl', className)}
     >
       {children}

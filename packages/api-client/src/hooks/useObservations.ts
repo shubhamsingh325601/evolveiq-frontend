@@ -100,7 +100,7 @@ export function useTeacherObservations(options: { isEnabled?: boolean } = {}) {
   });
 }
 
-/** About a student of one of the teacher's classes. */
+/** About a student of one of the teacher's classes. A positive one is a star for them at once. */
 export function useCreateTeacherObservation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -112,6 +112,7 @@ export function useCreateTeacherObservation() {
       ).observation,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.observations.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.progress.all });
     },
   });
 }
@@ -144,6 +145,7 @@ export function useCreateFamilyObservation() {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.observations.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.progress.all });
     },
   });
 }

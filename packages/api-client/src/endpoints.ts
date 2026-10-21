@@ -68,6 +68,8 @@ export const ENDPOINTS = {
     assignments: (studentId: string) => `/students/${id(studentId)}/assignments`,
     growthAreas: (studentId: string) => `/students/${id(studentId)}/growth-areas`,
     streak: (studentId: string) => `/students/${id(studentId)}/streak`,
+    /** One star per positive observation. The same parent-safe shape for every audience. */
+    stars: (studentId: string) => `/students/${id(studentId)}/stars`,
     monthlySummary: (studentId: string, month: string) =>
       `/students/${id(studentId)}/monthly-summaries/${id(month)}`,
   },

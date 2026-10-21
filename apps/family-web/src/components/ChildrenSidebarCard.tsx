@@ -1,20 +1,22 @@
 import { NavLink } from 'react-router-dom';
-import type { FamilyAssignment, Person } from '@evolveiq/api-client';
+import type { FamilyAssignment, Person, Star as StarRecord } from '@evolveiq/api-client';
 import { firstNameOf, SidebarCard } from '@evolveiq/domain';
-import { Avatar, cn } from '@evolveiq/ui';
+import { Avatar, cn, Star } from '@evolveiq/ui';
 
 export interface ChildrenSidebarCardProps {
   students: Person[];
   assignmentsByChild: Map<string, FamilyAssignment[]>;
+  starsByChild: Map<string, StarRecord[] | undefined>;
 }
 
-/** A parent's children on the rail, each with what is still to do, one tap from their dashboard. */
-export function ChildrenSidebarCard({ students, assignmentsByChild }: ChildrenSidebarCardProps) {
+/** A parent's children on the rail, each with their stars and what is still to do, one tap from their dashboard. */
+export function ChildrenSidebarCard({ students, assignmentsByChild, starsByChild }: ChildrenSidebarCardProps) {
   return (
     <SidebarCard title="Your children">
       <ul className="-mx-1.5 flex flex-col gap-1">
         {students.map((student) => {
           const toDo = (assignmentsByChild.get(student.id) ?? []).filter((assignment) => !assignment.isDone).length;
+          const stars = starsByChild.get(student.id)?.length ?? 0;
           return (
             <li key={student.id}>
               <NavLink
@@ -31,6 +33,13 @@ export function ChildrenSidebarCard({ students, assignmentsByChild }: ChildrenSi
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
                   {firstNameOf(student.fullName)}
                 </span>
+                {stars > 0 ? (
+                  <span className="flex items-center gap-1 text-xs font-black tabular-nums text-star-300">
+                    <Star aria-hidden="true" className="size-3.5 fill-star-400 text-star-400" />
+                    {stars}
+                    <span className="sr-only"> {stars === 1 ? 'star' : 'stars'}</span>
+                  </span>
+                ) : null}
                 {toDo > 0 ? (
                   <span className="rounded-lg bg-white/10 px-2 py-0.5 text-xs font-black tabular-nums text-white">
                     {toDo}

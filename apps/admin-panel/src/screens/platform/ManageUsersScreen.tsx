@@ -204,7 +204,7 @@ export function ManageUsersScreen() {
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatTile icon={Contact} label="Accounts" value={counts.all ?? '–'} detail="Across every role" />
-        <StatTile icon={Presentation} tone="lilac" label="School staff" value={staffCount} detail="Teachers, psychologists and admins" />
+        <StatTile icon={Presentation} tone="lilac" label="School staff" value={staffCount} detail="Teachers, counsellors and admins" />
         <StatTile icon={HeartHandshake} tone="jade" label="Families" value={familyCount} detail="Parents and students" />
         <StatTile icon={School} tone="honey" label="Schools" value={(schools.data ?? []).length} detail="Accounts belong to one" />
       </div>

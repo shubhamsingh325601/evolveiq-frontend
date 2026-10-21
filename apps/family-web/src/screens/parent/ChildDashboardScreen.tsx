@@ -8,6 +8,7 @@ import {
   useFamilyObservations,
   useGrowthAreas,
   useMonthlySummary,
+  useStars,
   useStreak,
 } from '@evolveiq/api-client';
 import {
@@ -17,6 +18,7 @@ import {
   ObservationEntry,
   possessive,
   relativeDayPhrase,
+  StarBoard,
   StreakIndicator,
 } from '@evolveiq/domain';
 import {
@@ -35,8 +37,10 @@ import {
   Quote,
   RuledList,
   RuledListItem,
+  Search,
   SectionTitle,
   Sprout,
+  Star,
   StatTile,
 } from '@evolveiq/ui';
 import { AssignmentChecklist, type ChecklistItem } from '../../components/AssignmentChecklist';
@@ -45,11 +49,13 @@ import { QuickLinkTile } from '../../components/QuickLinkTile';
 
 /**
  * The parent's home for one child — the Child Understanding Center: this
- * month in plain words, what the school has set and what is done, what is
- * being worked on, and what the parent has noticed.
+ * month in plain words, the stars the child has earned, what the school has
+ * set and what is done, what is being worked on, and what the parent has
+ * noticed.
  *
  * Nothing clinical can appear here: every response a parent receives is the
- * backend's parent shape, and the family hooks copy only its fields.
+ * backend's parent shape, and the family hooks copy only its fields. A star
+ * carries the giver's words about something good, and nothing else.
  */
 export function ChildDashboardScreen() {
   const { childId } = useParams<{ childId: string }>();
@@ -57,6 +63,7 @@ export function ChildDashboardScreen() {
   const assignments = useChildAssignments(childId);
   const streak = useStreak(childId);
   const growthAreas = useGrowthAreas(childId);
+  const stars = useStars(childId);
   const observations = useFamilyObservations();
   const summary = useMonthlySummary(childId);
 
@@ -70,7 +77,10 @@ export function ChildDashboardScreen() {
 
   const firstName = firstNameOf(child.fullName);
   const newObservationPath = `/parent/observations/new?childId=${child.id}`;
+  const celebratePath = `${newObservationPath}&tone=positive`;
+  const concernPath = `${newObservationPath}&tone=concern`;
   const summaryPath = `/parent/children/${child.id}/summary`;
+  const childStars = stars.data ?? [];
 
   const all = assignments.data ?? [];
   const toDo = all.filter((assignment) => !assignment.isDone);
@@ -98,7 +108,15 @@ export function ChildDashboardScreen() {
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
+        <StatTile
+          className="col-span-2 sm:col-span-1"
+          icon={Star}
+          tone="star"
+          label="Stars"
+          value={stars.data ? childStars.length : '–'}
+          detail="For good things noticed"
+        />
         <StatTile icon={ClipboardList} label="To do" value={toDo.length} detail="Activities still open" />
         <StatTile icon={Check} tone="jade" label="Finished" value={done.length} detail="Activities done" />
         <StatTile
@@ -138,34 +156,44 @@ export function ChildDashboardScreen() {
       </Card>
 
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-6">
-        <section>
-          <SectionTitle>Pending actions and tasks</SectionTitle>
-          {assignments.isLoading ? <LoadingState /> : null}
-          {tasks.length === 0 && !assignments.isLoading ? (
-            <EmptyState
-              className="mt-3"
-              icon={ClipboardList}
-              title="Nothing set right now"
-              description={`When ${possessive(firstName)} school sets an activity, it shows up here.`}
-            />
-          ) : (
-            <AssignmentChecklist className="mt-3" variant="parent" items={tasks} />
-          )}
-        </section>
+        <div className="flex flex-col gap-8">
+          <StarBoard stars={childStars} name={firstName} audience="family" isLoading={stars.isLoading} />
+
+          <section>
+            <SectionTitle>Pending actions and tasks</SectionTitle>
+            {assignments.isLoading ? <LoadingState /> : null}
+            {tasks.length === 0 && !assignments.isLoading ? (
+              <EmptyState
+                className="mt-3"
+                icon={ClipboardList}
+                title="Nothing set right now"
+                description={`When ${possessive(firstName)} school sets an activity, it shows up here.`}
+              />
+            ) : (
+              <AssignmentChecklist className="mt-3" variant="parent" items={tasks} />
+            )}
+          </section>
+        </div>
 
         <div className="flex flex-col gap-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <QuickLinkTile
+              to={celebratePath}
+              label="Celebrate something"
+              icon={Star}
+              iconClassName="border-star-200 bg-star-50 text-star-600 [&>svg]:fill-star-400"
+            />
+            <QuickLinkTile
+              to={concernPath}
+              label="Raise a concern"
+              icon={Search}
+              iconClassName="border-lilac-100 bg-lilac-50 text-lilac-600"
+            />
             <QuickLinkTile
               to={summaryPath}
               label="Monthly summary"
               icon={CalendarDays}
               iconClassName="border-jade-100 bg-jade-50 text-jade-600"
-            />
-            <QuickLinkTile
-              to={newObservationPath}
-              label="Add an observation"
-              icon={NotebookPen}
-              iconClassName="border-lilac-100 bg-lilac-50 text-lilac-600"
             />
           </div>
 
@@ -178,7 +206,7 @@ export function ChildDashboardScreen() {
                 className="mt-3"
                 icon={Sprout}
                 title="No growth areas yet"
-                description="The school psychologist opens one after reviewing what has been noticed."
+                description="The school counsellor opens one only after reviewing a concern."
               />
             ) : (
               <GrowthAreaList className="mt-3" growthAreas={openAreas} />
@@ -205,13 +233,16 @@ export function ChildDashboardScreen() {
             className="mt-3"
             icon={NotebookPen}
             title="Nothing recorded yet"
-            description="Add the first observation and the school psychologist will read it."
+            description={`Celebrate something ${firstName} did, or note something to look into.`}
           />
         ) : (
           <Card isPlayful className="mt-3 p-6 sm:p-7">
             <RuledList>
               {entries.map((observation) => (
-                <RuledListItem key={observation.id} tone={observation.status === 'pending' ? 'pending' : 'default'}>
+                <RuledListItem
+                  key={observation.id}
+                  tone={observation.tone === 'positive' ? 'star' : observation.status === 'pending' ? 'pending' : 'default'}
+                >
                   <ObservationEntry observation={observation} audience="family" authorName="You" />
                 </RuledListItem>
               ))}

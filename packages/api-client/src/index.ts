@@ -5,7 +5,7 @@ export { ApiError, isApiError, isUsingMockBackend, request, setSessionBridge } f
 export type { HttpMethod, RequestOptions, SessionBridge } from './http-client';
 export { createQueryClient } from './query-client';
 export { queryKeys } from './query-keys';
-export { canSeeClinicalDetail, toFamilyAssignment, toParentObservation } from './redaction';
+export { canSeeClinicalDetail, toFamilyAssignment, toParentObservation, toStar } from './redaction';
 export {
   addDays,
   addMonths,
@@ -30,6 +30,7 @@ export * from './hooks/useMonthlySummary';
 export * from './hooks/useObservations';
 export * from './hooks/useParentLinks';
 export * from './hooks/useSchools';
+export * from './hooks/useStars';
 export * from './hooks/useStreak';
 export * from './hooks/useStudentLevel';
 export * from './hooks/useUsers';

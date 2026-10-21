@@ -26,9 +26,10 @@ export function signInErrorMessage(error: unknown, credentials: Credentials): st
  * Signs someone in to one of the three apps and takes them to their home
  * screen. An account that belongs to another app is signed straight back out
  * and told which app to use, instead of being dropped on a page that does not
- * exist here.
+ * exist here. Without an app — the combined build, which mounts whichever app
+ * serves the role — every account is welcome.
  */
-export function useSignInForApp(app: App) {
+export function useSignInForApp(app?: App) {
   const { signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string>();
@@ -40,7 +41,7 @@ export function useSignInForApp(app: App) {
     try {
       const user = await signIn(credentials);
       const home = ROLE_APP[user.role];
-      if (home !== app) {
+      if (app && home !== app) {
         signOut();
         setError(`This account is for ${APP_LABELS[home]}. Sign in there instead.`);
         return;

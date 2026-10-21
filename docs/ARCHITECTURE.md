@@ -4,6 +4,8 @@
 EvolvIQ ships three responsive web apps that share one design system and one
 domain model: **Family Web App** (Parent, Student), **School Web App**
 (Teacher, Psychologist, School Admin), and **Admin Panel** (Platform Admin).
+On screen the Psychologist is the school **Counsellor** (client feedback, 21
+Oct 2026); in code and in the API the role is still `psychologist`.
 Rather than three unrelated repos, the frontend is a single **monorepo** so
 the shared pieces called out in the PRD — one observation component, one
 activity-player shell, one records-table, one sidebar — are built once and
@@ -35,7 +37,7 @@ evolveiq-frontend/
     auth/               # Auth context, role guards, session handling
     config/             # eslint, tsconfig, tailwind presets shared across packages
   tools/
-    dev-shell/          # dev-only launcher: pick a role, run all three apps on one port
+    dev-shell/          # the combined build: one sign-in, all three apps on one port
   .claude/
   docs/ (this file, SCOPE_OF_WORK.md, etc.)
 ```
@@ -44,7 +46,10 @@ evolveiq-frontend/
 These map directly to the PRD's "Product Architecture Principles" and must
 not be reimplemented per app:
 - `ObservationForm` — one component, `variant="parent" | "teacher"` toggles
-  the extra fields (Level, Learning-behaviour area) teachers submit.
+  the extra fields (Level, Learning-behaviour area) teachers submit. It opens
+  on the tone (`ObservationTonePicker`): something to celebrate is a star for
+  the child and never carries a Level; something to look into goes to the
+  review queue.
 - `ActivityPlayer` — one shell, pluggable renderers per type: MCQ, text,
   image-pick, 1–5 rating, media+response.
 - `RecordsTable` — one table component (sorting, pagination, filters) reused
@@ -56,6 +61,15 @@ not be reimplemented per app:
   with `AppTopBar` (place, date, notifications). Apps pass a `contextCard`
   (built on `SidebarCard`) and a list of `AppNotification`s, both computed
   from queries the app already runs — the shell never fetches on its own.
+  The `AccountMenu` (the profile: the account row at the foot of the rail, the
+  avatar on phones) takes `accountSections` from the app — a parent's
+  children, to switch between — and, only inside an `AccountSwitchProvider`,
+  the accounts the shell lets this person switch to. Only the combined build
+  provides one (see below), so an app on its own never offers role switching.
+
+`StarBoard` shows a child's stars — the count, where they came from (school or
+home) and the giver's words — the same way to the child, their family and their
+teachers, each in their own terms.
 
 ## Role-based access
 Each app has one entry point but the menu, routes, and visible data are
@@ -80,6 +94,13 @@ new roles or permission changes are made there, not per-screen.
 - Every list endpoint is paginated; hooks collect every page and
   `RecordsTable` pages on screen. KPI counts come from list metadata
   (`limit=1`), never from loading the rows.
+- Observations carry a `tone` (`positive` / `concern`). A positive one is
+  `celebrated` at once and appears as a star (`/students/:studentId/stars`,
+  one parent-safe shape for every audience, copied field by field by
+  `toStar`). The counsellor's queue always asks for `tone=concern`
+  (`apps/school-web/src/review-filters.ts`). The backend accepts `tone` from
+  its `20261021…` migrations on, so deploy the backend before a frontend that
+  sends it.
 - With `VITE_API_BASE_URL` unset, the same paths are answered by the in-memory
   mock in `api-client/src/mock`, which keeps the backend's roles and rules. It
   backs the demo and every app-level test.
@@ -107,12 +128,20 @@ permission editor/audit log UI, no parent–teacher chat, no drag-and-drop
 activity builder, no native mobile shell. Don't build abstractions to
 anticipate these.
 
-## Running all three at once
-`tools/dev-shell` is a development-only launcher that serves a role picker on a
-single port and mounts one product app's route tree at a time, chosen by the
-signed-in role. It exists so the whole product can be walked through in one
-browser tab. It is never built or deployed, and the three apps remain
-independently buildable — they do not import it or know it exists.
+## Running all three at once: the combined build
+`tools/dev-shell` serves the whole product on a single port. It opens on one
+sign-in screen for every role (`/sign-in`, with test accounts named by role:
+Parent, Student, Teacher, Counsellor, School admin, Platform admin) and mounts
+one product app's route tree at a time, chosen by the signed-in role. It is
+what the client tests (`pnpm --filter @evolveiq/dev-shell build`, deployed on
+Render since 12 Oct 2026), so its test accounts are always on.
+
+Staff can switch role from the account menu: the shell wraps the app in an
+`AccountSwitchProvider` that offers the other staff test accounts (Teacher,
+Counsellor, School admin, Platform admin) and signs out and back in as the one
+chosen. Parents and students are offered no role switch. There is no floating
+switcher. The three apps remain independently buildable — they do not import
+the shell or know it exists.
 
 ## Environments
 - `local` — Vite dev server against a local backend (see evolveiq-backend)

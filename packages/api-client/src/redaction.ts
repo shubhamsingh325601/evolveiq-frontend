@@ -1,4 +1,4 @@
-import type { FamilyAssignment, ParentObservation, Role } from './types';
+import type { FamilyAssignment, ParentObservation, Role, Star } from './types';
 
 const PARENT_FACING_ROLES: Role[] = ['parent', 'student'];
 
@@ -16,11 +16,28 @@ export function toParentObservation(raw: ParentObservation): ParentObservation {
   return {
     id: raw.id,
     studentId: raw.studentId,
+    tone: raw.tone,
     area: raw.area,
     description: raw.description,
     when: raw.when,
     howOften: raw.howOften,
     status: raw.status,
+    createdAt: raw.createdAt,
+  };
+}
+
+/**
+ * A star reaches students and parents as well as staff, so it is copied the
+ * same way: the words, the area and who gave it — never a learning-behaviour
+ * area, Level or anything else that might arrive beside them.
+ */
+export function toStar(raw: Star): Star {
+  return {
+    id: raw.id,
+    studentId: raw.studentId,
+    area: raw.area,
+    description: raw.description,
+    givenBy: { fullName: raw.givenBy.fullName, role: raw.givenBy.role },
     createdAt: raw.createdAt,
   };
 }

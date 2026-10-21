@@ -6,7 +6,8 @@ export interface QuoteProps {
   /** Who wrote it and when, rendered as plain prose beneath the words. */
   attribution?: string;
   className?: string;
-  size?: 'md' | 'lg';
+  /** `sm` for words in a list, such as a child's stars. */
+  size?: 'sm' | 'md' | 'lg';
   /** For words set on an iris-to-lilac surface, such as sign-in. */
   isInverse?: boolean;
 }
@@ -29,7 +30,7 @@ export function Quote({
     <figure
       className={cn(
         'max-w-prose rounded-2xl',
-        size === 'lg' ? 'px-6 py-5' : 'px-5 py-4',
+        size === 'lg' ? 'px-6 py-5' : size === 'sm' ? 'px-4 py-3' : 'px-5 py-4',
         isInverse ? 'border border-white/20 bg-white/10 backdrop-blur-md' : 'bg-lilac-50/80',
         className,
       )}
@@ -38,13 +39,15 @@ export function Quote({
         className={cn(
           'font-serif',
           isInverse ? 'text-white' : 'text-ink',
-          size === 'lg' ? 'text-xl leading-9' : 'text-lg leading-8',
+          size === 'lg' ? 'text-xl leading-9' : size === 'sm' ? 'text-base leading-7' : 'text-lg leading-8',
         )}
       >
         {children}
       </blockquote>
       {attribution ? (
-        <figcaption className={cn('mt-2 text-sm', isInverse ? 'text-white/80' : 'text-ink-muted')}>
+        <figcaption
+          className={cn(size === 'sm' ? 'mt-1.5 text-xs' : 'mt-2 text-sm', isInverse ? 'text-white/80' : 'text-ink-muted')}
+        >
           {attribution}
         </figcaption>
       ) : null}

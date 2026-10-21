@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from './class-names';
 import type { IconComponent } from './icons';
 
-export type BadgeTone = 'neutral' | 'pending' | 'reviewed' | 'significant' | 'growth';
+export type BadgeTone = 'neutral' | 'pending' | 'reviewed' | 'significant' | 'growth' | 'star';
 
 export interface BadgeProps {
   tone?: BadgeTone;
@@ -14,8 +14,9 @@ export interface BadgeProps {
 
 /**
  * Colour is semantic here, never decorative — a reader learns that honey
- * always means "waiting for review" and coral always means "flagged
- * significant". Status tones carry a dot so the meaning survives greyscale.
+ * always means "waiting for review", coral always means "flagged
+ * significant" and gold always means a star. Status tones carry a dot (a star
+ * carries its star) so the meaning survives greyscale.
  */
 const TONE_CLASSES: Record<BadgeTone, string> = {
   neutral: 'bg-white/80 text-ink-muted ring-line',
@@ -23,6 +24,7 @@ const TONE_CLASSES: Record<BadgeTone, string> = {
   reviewed: 'bg-iris-50 text-iris-700 ring-iris-100',
   significant: 'bg-coral-50 text-coral-700 ring-coral-100',
   growth: 'bg-jade-50 text-jade-700 ring-jade-100',
+  star: 'bg-star-50 text-star-800 ring-star-200',
 };
 
 const DOT_CLASSES: Record<BadgeTone, string | null> = {
@@ -31,6 +33,7 @@ const DOT_CLASSES: Record<BadgeTone, string | null> = {
   reviewed: 'bg-iris-500',
   significant: 'bg-coral-500',
   growth: 'bg-jade-500',
+  star: 'bg-star-500',
 };
 
 export function Badge({ tone = 'neutral', icon: Icon, children, className }: BadgeProps) {
@@ -44,7 +47,8 @@ export function Badge({ tone = 'neutral', icon: Icon, children, className }: Bad
       )}
     >
       {Icon ? (
-        <Icon className="size-3.5 shrink-0" />
+        // A star badge's icon is the star itself, drawn solid in gold.
+        <Icon className={cn('size-3.5 shrink-0', tone === 'star' && 'fill-star-400 text-star-600')} />
       ) : dot ? (
         <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', dot)} />
       ) : null}

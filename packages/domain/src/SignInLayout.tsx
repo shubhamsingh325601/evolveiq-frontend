@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import {
+  DEMO_PASSWORD,
+  DEMO_PIN,
   FEATURES,
   isUsingMockBackend,
   type Credentials,
@@ -17,15 +19,21 @@ import {
   Input,
   RingsChart,
   SegmentedControl,
+  type IconComponent,
 } from '@evolveiq/ui';
 import { showsDemoAccounts } from './demo-accounts';
 import { HOLISTIC_DIMENSION_COLOR_CLASSES } from './holistic-index';
 import { HOLISTIC_DIMENSION_LABELS } from './labels';
 
+/** A one-tap test account, named for the role it opens. */
 export interface DemoAccount {
-  /** "Name, what they do": the part before the comma is drawn as the name. */
-  label: string;
+  /** The role, drawn as the heading: "Parent", "Teacher", "Counsellor". */
+  role: string;
+  /** Who that is in the demo, e.g. "Priya Ahluwalia, two children". */
+  person: string;
   credentials: Credentials;
+  /** Drawn in place of the person's initials. */
+  icon?: IconComponent;
 }
 
 export interface SignInLayoutProps {
@@ -37,6 +45,14 @@ export interface SignInLayoutProps {
   demoAccounts: DemoAccount[];
   /** The family app signs students in too, with their student ID and PIN. */
   allowsStudents?: boolean;
+  /** The adults' tab when students can sign in too. "Parent" in the family app. */
+  adultTabLabel?: string;
+  /**
+   * Offer the test accounts whatever the environment says. The combined test
+   * build does; each app on its own shows them only with the demo backend or
+   * `VITE_SHOW_DEMO_ACCOUNTS=true`.
+   */
+  isShowingDemoAccounts?: boolean;
   onSignIn: (credentials: Credentials) => Promise<unknown>;
   isSigningIn?: boolean;
   error?: string;
@@ -54,17 +70,11 @@ const EXAMPLE_PILLARS: { dimension: HolisticDimension; value: number }[] = [
 /** The product's loop, in order: what happens after someone notices something. */
 const LOOP_STEPS = [
   { name: 'Observe', detail: 'A parent or teacher notices' },
-  { name: 'Review', detail: 'A psychologist reads it' },
+  { name: 'Review', detail: 'A counsellor reads concerns' },
   { name: 'Assign', detail: 'Activities are chosen' },
   { name: 'Do', detail: 'The child takes part' },
-  { name: 'See', detail: 'Progress shows at home' },
+  { name: 'See', detail: 'Progress and stars show' },
 ] as const;
-
-function splitLabel(label: string): { name: string; detail: string } {
-  const [name = label, ...rest] = label.split(',');
-  const detail = rest.join(',').trim();
-  return { name: name.trim(), detail: detail.charAt(0).toUpperCase() + detail.slice(1) };
-}
 
 function signInNameOf(credentials: Credentials): string {
   return 'email' in credentials ? credentials.email : credentials.studentId;
@@ -84,6 +94,8 @@ export function SignInLayout({
   showcase,
   demoAccounts,
   allowsStudents = false,
+  adultTabLabel = 'Parent',
+  isShowingDemoAccounts = showsDemoAccounts,
   onSignIn,
   isSigningIn = false,
   error,
@@ -134,8 +146,9 @@ export function SignInLayout({
             Understand the child.
           </p>
           <p className="mt-5 max-w-md text-base leading-7 text-white/75">
-            What parents and teachers notice, reviewed by a school psychologist, becomes one
-            living picture of how a child is growing.
+            What parents and teachers notice — the wins as well as the worries — becomes one
+            living picture of how a child is growing. Good news turns into stars; concerns
+            reach the school counsellor.
           </p>
         </div>
 
@@ -211,7 +224,7 @@ export function SignInLayout({
               value={mode}
               onChange={switchMode}
               options={[
-                { value: 'adult' as const, label: 'Parent' },
+                { value: 'adult' as const, label: adultTabLabel },
                 { value: 'student' as const, label: 'Student' },
               ]}
             />
@@ -273,18 +286,19 @@ export function SignInLayout({
             No account yet? Your school sets one up for you.
           </p>
 
-          {showsDemoAccounts && demoAccounts.length > 0 ? (
+          {isShowingDemoAccounts && demoAccounts.length > 0 ? (
             <div className="mt-10">
               <div className="flex items-center gap-3">
                 <span aria-hidden="true" className="h-px flex-1 bg-line" />
-                <p className="text-xs font-semibold text-ink-faint">Or open a demo account</p>
+                <p className="text-xs font-semibold text-ink-faint">Or use a test account</p>
                 <span aria-hidden="true" className="h-px flex-1 bg-line" />
               </div>
-              <ul className="mt-4 flex flex-col gap-2.5">
+              <ul aria-label="Test accounts" className="mt-4 flex flex-col gap-2.5">
                 {demoAccounts.map((account) => {
-                  const { name, detail } = splitLabel(account.label);
+                  const Icon = account.icon;
+                  const signInName = signInNameOf(account.credentials);
                   return (
-                    <li key={signInNameOf(account.credentials)}>
+                    <li key={signInName}>
                       <button
                         type="button"
                         disabled={isSigningIn}
@@ -295,11 +309,18 @@ export function SignInLayout({
                           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
                         )}
                       >
-                        <Avatar name={name} />
+                        {Icon ? (
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-iris-50 text-iris-600 ring-1 ring-inset ring-iris-100">
+                            <Icon className="size-5" />
+                          </span>
+                        ) : (
+                          <Avatar name={account.person} />
+                        )}
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold text-ink">{name}</span>
+                          <span className="block truncate text-sm font-bold text-ink">{account.role}</span>
+                          {/* What to type comes first, so it is the part that never gets cut off. */}
                           <span className="block truncate text-xs text-ink-muted">
-                            {detail || signInNameOf(account.credentials)}
+                            <span className="font-semibold text-ink">{signInName}</span> · {account.person}
                           </span>
                         </span>
                         <ChevronRight className="size-4 shrink-0 text-ink-faint transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-iris-500" />
@@ -308,10 +329,13 @@ export function SignInLayout({
                   );
                 })}
               </ul>
-              <p className="mt-4 text-xs text-ink-faint">
+              <p className="mt-4 text-xs leading-5 text-ink-faint">
+                To type one in instead: adults use the password{' '}
+                <span className="whitespace-nowrap font-semibold text-ink-muted">{DEMO_PASSWORD}</span>, students the
+                PIN <span className="whitespace-nowrap font-semibold text-ink-muted">{DEMO_PIN}</span>.{' '}
                 {isUsingMockBackend
                   ? 'No backend is connected, so these open the built-in demo.'
-                  : 'Demo accounts from the development seed.'}
+                  : 'They come from the demo seed.'}
               </p>
             </div>
           ) : null}

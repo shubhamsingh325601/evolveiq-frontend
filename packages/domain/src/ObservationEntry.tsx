@@ -4,9 +4,10 @@ import type {
   ObservationFrequency,
   ObservationLevel,
   ObservationStatus,
+  ObservationTone,
   ObservationWhen,
 } from '@evolveiq/api-client';
-import { Badge, CalendarDays, MessageCircle, Quote, Repeat } from '@evolveiq/ui';
+import { Badge, CalendarDays, MessageCircle, Quote, Repeat, Star } from '@evolveiq/ui';
 import { OBSERVATION_AREA_ICONS } from './area-icons';
 import {
   LEARNING_BEHAVIOUR_LABELS,
@@ -21,6 +22,7 @@ import { formatRelativeDay } from './format-date';
 
 /** What every audience's observation has in common; staff shapes add Level and the like. */
 export interface ObservationEntryData {
+  tone: ObservationTone;
   area: ObservationArea;
   description: string;
   when: ObservationWhen;
@@ -60,13 +62,21 @@ export function ObservationEntry({
   const written = formatRelativeDay(observation.createdAt);
   const authorLine = authorName ? `${authorName}, ${written}` : `Written ${written.toLowerCase()}`;
   const statusLabels = audience === 'family' ? PARENT_OBSERVATION_STATUS_LABELS : OBSERVATION_STATUS_LABELS;
-  const isSignificant = showClinicalDetail && observation.level === 'significant';
+  // Something good is a star: never awaiting review, never Significant.
+  const isStar = observation.tone === 'positive';
+  const isSignificant = !isStar && showClinicalDetail && observation.level === 'significant';
 
   return (
     <article className="flex flex-col gap-3.5">
       <div className="flex flex-wrap items-center gap-2">
         <Badge icon={OBSERVATION_AREA_ICONS[observation.area]}>{OBSERVATION_AREA_LABELS[observation.area]}</Badge>
-        <Badge tone={observation.status === 'pending' ? 'pending' : 'reviewed'}>{statusLabels[observation.status]}</Badge>
+        {isStar ? (
+          <Badge tone="star" icon={Star}>
+            {statusLabels.celebrated}
+          </Badge>
+        ) : (
+          <Badge tone={observation.status === 'pending' ? 'pending' : 'reviewed'}>{statusLabels[observation.status]}</Badge>
+        )}
         {isSignificant ? <Badge tone="significant">Significant</Badge> : null}
       </div>
 
@@ -89,7 +99,7 @@ export function ObservationEntry({
           </dt>
           <dd>{OBSERVATION_FREQUENCY_LABELS[observation.howOften]}</dd>
         </div>
-        {showClinicalDetail && observation.level && !isSignificant ? (
+        {showClinicalDetail && !isStar && observation.level && !isSignificant ? (
           <div className="flex items-center gap-1.5 rounded-full bg-iris-50 px-2.5 py-0.5 text-iris-800">
             <dt className="font-medium">Level</dt>
             <dd>{OBSERVATION_LEVEL_LABELS[observation.level]}</dd>
@@ -107,7 +117,7 @@ export function ObservationEntry({
         <div className="flex gap-3 rounded-2xl bg-iris-50/80 px-4 py-3 text-sm text-iris-900 ring-1 ring-inset ring-iris-100">
           <MessageCircle className="mt-0.5 size-4 shrink-0 text-iris-500" />
           <p>
-            <span className="font-semibold">From the psychologist: </span>
+            <span className="font-semibold">From the counsellor: </span>
             {teacherOnlyNote}
           </p>
         </div>

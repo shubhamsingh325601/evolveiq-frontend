@@ -6,6 +6,7 @@ import {
   useActivities,
   useClassRoster,
   useGrowthAreas,
+  useStars,
   useStreak,
   useStudentAssignments,
   useTeacherObservations,
@@ -13,9 +14,11 @@ import {
 import {
   BackLink,
   describeAnswer,
+  firstNameOf,
   GrowthAreaList,
   ObservationEntry,
   relativeDayPhrase,
+  StarBoard,
   StreakIndicator,
 } from '@evolveiq/domain';
 import {
@@ -30,25 +33,27 @@ import {
   LayoutGrid,
   LoadingState,
   NotebookPen,
-  Plus,
   Quote,
   RuledList,
   RuledListItem,
+  Search,
   SectionTitle,
   Sprout,
+  Star,
 } from '@evolveiq/ui';
 
 /**
- * A teacher's view of one student of their classes: up to five growth areas,
- * their streak, every activity set for them with their answers, and the
- * observations this teacher has written about them — with the psychologist's
- * note back, once reviewed.
+ * A teacher's view of one student of their classes: the stars they have been
+ * given, up to five growth areas, their streak, every activity set for them
+ * with their answers, and the observations this teacher has written about
+ * them — with the counsellor's note back on a concern, once reviewed.
  */
 export function StudentProfileScreen() {
   const { studentId } = useParams<{ studentId: string }>();
   const roster = useClassRoster();
   const growthAreas = useGrowthAreas(studentId);
   const streak = useStreak(studentId);
+  const stars = useStars(studentId);
   const assignments = useStudentAssignments(studentId);
   const activities = useActivities();
   const ownObservations = useTeacherObservations();
@@ -61,14 +66,18 @@ export function StudentProfileScreen() {
     );
   }
 
+  const firstName = firstNameOf(student.fullName);
   const contentById = new Map((activities.data ?? []).map((activity) => [activity.id, activity.content]));
   const entries = (ownObservations.data ?? []).filter((observation) => observation.studentId === student.id);
   const openGrowthAreas = growthAreas.data ?? [];
+  const studentStars = stars.data ?? [];
   const set = assignments.data ?? [];
   const finishedDays = set.flatMap((assignment) =>
     assignment.completion ? [businessDate(assignment.completion.completedAt)] : [],
   );
   const assignPath = `/teacher/assign?studentId=${student.id}`;
+  const starPath = `/teacher/observations/new?studentId=${student.id}&tone=positive`;
+  const concernPath = `/teacher/observations/new?studentId=${student.id}&tone=concern`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -90,6 +99,13 @@ export function StudentProfileScreen() {
                 <li>
                   <Badge icon={LayoutGrid}>Class {student.className}</Badge>
                 </li>
+                {stars.data ? (
+                  <li>
+                    <Badge tone="star" icon={Star}>
+                      {studentStars.length} {studentStars.length === 1 ? 'star' : 'stars'}
+                    </Badge>
+                  </li>
+                ) : null}
                 <li>
                   <Badge tone="growth" icon={Sprout}>
                     {openGrowthAreas.length} of {MAX_GROWTH_AREAS} growth areas
@@ -110,9 +126,13 @@ export function StudentProfileScreen() {
               <ClipboardList />
               Assign an activity
             </Link>
-            <Link to={`/teacher/observations/new?studentId=${student.id}`} className={buttonClasses({ size: 'sm' })}>
-              <Plus />
-              New observation
+            <Link to={concernPath} className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+              <Search />
+              Raise a concern
+            </Link>
+            <Link to={starPath} className={buttonClasses({ size: 'sm' })}>
+              <Star />
+              Give a star
             </Link>
           </div>
         </div>
@@ -120,6 +140,8 @@ export function StudentProfileScreen() {
 
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
         <div className="flex flex-col gap-10 lg:col-span-5">
+          <StarBoard stars={studentStars} name={firstName} audience="staff" isLoading={stars.isLoading} />
+
           <section>
             <SectionTitle
               icon={Sprout}
@@ -137,7 +159,7 @@ export function StudentProfileScreen() {
                 className="mt-4"
                 icon={Sprout}
                 title="No growth areas yet"
-                description="A psychologist opens one when they assign activities after a review."
+                description="A counsellor opens one when they assign activities after reviewing a concern."
               />
             ) : (
               <GrowthAreaList className="mt-4" growthAreas={openGrowthAreas} />
@@ -184,9 +206,7 @@ export function StudentProfileScreen() {
                         </Badge>
                       </div>
                       {assignment.completion ? (
-                        <Quote
-                          attribution={`${student.fullName.split(' ')[0]}, ${relativeDayPhrase(assignment.completion.completedAt)}`}
-                        >
+                        <Quote attribution={`${firstName}, ${relativeDayPhrase(assignment.completion.completedAt)}`}>
                           {describeAnswer(assignment.completion.answer, contentById.get(assignment.activity.id))}
                         </Quote>
                       ) : null}
@@ -208,7 +228,7 @@ export function StudentProfileScreen() {
               className="mt-4"
               icon={NotebookPen}
               title="You have not recorded anything yet"
-              description="Record what you notice and it goes to the review queue."
+              description={`Give ${firstName} a star for something good, or raise a concern for the counsellor to review.`}
             />
           ) : (
             <Card isPlayful className="mt-4 p-6 sm:p-7">
@@ -217,11 +237,13 @@ export function StudentProfileScreen() {
                   <RuledListItem
                     key={observation.id}
                     tone={
-                      observation.level === 'significant'
-                        ? 'significant'
-                        : observation.status === 'pending'
-                          ? 'pending'
-                          : 'default'
+                      observation.tone === 'positive'
+                        ? 'star'
+                        : observation.level === 'significant'
+                          ? 'significant'
+                          : observation.status === 'pending'
+                            ? 'pending'
+                            : 'default'
                     }
                   >
                     <ObservationEntry

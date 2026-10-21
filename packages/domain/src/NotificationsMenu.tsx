@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bell, cn, type IconComponent } from '@evolveiq/ui';
 import { formatRelativeDay } from './format-date';
 
-export type AppNotificationTone = 'iris' | 'lilac' | 'jade' | 'honey' | 'coral';
+export type AppNotificationTone = 'iris' | 'lilac' | 'jade' | 'honey' | 'coral' | 'star';
 
 export interface AppNotification {
   id: string;
@@ -13,7 +13,7 @@ export interface AppNotification {
   at: string;
   /** Where reading it should take you. */
   to?: string;
-  /** Follows the hue's meaning: honey awaits review, coral is flagged, jade is done. */
+  /** Follows the hue's meaning: honey awaits review, coral is flagged, jade is done, gold is a star. */
   tone?: AppNotificationTone;
   icon?: IconComponent;
 }
@@ -33,6 +33,7 @@ const WELL_CLASSES: Record<AppNotificationTone, string> = {
   jade: 'bg-jade-50 text-jade-600',
   honey: 'bg-honey-50 text-honey-700',
   coral: 'bg-coral-50 text-coral-600',
+  star: 'bg-star-50 text-star-600 [&>svg]:fill-star-400',
 };
 
 function readSeenAt(key: string): string | null {

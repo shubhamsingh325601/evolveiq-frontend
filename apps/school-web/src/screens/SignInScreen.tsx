@@ -1,6 +1,6 @@
 import { DEMO_PASSWORD } from '@evolveiq/api-client';
-import { useSignInForApp } from '@evolveiq/auth';
-import { SignInLayout } from '@evolveiq/domain';
+import { ROLE_LABELS, useSignInForApp } from '@evolveiq/auth';
+import { ROLE_ICONS, SignInLayout } from '@evolveiq/domain';
 
 export function SignInScreen() {
   const { signInToApp, error, isSigningIn } = useSignInForApp('school');
@@ -8,15 +8,30 @@ export function SignInScreen() {
   return (
     <SignInLayout
       appName="EvolvIQ"
-      audienceLine="For teachers and school psychologists."
+      audienceLine="For teachers and school counsellors."
       showcase={{
-        body: 'Devan left the room without asking when the fire drill alarm sounded, and needed about fifteen minutes before he could come back in.',
-        attribution: 'Sunita Rao, class 4B',
+        body: 'Noor noticed a classmate sitting alone at lunch, invited her to join the table and introduced her to everyone.',
+        attribution: 'Sunita Rao, class 3A — a star for Noor',
       }}
       demoAccounts={[
-        { label: 'Sunita Rao, teacher of 4B and 3A', credentials: { email: 'rao@school.test', password: DEMO_PASSWORD } },
-        { label: 'Dr. Anand Mehta, psychologist', credentials: { email: 'mehta@school.test', password: DEMO_PASSWORD } },
-        { label: 'Ritu Kapoor, teacher of 5C', credentials: { email: 'ritu@school.test', password: DEMO_PASSWORD } },
+        {
+          role: ROLE_LABELS.teacher,
+          person: 'Sunita Rao, 4B and 3A',
+          icon: ROLE_ICONS.teacher,
+          credentials: { email: 'rao@school.test', password: DEMO_PASSWORD },
+        },
+        {
+          role: ROLE_LABELS.psychologist,
+          person: 'Dr. Anand Mehta',
+          icon: ROLE_ICONS.psychologist,
+          credentials: { email: 'mehta@school.test', password: DEMO_PASSWORD },
+        },
+        {
+          role: ROLE_LABELS.teacher,
+          person: 'Ritu Kapoor, 5C',
+          icon: ROLE_ICONS.teacher,
+          credentials: { email: 'ritu@school.test', password: DEMO_PASSWORD },
+        },
       ]}
       onSignIn={signInToApp}
       isSigningIn={isSigningIn}

@@ -1,5 +1,5 @@
 import { BrandMark, School } from '@evolveiq/ui';
-import { AccountMenu } from './AccountMenu';
+import { AccountMenu, type AccountMenuSection } from './AccountMenu';
 import { NotificationsMenu, type AppNotification } from './NotificationsMenu';
 
 export interface AppTopBarProps {
@@ -7,6 +7,8 @@ export interface AppTopBarProps {
   roleLabel: string;
   userName: string;
   onSignOut: () => void;
+  /** The account menu's extra groups, the same ones the rail's menu shows. */
+  accountSections?: AccountMenuSection[];
   /** Where this person works, such as "Ridgeview Primary". */
   contextLabel?: string;
   /** Omit to leave the bell out, for a role that has nothing to be told. */
@@ -26,6 +28,7 @@ export function AppTopBar({
   roleLabel,
   userName,
   onSignOut,
+  accountSections,
   contextLabel,
   notifications,
   notificationsKey,
@@ -60,7 +63,12 @@ export function AppTopBar({
             <NotificationsMenu items={notifications} storageKey={notificationsKey ?? userName} />
           ) : null}
           <div className="lg:hidden">
-            <AccountMenu userName={userName} roleLabel={roleLabel} onSignOut={onSignOut} />
+            <AccountMenu
+              userName={userName}
+              roleLabel={roleLabel}
+              onSignOut={onSignOut}
+              {...(accountSections ? { sections: accountSections } : {})}
+            />
           </div>
         </div>
       </div>

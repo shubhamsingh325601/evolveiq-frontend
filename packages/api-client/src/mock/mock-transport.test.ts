@@ -103,7 +103,7 @@ describe('mock backend: who may call what', () => {
     expect(response.body.observations.length).toBeGreaterThan(0);
     for (const observation of response.body.observations) {
       expect(Object.keys(observation).sort()).toEqual(
-        ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'when'],
+        ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'tone', 'when'],
       );
     }
   });
@@ -225,7 +225,94 @@ describe('mock backend: review, assign, do, see', () => {
     expect(response.status).toBe(200);
     expect(response.body.summary).toMatchObject({ studentId: 'stu-arjun', month, isFinal: false });
     expect(response.body.summary.text).toContain('Arjun Ahluwalia');
-    expect(response.body.summary.text).toContain('Areas Arjun Ahluwalia is working on: Communication.');
+    // His teacher's praise today is a star, not something to work on.
+    expect(response.body.summary.text).toMatch(/Arjun Ahluwalia has earned \d+ stars? this month\./);
+    expect(response.body.summary.text).not.toContain('working on');
+  });
+});
+
+describe('mock backend: something good is a star', () => {
+  beforeEach(() => resetMockStore());
+
+  const praise = {
+    studentId: 'stu-arjun',
+    tone: 'positive',
+    area: 'communication',
+    description: 'Actively communicating, fluent in language.',
+    when: 'today',
+    howOften: 'often',
+  };
+
+  it('celebrates a teacher’s positive observation at once and gives the student a star', async () => {
+    const teacher = await tokenFor('rao@school.test');
+
+    const created = await call('POST', ENDPOINTS.observations.list, {
+      token: teacher,
+      body: { ...praise, learningBehaviourArea: 'participation' },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.observation).toMatchObject({ tone: 'positive', status: 'celebrated', level: null });
+
+    // The student, their parent and their teacher all see it, newest first.
+    const student = (await signIn({ studentId: 'RV-1002' })).accessToken;
+    for (const token of [student, await tokenFor('priya@family.test'), teacher]) {
+      const stars = await call('GET', ENDPOINTS.students.stars('stu-arjun'), { token, query: { limit: 100 } });
+      expect(stars.status).toBe(200);
+      expect(stars.body.stars[0]).toEqual({
+        id: created.body.observation.id,
+        studentId: 'stu-arjun',
+        area: 'communication',
+        description: 'Actively communicating, fluent in language.',
+        givenBy: { fullName: 'Sunita Rao', role: 'teacher' },
+        createdAt: created.body.observation.createdAt,
+      });
+    }
+    // Another family's parent does not.
+    expect((await call('GET', ENDPOINTS.students.stars('stu-arjun'), { token: await tokenFor('neil@family.test') })).status).toBe(404);
+  });
+
+  it('never queues a star for review, never reviews it and never makes it a growth area', async () => {
+    const teacher = await tokenFor('rao@school.test');
+    const psychologist = await tokenFor('mehta@school.test');
+    const id = (await call('POST', ENDPOINTS.observations.list, { token: teacher, body: praise })).body.observation.id;
+
+    for (const query of [{ status: 'pending' }, { tone: 'concern' }]) {
+      const queue = await call('GET', ENDPOINTS.observations.list, { token: psychologist, query: { ...query, limit: 100 } });
+      expect(queue.body.observations.map((o: { id: string }) => o.id)).not.toContain(id);
+    }
+
+    const review = await call('POST', ENDPOINTS.observations.review(id), {
+      token: psychologist,
+      body: { outcome: 'assigned', developmentArea: 'communication', activityIds: ['act-story'] },
+    });
+    expect(review.status).toBe(409);
+    expect(review.body.error.message).toBe('Positive observations are celebrated, not reviewed.');
+
+    const growth = await call('GET', ENDPOINTS.students.growthAreas('stu-arjun'), { token: psychologist });
+    expect(growth.body.growthAreas).toEqual([]);
+  });
+
+  it('refuses a Level on something good', async () => {
+    const teacher = await tokenFor('rao@school.test');
+
+    const response = await call('POST', ENDPOINTS.observations.list, { token: teacher, body: { ...praise, level: 'significant' } });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.details).toEqual([{ field: 'level', message: 'is not allowed on a positive observation' }]);
+  });
+
+  it('lets a parent give a star too', async () => {
+    const parent = await tokenFor('priya@family.test');
+
+    const created = await call('POST', ENDPOINTS.family.observations, {
+      token: parent,
+      body: { ...praise, studentId: 'stu-maya', description: 'Read a whole chapter to her brother at bedtime.' },
+    });
+
+    expect(created.status).toBe(201);
+    expect(created.body.observation).toMatchObject({ tone: 'positive', status: 'celebrated' });
+    const stars = await call('GET', ENDPOINTS.students.stars('stu-maya'), { token: parent, query: { limit: 100 } });
+    expect(stars.body.stars[0].givenBy).toEqual({ fullName: 'Priya Ahluwalia', role: 'parent' });
   });
 });
 

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { canSeeClinicalDetail, toFamilyAssignment, toParentObservation } from './redaction';
-import type { FamilyAssignment, ParentObservation, TeacherObservation } from './types';
+import { canSeeClinicalDetail, toFamilyAssignment, toParentObservation, toStar } from './redaction';
+import type { FamilyAssignment, ParentObservation, Star, TeacherObservation } from './types';
 
 // A teacher's observation, with every clinical field set: what a parent must never receive.
 const CLINICAL: TeacherObservation & Record<string, unknown> = {
   id: 'obs-001',
   studentId: 'stu-maya',
+  tone: 'concern',
   area: 'learning',
-  description: 'Stayed with the tangram puzzle for almost ten minutes without being prompted.',
+  description: 'Drifts off during the afternoon reading block and needs reminders to get back to the page.',
   when: 'this_week',
   howOften: 'sometimes',
   status: 'reviewed',
@@ -25,7 +26,7 @@ describe('what a parent can receive', () => {
     const safe = toParentObservation(CLINICAL as unknown as ParentObservation);
 
     expect(Object.keys(safe).sort()).toEqual(
-      ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'when'],
+      ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'tone', 'when'],
     );
     const raw = JSON.stringify(safe);
     for (const secret of ['significant', 'attention', 'CLINICAL-NOTE', 'REVIEWER-NAME', 'focus_attention']) {
@@ -60,6 +61,28 @@ describe('what a parent can receive', () => {
       isDone: true,
       assignedAt: '2026-10-01T08:00:00.000Z',
       completedAt: '2026-10-02T10:00:00.000Z',
+    });
+  });
+
+  it('keeps a star to the words, the area and who gave it', () => {
+    const fromApi = {
+      id: 'obs-tangram',
+      studentId: 'stu-maya',
+      area: 'learning',
+      description: 'Stayed with the tangram puzzle for almost ten minutes without being prompted.',
+      givenBy: { fullName: 'Sunita Rao', role: 'teacher', id: 'usr-rao', email: 'rao@school.test' },
+      createdAt: '2026-10-19T09:00:00.000Z',
+      learningBehaviourArea: 'attention',
+      level: 'significant',
+    } as unknown as Star;
+
+    expect(toStar(fromApi)).toEqual({
+      id: 'obs-tangram',
+      studentId: 'stu-maya',
+      area: 'learning',
+      description: 'Stayed with the tangram puzzle for almost ten minutes without being prompted.',
+      givenBy: { fullName: 'Sunita Rao', role: 'teacher' },
+      createdAt: '2026-10-19T09:00:00.000Z',
     });
   });
 });

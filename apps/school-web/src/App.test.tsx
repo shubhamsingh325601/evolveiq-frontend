@@ -47,22 +47,57 @@ describe('School app', () => {
     expect(screen.queryByText('Tara Bhatt')).not.toBeInTheDocument();
   });
 
-  it('records a teacher’s observation and shows it on the student’s profile', async () => {
+  it('gives a star for something good: on the student’s profile at once, never awaiting review', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Give a star/ })[0]!);
+    await screen.findByRole('heading', { name: 'Give a star' });
+    await user.selectOptions(await screen.findByLabelText('Who is this about'), 'stu-lila');
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'social');
+    await user.type(screen.getByLabelText('What did you notice'), 'Invited a new classmate to join the game at break.');
+    // Something good has no Level, so it can never be flagged Significant.
+    expect(screen.queryByLabelText(/^Level/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Give a star' }));
+
+    expect(await screen.findByRole('heading', { name: 'Lila Menon' })).toBeInTheDocument();
+    const stars = await screen.findByRole('region', { name: 'Lila’s stars' });
+    expect(await within(stars).findByText(/Invited a new classmate/)).toBeInTheDocument();
+    expect(await screen.findByText('2 stars')).toBeInTheDocument();
+    expect(screen.queryByText('Awaiting review')).not.toBeInTheDocument();
+  });
+
+  it('raises a concern for the counsellor to review', async () => {
     const user = await signInAs('rao@school.test');
     await screen.findByRole('heading', { name: 'My students' });
 
     await user.click(screen.getAllByRole('link', { name: /New observation/ })[0]!);
     await screen.findByRole('heading', { name: 'New observation' });
     await user.selectOptions(await screen.findByLabelText('Who is this about'), 'stu-lila');
-    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'social');
-    await user.type(screen.getByLabelText('What did you notice'), 'Invited a new classmate to join the game at break.');
+    await user.click(screen.getByLabelText(/Something to look into/));
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'emotions');
+    await user.type(screen.getByLabelText('What did you notice'), 'Cried when her drawing was moved, and could not settle for the rest of the lesson.');
+    await user.selectOptions(screen.getByLabelText(/^Level of concern/), 'significant');
     await user.click(screen.getByRole('button', { name: 'Send observation' }));
 
     expect(await screen.findByRole('heading', { name: 'Lila Menon' })).toBeInTheDocument();
-    expect(await screen.findByText(/Invited a new classmate/)).toBeInTheDocument();
+    expect(await screen.findByText(/Cried when her drawing was moved/)).toBeInTheDocument();
+    expect(screen.getByText('Awaiting review')).toBeInTheDocument();
+    expect(screen.getByText('Significant')).toBeInTheDocument();
   });
 
-  it('takes a psychologist to the review queue, on Pending', async () => {
+  it('keeps stars out of the counsellor’s queue', async () => {
+    const user = await signInAs('mehta@school.test');
+    await screen.findByRole('heading', { name: 'Review queue' });
+
+    await user.click(screen.getByRole('tab', { name: /Everything/ }));
+
+    expect(await screen.findByText(/afternoon reading block/)).toBeInTheDocument();
+    expect(screen.queryByText(/tangram puzzle/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/museum trip/)).not.toBeInTheDocument();
+  });
+
+  it('takes a counsellor to the review queue, on Pending', async () => {
     await signInAs('mehta@school.test');
 
     expect(await screen.findByRole('heading', { name: 'Review queue' })).toBeInTheDocument();
@@ -104,7 +139,7 @@ describe('School app', () => {
     expect(await screen.findByText(/a Significant observation needs one/)).toBeInTheDocument();
   });
 
-  it('keeps a teacher out of the psychologist screens', async () => {
+  it('keeps a teacher out of the counsellor screens', async () => {
     await signInAs('rao@school.test');
     await screen.findByRole('heading', { name: 'My students' });
 

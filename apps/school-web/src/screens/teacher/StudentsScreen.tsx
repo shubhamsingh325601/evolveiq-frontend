@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   useClassRoster,
   useGrowthAreasForStudents,
+  useStarsForStudents,
   useTeacherObservations,
   type RosterStudent,
 } from '@evolveiq/api-client';
@@ -11,13 +12,13 @@ import {
   Avatar,
   Badge,
   buttonClasses,
-  Check,
   ClipboardList,
   ErrorState,
   Inbox,
   PageHeader,
   Plus,
   Sprout,
+  Star,
   StatTile,
   UsersRound,
 } from '@evolveiq/ui';
@@ -30,22 +31,27 @@ export function StudentsScreen() {
   const { user } = useAuth();
   const roster = useClassRoster();
   const ownObservations = useTeacherObservations();
-  const growthAreas = useGrowthAreasForStudents(roster.students.map((student) => student.id));
+  const studentIds = roster.students.map((student) => student.id);
+  const growthAreas = useGrowthAreasForStudents(studentIds);
+  const stars = useStarsForStudents(studentIds);
   const navigate = useNavigate();
 
   if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
 
   const classNames = roster.classes.map((detail) => detail.class.name);
+  const own = ownObservations.data ?? [];
   const pendingByStudent = new Map<string, number>();
-  for (const observation of ownObservations.data ?? []) {
+  for (const observation of own) {
     if (observation.status !== 'pending') continue;
     pendingByStudent.set(observation.studentId, (pendingByStudent.get(observation.studentId) ?? 0) + 1);
   }
   const pendingTotal = [...pendingByStudent.values()].reduce((sum, count) => sum + count, 0);
-  const reviewedTotal = (ownObservations.data ?? []).filter((observation) => observation.status === 'reviewed').length;
+  const reviewedTotal = own.filter((observation) => observation.status === 'reviewed').length;
+  const starsGiven = own.filter((observation) => observation.tone === 'positive').length;
   const areaCounts = roster.students.map((student) => growthAreas.get(student.id)?.length ?? 0);
   const openAreas = areaCounts.reduce((sum, count) => sum + count, 0);
   const studentsWithAreas = areaCounts.filter((count) => count > 0).length;
+  const starCountOf = (student: RosterStudent) => stars.get(student.id)?.length ?? 0;
 
   const columns: RecordsTableColumn<RosterStudent>[] = [
     {
@@ -61,6 +67,22 @@ export function StudentsScreen() {
           </span>
         </span>
       ),
+    },
+    {
+      id: 'stars',
+      header: 'Stars',
+      sortValue: starCountOf,
+      cell: (student) => {
+        const count = starCountOf(student);
+        return count === 0 ? (
+          <span className="text-ink-faint">None yet</span>
+        ) : (
+          <Badge tone="star" icon={Star}>
+            {count}
+            <span className="sr-only"> {count === 1 ? 'star' : 'stars'}</span>
+          </Badge>
+        );
+      },
     },
     {
       id: 'growth-areas',
@@ -96,6 +118,10 @@ export function StudentsScreen() {
               <ClipboardList />
               Assign an activity
             </Link>
+            <Link to="/teacher/observations/new?tone=positive" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+              <Star />
+              Give a star
+            </Link>
             <Link to="/teacher/observations/new" className={buttonClasses({ size: 'sm' })}>
               <Plus />
               New observation
@@ -112,13 +138,19 @@ export function StudentsScreen() {
           detail={classNames.length > 0 ? `In ${NAME_LIST.format(classNames)}` : 'In your classes'}
         />
         <StatTile
+          icon={Star}
+          tone="star"
+          label="Stars given"
+          value={starsGiven}
+          detail="By you, for good things noticed"
+        />
+        <StatTile
           icon={Inbox}
           tone="honey"
           label="Awaiting review"
           value={pendingTotal}
-          detail="Your observations with the psychologist"
+          detail={`Your concerns with the counsellor · ${reviewedTotal} reviewed`}
         />
-        <StatTile icon={Check} tone="lilac" label="Reviewed" value={reviewedTotal} detail="Your observations closed" />
         <StatTile
           icon={Sprout}
           tone="jade"

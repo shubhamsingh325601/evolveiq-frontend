@@ -1,14 +1,17 @@
 import type { StudentLevel } from '@evolveiq/api-client';
 import { SidebarCard } from '@evolveiq/domain';
+import { Star } from '@evolveiq/ui';
 
 export interface LevelSidebarCardProps {
   level: StudentLevel;
+  /** Stars given for something good someone noticed. */
+  starCount: number;
 }
 
 const RADIUS = 24;
 
-/** A student's level on the rail: a ring filling up towards the next one. */
-export function LevelSidebarCard({ level }: LevelSidebarCardProps) {
+/** A student's level on the rail: a ring filling up towards the next one, and their stars. */
+export function LevelSidebarCard({ level, starCount }: LevelSidebarCardProps) {
   const percent = Math.min(100, Math.round((level.xp / level.xpForNextLevel) * 100));
   const toGo = Math.max(0, level.xpForNextLevel - level.xp);
 
@@ -43,6 +46,11 @@ export function LevelSidebarCard({ level }: LevelSidebarCardProps) {
           </p>
         </div>
       </div>
+      <p className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3 text-sm font-bold text-white">
+        <Star aria-hidden="true" className="size-4 fill-star-400 text-star-400" />
+        {starCount} {starCount === 1 ? 'star' : 'stars'}
+        <span className="text-xs font-medium text-white/55">earned</span>
+      </p>
     </SidebarCard>
   );
 }

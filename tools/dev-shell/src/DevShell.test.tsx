@@ -1,16 +1,16 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createQueryClient, resetMockStore } from '@evolveiq/api-client';
+import { createQueryClient, DEMO_PASSWORD, resetMockStore } from '@evolveiq/api-client';
 import { AuthProvider } from '@evolveiq/auth';
 import { DevShell } from './DevShell';
 
-function renderShell() {
+function renderShell(initialPath = '/') {
   return render(
     <QueryClientProvider client={createQueryClient()}>
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={[initialPath]}>
         <AuthProvider>
           <DevShell />
         </AuthProvider>
@@ -19,7 +19,30 @@ function renderShell() {
   );
 }
 
-describe('Dev shell', () => {
+async function openSignIn() {
+  const user = userEvent.setup();
+  renderShell();
+  await screen.findByRole('heading', { name: 'Sign in' });
+  return user;
+}
+
+/** Signs in with one tap on the test account named for `role`. */
+async function signInWithTestAccount(user: ReturnType<typeof userEvent.setup>, role: RegExp) {
+  const accounts = screen.getByRole('list', { name: 'Test accounts' });
+  await user.click(within(accounts).getByRole('button', { name: role }));
+}
+
+/**
+ * Opens the account menu and returns queries scoped to its panel. The rail's
+ * menu and the phone header's are both in the page under jsdom.
+ */
+async function openAccountMenu(user: ReturnType<typeof userEvent.setup>) {
+  const trigger = screen.getAllByRole('button', { name: /^Account/ })[0]!;
+  await user.click(trigger);
+  return within(document.getElementById(trigger.getAttribute('aria-controls')!)!);
+}
+
+describe('Combined build', () => {
   beforeEach(() => {
     resetMockStore();
     window.localStorage.clear();
@@ -29,100 +52,115 @@ describe('Dev shell', () => {
     window.localStorage.clear();
   });
 
-  it('offers every role, grouped by the app that serves it', async () => {
-    renderShell();
+  it('opens on one sign-in, with a test account for every role named by the role', async () => {
+    await openSignIn();
 
-    expect(
-      await screen.findByRole('heading', { name: 'Open the product as anyone' }),
-    ).toBeInTheDocument();
-
-    for (const group of ['Family web app', 'School web app', 'Admin panel']) {
-      expect(screen.getByRole('heading', { name: group })).toBeInTheDocument();
-    }
-    for (const role of [
-      'Parent',
-      'Student',
-      'Teacher',
-      'Psychologist',
-      'School admin',
-      'Platform admin',
-    ]) {
-      expect(screen.getByText(role)).toBeInTheDocument();
+    const accounts = screen.getByRole('list', { name: 'Test accounts' });
+    for (const role of ['Parent', 'Student', 'Teacher', 'Counsellor', 'School admin', 'Platform admin']) {
+      expect(within(accounts).getByRole('button', { name: new RegExp(`^${role}`) })).toBeInTheDocument();
     }
   });
 
-  it('opens the family app on the parent’s home screen', async () => {
-    const user = userEvent.setup();
-    renderShell();
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
+  it('signs a teacher in with their own email and password, and opens the school app', async () => {
+    const user = await openSignIn();
 
-    await user.click(screen.getByRole('button', { name: /Priya Ahluwalia/ }));
+    await user.type(screen.getByLabelText('Email address'), 'rao@school.test');
+    await user.type(screen.getByLabelText('Password'), DEMO_PASSWORD);
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(await screen.findByRole('heading', { name: 'My students' })).toBeInTheDocument();
+  });
+
+  it('signs a student in with their ID and PIN', async () => {
+    const user = await openSignIn();
+
+    await user.click(screen.getByRole('tab', { name: 'Student' }));
+    await user.type(screen.getByLabelText('Student ID'), 'RV-1001');
+    await user.type(screen.getByLabelText('PIN'), '246810');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(await screen.findByRole('heading', { name: /Hi, Maya/ })).toBeInTheDocument();
+  });
+
+  it('opens the parent’s home from the Parent test account, with no floating role switcher', async () => {
+    const user = await openSignIn();
+
+    await signInWithTestAccount(user, /^Parent/);
 
     expect(await screen.findByRole('heading', { name: 'Parent Dashboard' })).toBeInTheDocument();
     expect(await screen.findByText('Review Arjun’s progress and pending tasks.')).toBeInTheDocument();
+    expect(screen.queryByText(/Viewing as/)).not.toBeInTheDocument();
   });
 
-  it('opens the school app on the review queue for a psychologist', async () => {
-    const user = userEvent.setup();
-    renderShell();
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
+  it('lets a parent switch between their children from the account menu, but never switch roles', async () => {
+    const user = await openSignIn();
+    await signInWithTestAccount(user, /^Parent/);
+    await screen.findByText('Review Arjun’s progress and pending tasks.');
 
-    await user.click(screen.getByRole('button', { name: /Dr. Anand Mehta/ }));
+    const menu = await openAccountMenu(user);
+    expect(menu.queryByText('Switch role')).not.toBeInTheDocument();
+    expect(menu.getByText('Your children')).toBeInTheDocument();
+    expect(menu.getByRole('link', { name: /Arjun Ahluwalia/ })).toHaveAttribute('aria-current', 'page');
+    await user.click(menu.getByRole('link', { name: /Maya Ahluwalia/ }));
+
+    expect(await screen.findByText('Review Maya’s progress and pending tasks.')).toBeInTheDocument();
+  });
+
+  it('never offers a student a role switch', async () => {
+    const user = await openSignIn();
+    await signInWithTestAccount(user, /^Student/);
+    await screen.findByRole('heading', { name: /Hi, Maya/ });
+
+    const menu = await openAccountMenu(user);
+
+    expect(menu.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(menu.queryByText('Switch role')).not.toBeInTheDocument();
+  });
+
+  it('lets staff switch role from the account menu', async () => {
+    const user = await openSignIn();
+    await signInWithTestAccount(user, /^Teacher/);
+    await screen.findByRole('heading', { name: 'My students' });
+
+    const menu = await openAccountMenu(user);
+    expect(menu.getByText('Switch role')).toBeInTheDocument();
+    expect(menu.getByRole('button', { name: /^Teacher/ })).toBeDisabled();
+    await user.click(menu.getByRole('button', { name: /^Counsellor/ }));
 
     expect(await screen.findByRole('heading', { name: 'Review queue' })).toBeInTheDocument();
+    expect(screen.getAllByText('Counsellor').length).toBeGreaterThan(0);
   });
 
   it('opens the admin panel for a platform admin', async () => {
-    const user = userEvent.setup();
-    renderShell();
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
+    const user = await openSignIn();
 
-    await user.click(screen.getByRole('button', { name: /Tunde Oyelaran/ }));
+    await signInWithTestAccount(user, /^Platform admin/);
 
     expect(await screen.findByRole('heading', { name: 'Schools' })).toBeInTheDocument();
   });
 
-  it('switches from one role straight to another', async () => {
-    const user = userEvent.setup();
-    renderShell();
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
+  it('signs out back to the sign-in', async () => {
+    const user = await openSignIn();
+    await signInWithTestAccount(user, /^Counsellor/);
+    await screen.findByRole('heading', { name: 'Review queue' });
 
-    await user.click(screen.getByRole('button', { name: /Sunita Rao/ }));
-    expect(await screen.findByRole('heading', { name: 'My students' })).toBeInTheDocument();
-    // Scoped to the switcher: "Teacher" also appears as the sidebar's role label.
-    expect(screen.getByText(/Viewing as/).textContent).toContain('Teacher');
+    const menu = await openAccountMenu(user);
+    await user.click(menu.getByRole('button', { name: 'Sign out' }));
 
-    await user.click(screen.getByRole('button', { name: 'Switch role' }));
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
-
-    await user.click(screen.getByRole('button', { name: /Clara Fernandes/ }));
-    expect(await screen.findByRole('heading', { name: 'Students' })).toBeInTheDocument();
-  });
-
-  it('shows which role is being viewed while an app is mounted', async () => {
-    const user = userEvent.setup();
-    renderShell();
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
-
-    await user.click(screen.getByRole('button', { name: /Maya Ahluwalia/ }));
-
-    await screen.findByRole('heading', { name: /Hi, Maya/ });
-    expect(screen.getByText(/Viewing as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('never shows the next person what the last person loaded', async () => {
-    const user = userEvent.setup();
-    renderShell();
-    await screen.findByRole('heading', { name: 'Open the product as anyone' });
+    const user = await openSignIn();
 
     // Sunita's class list holds only her own classes, 4B and 3A.
-    await user.click(screen.getByRole('button', { name: /Sunita Rao/ }));
+    await signInWithTestAccount(user, /^Teacher/);
     await screen.findByRole('heading', { name: 'My students' });
     await screen.findByText('Maya Ahluwalia');
-    await user.click(screen.getByRole('button', { name: 'Switch role' }));
+    const menu = await openAccountMenu(user);
+    await user.click(menu.getByRole('button', { name: /^School admin/ }));
 
     // The school admin asks for the same list and must get the whole school's.
-    await user.click(await screen.findByRole('button', { name: /Clara Fernandes/ }));
     await screen.findByRole('heading', { name: 'Students' });
     await user.click(screen.getAllByRole('link', { name: /Classes/ })[0]!);
 

@@ -68,7 +68,7 @@ export function staffNotifications({
         return entry.teacherOnlyNote
           ? {
               id: `note-${entry.id}`,
-              title: `The psychologist left you a note about ${name}`,
+              title: `The counsellor left you a note about ${name}`,
               detail: entry.teacherOnlyNote,
               at: entry.reviewedAt!,
               to: `/teacher/students/${entry.studentId}`,

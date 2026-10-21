@@ -9,23 +9,24 @@ single pnpm monorepo. See `docs/ARCHITECTURE.md` for why, and
 ```bash
 pnpm install
 
-pnpm dev:family   # Parent + Student      → http://localhost:5173
-pnpm dev:school   # Teacher + Psychologist → http://localhost:5174
+pnpm dev          # Everyone, one sign-in   → http://localhost:5170 (the combined build)
+pnpm dev:family   # Parent + Student        → http://localhost:5173
+pnpm dev:school   # Teacher + Counsellor    → http://localhost:5174
 pnpm dev:admin    # School + Platform admin → http://localhost:5175
 ```
 
 With no backend configured, every app runs against the built-in demo: an
 in-memory copy of the backend with the same routes, shapes and rules. The
-sign-in screens list one-tap demo accounts. To sign in by hand, adults use
+sign-in screens list one-tap test accounts, named by role. To sign in by hand, adults use
 their email (`priya@family.test` parent, `rao@school.test` teacher,
-`mehta@school.test` psychologist, `clara@school.test` school admin,
+`mehta@school.test` counsellor, `clara@school.test` school admin,
 `tunde@evolveiq.test` platform admin) with the password `EvolvIQ-Demo-2026`;
 students use their student ID (`RV-1001` is Maya) with the PIN `246810`.
 
 ```bash
 pnpm lint        # eslint across every workspace
 pnpm typecheck   # tsc --noEmit across every workspace
-pnpm test        # vitest, 112 tests
+pnpm test        # vitest, 135 tests
 pnpm build       # production build of all three apps
 ```
 
@@ -45,6 +46,10 @@ The frontend talks to evolveiq-backend (`/api/v1`), checked out alongside this r
 
 Put these variables in `.env` rather than on the command line: Git Bash on
 Windows rewrites a value like `/api/v1` into a Windows path.
+
+When the contract changes, deploy the backend first. Since 21 Oct 2026 the
+frontend sends `tone` with every observation, which a backend without the
+`20261021…` migrations refuses.
 
 For a deployed build, set `VITE_API_BASE_URL` to the API's full URL and serve
 the apps from the same site as the API (or enable CORS for them there).
@@ -77,7 +82,8 @@ apps/
   school-web/     Teacher + Psychologist
   admin-panel/    School admin + Platform admin
 tools/
-  dev-shell/      Development launcher: all roles on one port. Not deployed.
+  dev-shell/      The combined build: one sign-in for every role, all three apps on one port.
+                  What the client tests (deployed on Render).
 packages/
   ui/             Design system primitives
   domain/         ObservationForm, ActivityPlayer, RecordsTable, AppSidebar
@@ -97,7 +103,10 @@ clinical field to show: no level, learning-behaviour area, development area,
 psychologist note or reviewer. On top of that, the family hooks copy each
 response field by field (`packages/api-client/src/redaction.ts`), so even a
 field too many from the API would never reach a parent's cache or screen;
-`redaction.test.ts` and `mock-transport.test.ts` cover it. And the query cache
+`redaction.test.ts` and `mock-transport.test.ts` cover it. A star — something
+good a teacher or parent noticed — does reach parents and students, with the
+giver's words, but never with a Level or learning-behaviour area (`toStar`).
+And the query cache
 is cleared whenever someone signs in or out (`AuthProvider`), so one person's
 cached responses can never be served to whoever signs in next on the same
 device; `DevShell.test.tsx` covers that.
@@ -124,11 +133,13 @@ The full royal-blue-to-lilac gradient is kept for a few moments: the brand
 mark, the main action, the active menu item and a student's finish
 celebration. Nothing is coloured for decoration.
 
-Two small sets sit outside that scheme. The **EHI's five pillars** (education,
+Three small sets sit outside that scheme. The **EHI's five pillars** (education,
 skills, physical, wellbeing, character) have their own data colours — indigo,
 emerald, amber, pink, violet — validated together as a colour-blind-safe set in
 ring order. They only appear inside EHI charts, always beside the pillar's name
-and value. **Flame** orange is a student's streak and nothing else.
+and value. **Flame** orange is a student's streak and nothing else. **Star**
+gold, kept yellower than honey, is a star a child was given for something good,
+always drawn as the star itself beside a count or the giver's words.
 
 The whole product follows the client's prototypes: heavy 800–900 weight
 headings, cards with a hairline edge, and a row of KPI tiles opening each
@@ -143,7 +154,10 @@ the window and level with the top bar, carries the brand,
 the role, a context card each app fills from data it already has (a teacher's
 classes, the review pulse, a parent's children with their EHI, a student's
 level, an admin's school in counts), the role's main action and the menu. It
-narrows to its icons and remembers that. A glass top bar says where and when,
+narrows to its icons and remembers that. The account row at its foot (the
+avatar, on phones) opens the account menu: a parent's children to move
+between, and — in the combined build only — the roles staff can switch to;
+parents and students never switch roles. A glass top bar says where and when,
 and holds the notifications bell, whose items each app builds from its own
 data — the bell fetches nothing itself.
 

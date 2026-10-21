@@ -1,4 +1,4 @@
-import type { ActivityType, DevelopmentArea, ObservationArea } from '@evolveiq/api-client';
+import type { ActivityType, DevelopmentArea, ObservationArea, Role } from '@evolveiq/api-client';
 import {
   Award,
   BookOpen,
@@ -6,13 +6,17 @@ import {
   CircleHelp,
   CirclePlay,
   Footprints,
+  GraduationCap,
   Hand,
   Heart,
+  HeartHandshake,
   ImageIcon,
   ListChecks,
   MessageCircle,
   Moon,
   PenLine,
+  Presentation,
+  School,
   ShieldCheck,
   Sprout,
   Star,
@@ -56,6 +60,16 @@ export function growthAreaIcon(name: string): IconComponent {
   const area = developmentAreaForName(name);
   return area ? DEVELOPMENT_AREA_ICONS[area] : Sprout;
 }
+
+/** Each role, wherever it is offered by name: test accounts and the role switcher. */
+export const ROLE_ICONS: Record<Role, IconComponent> = {
+  parent: HeartHandshake,
+  student: GraduationCap,
+  teacher: Presentation,
+  psychologist: MessageCircle,
+  school_admin: School,
+  platform_admin: ShieldCheck,
+};
 
 export const ACTIVITY_TYPE_ICONS: Record<ActivityType, IconComponent> = {
   mcq: ListChecks,

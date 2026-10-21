@@ -10,6 +10,24 @@ as possible and lead with the product's USP, the **EvolvIQ Holistic Index
 into scope and narrows the "no charts" exclusion to everything else. The
 teacher view was accepted as it is.
 
+**Change, 21 Oct 2026 (client feedback):**
+- Observations "shouldn't be only negative or psychological — they can be
+  good and cheering too". Everyone who records one first chooses **something
+  to celebrate** or **something to look into**. Something to celebrate is a
+  **star** on the child's profile straight away: never reviewed, never given a
+  Level, so never flagged Significant and never turned into a growth area.
+  Something to look into goes to the review queue as before.
+- Teachers' good reviews become rewards: stars, with the giver's words, on the
+  child's own home, the parent's dashboard and the teacher's roster and
+  profile.
+- The psychologist role is called the school **Counsellor** on screen.
+- The floating "Switch role" pill is gone. Staff switch role from the account
+  menu (the profile) in the test build; parents and students never switch
+  roles — a parent switches between their children instead.
+- The combined build opens on one dedicated sign-in screen for every role,
+  with test accounts named by role: Parent, Student, Teacher, Counsellor,
+  School admin, Platform admin.
+
 ## Apps to build
 1. **Family Web App** — Parent, Student
 2. **School Web App** — Teacher, Psychologist
@@ -20,6 +38,8 @@ teacher view was accepted as it is.
 ### Every signed-in role
 - One shell: a collapsible rail with the role's at-a-glance context card, a top
   bar, and a notifications bell built from data the app already loads
+- An account menu (the profile) at the foot of the rail and behind the avatar
+  on phones: who is signed in, what they can switch between, and sign out
 - KPI tiles made of counts (no charts) at the top of working screens
 
 ### Student (Family Web App)
@@ -27,15 +47,19 @@ teacher view was accepted as it is.
 - Level and XP progress, streak
 - Activity player: MCQ, text, image pick, 1–5 rating, media + response
 - Progress/streak indicator on completion
+- Their stars, each with the words of the teacher or parent who gave it
 - Own Holistic Report Card (EHI trajectory, skill profile, strengths, Growth Playbook)
 - No access to any other student's data
 
 ### Parent (Family Web App)
-- Dashboard per child, with a switcher between children
+- Dashboard per child, with a switcher between children (on the dashboard, the
+  rail and the account menu)
 - EvolvIQ Holistic Index: score, change since last year, five-pillar rings
 - Holistic Report Card: EHI trajectory over the years, skill profile radar,
   strengths, year-by-year card, Growth Playbook, save as PDF / share
-- Observation submission form (area, free text, when, how often)
+- Observation submission form (something to celebrate or something to look
+  into; area, free text, when, how often)
+- The child's stars, from school and from home, with the giver's words
 - Teacher notes (read-only)
 - Growth areas + monthly summary (plain-language, not clinical)
 - No access to clinical scores or psychologist notes. The EHI is a
@@ -43,18 +67,20 @@ teacher view was accepted as it is.
   significance flags or psychologist notes
 
 ### Teacher (School Web App)
-- Own students list
-- Observation submission form (area, free text, when, how often, Level,
-  Learning-behaviour area)
+- Own students list, with each student's stars
+- Observation submission form: something to celebrate (a star) or something
+  to look into; area, free text, when, how often, Learning-behaviour area, and
+  Level for a concern only
+- "Give a star" and "Raise a concern" from the roster and the student profile
 - Direct activity assignment
 - Student progress tracking
-- Student profile: up to 5 growth areas, activity progress, full observation history
+- Student profile: stars, up to 5 growth areas, activity progress, full observation history
 - Each student's EvolvIQ Holistic Index on the roster and profile, and the same
   Holistic Report Card the family sees
 
-### Psychologist (School Web App)
+### Psychologist — "Counsellor" on screen (School Web App)
 - Observation review queue with filters: Pending, Significant, From
-  parents, Reviewed, school
+  parents, Reviewed, school — concerns only; stars never wait for review
 - Observation detail view (metadata + related history)
 - Development-area tagging
 - Activity recommend/assign from library

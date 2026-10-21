@@ -18,7 +18,7 @@ export function RuledList({ children, className }: RuledListProps) {
 export interface RuledListItemProps {
   children: ReactNode;
   /** Draws the marker in a semantic colour rather than the default iris. */
-  tone?: 'default' | 'pending' | 'significant' | 'growth';
+  tone?: 'default' | 'pending' | 'significant' | 'growth' | 'star';
   className?: string;
 }
 
@@ -27,6 +27,7 @@ const MARKER_CLASSES: Record<NonNullable<RuledListItemProps['tone']>, string> = 
   pending: 'bg-honey-400',
   significant: 'bg-coral-500',
   growth: 'bg-jade-500',
+  star: 'bg-star-400',
 };
 
 export function RuledListItem({ children, tone = 'default', className }: RuledListItemProps) {

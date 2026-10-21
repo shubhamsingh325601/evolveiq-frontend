@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import { cn, DawnBackdrop } from '@evolveiq/ui';
+import { ArrowLeftRight, cn, DawnBackdrop } from '@evolveiq/ui';
+import type { AccountMenuSection } from './AccountMenu';
 import { AppBottomNav } from './AppBottomNav';
 import { AppSidebar, type AppSidebarProps } from './AppSidebar';
 import { AppTopBar } from './AppTopBar';
 import type { AppNotification } from './NotificationsMenu';
+import { useAccountSwitch } from './useAccountSwitch';
 
 export interface AppLayoutProps
   extends Omit<AppSidebarProps, 'className' | 'isCollapsed' | 'onToggleCollapsed'> {
@@ -34,9 +36,30 @@ export function AppLayout({
   children,
   notifications,
   notificationsKey,
+  accountSections = [],
   ...shellProps
 }: AppLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(readIsCollapsed);
+  const accountSwitch = useAccountSwitch();
+
+  // The app's own groups (a parent's children), then whatever the shell offers.
+  const sections: AccountMenuSection[] =
+    accountSwitch && accountSwitch.accounts.length > 0
+      ? [
+          ...accountSections,
+          {
+            title: accountSwitch.title,
+            items: accountSwitch.accounts.map((account) => ({
+              id: account.id,
+              label: account.label,
+              icon: account.icon ?? ArrowLeftRight,
+              isCurrent: account.id === accountSwitch.currentId,
+              onSelect: () => accountSwitch.switchTo(account.id),
+              ...(account.detail ? { detail: account.detail } : {}),
+            })),
+          },
+        ]
+      : accountSections;
 
   const toggleCollapsed = () => {
     const next = !isCollapsed;
@@ -53,6 +76,7 @@ export function AppLayout({
       <DawnBackdrop />
       <AppSidebar
         {...shellProps}
+        accountSections={sections}
         isCollapsed={isCollapsed}
         onToggleCollapsed={toggleCollapsed}
         className="print:hidden"
@@ -69,6 +93,7 @@ export function AppLayout({
           roleLabel={shellProps.roleLabel}
           userName={shellProps.userName}
           onSignOut={shellProps.onSignOut}
+          accountSections={sections}
           {...(shellProps.contextLabel ? { contextLabel: shellProps.contextLabel } : {})}
           {...(notifications ? { notifications } : {})}
           {...(notificationsKey ? { notificationsKey } : {})}

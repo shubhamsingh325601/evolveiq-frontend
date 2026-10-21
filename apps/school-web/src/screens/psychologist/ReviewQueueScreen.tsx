@@ -27,17 +27,16 @@ import {
   Select,
   StatTile,
 } from '@evolveiq/ui';
+import { REVIEW_FILTERS, type ReviewFilter } from '../../review-filters';
 
-/** The five filters the PRD asks for, each one query against the backend's queue. */
-type QueueFilter = 'pending' | 'significant' | 'from-parents' | 'reviewed' | 'all';
+/**
+ * The five filters the PRD asks for, each one query against the backend's
+ * queue. Every one asks for concerns: something good is a star for the
+ * student, and never waits here.
+ */
+type QueueFilter = ReviewFilter;
 
-const FILTER_QUERIES: Record<QueueFilter, ReviewQueueFilters> = {
-  pending: { status: 'pending' },
-  significant: { level: 'significant' },
-  'from-parents': { authorRole: 'parent' },
-  reviewed: { status: 'reviewed' },
-  all: {},
-};
+const FILTER_QUERIES: Record<QueueFilter, ReviewQueueFilters> = REVIEW_FILTERS;
 
 export function ReviewQueueScreen() {
   const navigate = useNavigate();
@@ -129,7 +128,10 @@ export function ReviewQueueScreen() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Review queue" subtitle="Observations from every school, newest first." />
+      <PageHeader
+        title="Review queue"
+        subtitle="Concerns from every school, newest first. Good news becomes a star instead."
+      />
 
       <div role="tablist" aria-label="Filter the queue" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatTile
@@ -171,14 +173,14 @@ export function ReviewQueueScreen() {
           icon={ClipboardList}
           label="Everything"
           value={counts.all ?? '–'}
-          detail="Every observation"
+          detail="Every concern raised"
           isSelected={filter === 'all'}
           onSelect={() => setFilter('all')}
         />
       </div>
 
       <RecordsTable
-        caption="Observations in the review queue"
+        caption="Concerns in the review queue"
         rows={observations.data ?? []}
         columns={columns}
         getRowId={(observation) => observation.id}

@@ -56,7 +56,38 @@ describe('Family app', () => {
     expect(within(switcher).getByRole('link', { name: 'Arjun' })).toBeInTheDocument();
     // Arjun comes first alphabetically, so his dashboard opens.
     expect(within(switcher).getByRole('link', { name: 'Arjun' })).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByText(/Areas Arjun Ahluwalia is working on: Communication\./)).toBeInTheDocument();
+    // His teacher's praise is a star, not something to work on.
+    expect(await screen.findByText(/Arjun Ahluwalia has earned \d+ stars? this month\./)).toBeInTheDocument();
+    expect(screen.queryByText(/is working on/)).not.toBeInTheDocument();
+  });
+
+  it('shows a parent their child’s stars, from school and from home, but never a teacher’s concern', async () => {
+    const user = await signInAsParent();
+    const switcher = await screen.findByRole('navigation', { name: 'Your children' });
+    await user.click(within(switcher).getByRole('link', { name: 'Maya' }));
+
+    const stars = await screen.findByRole('region', { name: 'Maya’s stars' });
+    expect(await within(stars).findByText(/tangram puzzle/)).toBeInTheDocument();
+    expect(within(stars).getByText(/Sunita Rao, teacher/)).toBeInTheDocument();
+    expect(within(stars).getByText('1 from school · 1 from home')).toBeInTheDocument();
+    // Ms Rao's concern about Maya stays with the school.
+    expect(screen.queryByText(/afternoon reading block/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Significant')).not.toBeInTheDocument();
+  });
+
+  it('lets a parent celebrate something, and it is a star straight away', async () => {
+    const user = await signInAsParent();
+    await screen.findByText('Review Arjun’s progress and pending tasks.');
+
+    await user.click(screen.getAllByRole('link', { name: /Celebrate something/ })[0]!);
+    expect(await screen.findByLabelText(/Something to celebrate/)).toBeChecked();
+    await user.selectOptions(screen.getByLabelText('Which area does this fit'), 'physical');
+    await user.type(screen.getByLabelText('What did you notice'), 'Rode his bicycle all the way to the park without stabilisers.');
+    await user.click(screen.getByRole('button', { name: 'Give a star' }));
+
+    const stars = await screen.findByRole('region', { name: 'Arjun’s stars' });
+    expect(await within(stars).findByText(/without stabilisers/)).toBeInTheDocument();
+    expect(within(stars).getByText('1 from school · 2 from home')).toBeInTheDocument();
   });
 
   it('switches the dashboard to another child from the pills', async () => {
@@ -78,8 +109,11 @@ describe('Family app', () => {
 
     expect(await screen.findByText(/nervous before the school assembly/)).toBeInTheDocument();
     expect(screen.getAllByText('Read by the school').length).toBeGreaterThan(0);
+    // Her own good news about Maya is a star.
+    expect(screen.getByText(/laid out her uniform/)).toBeInTheDocument();
+    expect(screen.getAllByText('Star given').length).toBeGreaterThan(0);
     // A teacher's observation about Maya is never in a parent's list.
-    expect(screen.queryByText(/tangram puzzle/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/afternoon reading block/)).not.toBeInTheDocument();
     expect(screen.queryByText('Significant')).not.toBeInTheDocument();
     expect(screen.queryByText(/Learning behaviour/)).not.toBeInTheDocument();
   });
@@ -93,6 +127,14 @@ describe('Family app', () => {
       'href',
       '/student/activities/asg-maya-sorting',
     );
+  });
+
+  it('shows a student the stars they were given, with the words behind them', async () => {
+    await signInAsStudent();
+
+    const stars = await screen.findByRole('region', { name: 'Your stars' });
+    expect(await within(stars).findByText(/tangram puzzle/)).toBeInTheDocument();
+    expect(within(stars).getByText(/Sunita Rao, your teacher/)).toBeInTheDocument();
   });
 
   it('lets a student finish an activity and celebrates it', async () => {

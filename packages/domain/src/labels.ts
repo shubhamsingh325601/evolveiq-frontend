@@ -7,6 +7,7 @@ import type {
   ObservationFrequency,
   ObservationLevel,
   ObservationStatus,
+  ObservationTone,
   ObservationWhen,
   ReviewOutcome,
 } from '@evolveiq/api-client';
@@ -18,6 +19,19 @@ import type {
  * backend's own (`observation-options.ts`), so the API docs and the screens
  * read the same.
  */
+
+/**
+ * What kind of observation it is — the first thing anyone recording one
+ * chooses. Something good is a star for the child; something to look into
+ * goes to the school counsellor.
+ */
+export const OBSERVATION_TONE_LABELS: Record<ObservationTone, string> = {
+  positive: 'Something to celebrate',
+  concern: 'Something to look into',
+};
+
+/** In that order: good news comes first. */
+export const OBSERVATION_TONES: ObservationTone[] = ['positive', 'concern'];
 
 /** What an observation is about, as the parent or teacher sees it. */
 export const OBSERVATION_AREA_LABELS: Record<ObservationArea, string> = {
@@ -47,7 +61,7 @@ export const OBSERVATION_FREQUENCY_LABELS: Record<ObservationFrequency, string> 
   daily: 'Every day',
 };
 
-/** Teachers only; never shown to a parent. */
+/** Teachers only, and concerns only: how worrying it is. Never shown to a parent. */
 export const OBSERVATION_LEVEL_LABELS: Record<ObservationLevel, string> = {
   minor: 'Minor',
   moderate: 'Moderate',
@@ -98,16 +112,24 @@ export function developmentAreaForName(name: string): DevelopmentArea | undefine
   return DEVELOPMENT_AREA_BY_LABEL.get(name);
 }
 
-/** Staff wording. Parents only ever see "Awaiting review" or "Read by the school". */
+/** Staff wording. Parents see their own words for the same three states. */
 export const OBSERVATION_STATUS_LABELS: Record<ObservationStatus, string> = {
   pending: 'Awaiting review',
   reviewed: 'Reviewed',
+  celebrated: 'Star given',
 };
 
 /** How a parent is told where their observation stands. */
 export const PARENT_OBSERVATION_STATUS_LABELS: Record<ObservationStatus, string> = {
   pending: 'Awaiting review',
   reviewed: 'Read by the school',
+  celebrated: 'Star given',
+};
+
+/** Who gave a star, in a phrase: "Sunita Rao, teacher". */
+export const STAR_GIVER_LABELS: Record<'parent' | 'teacher', string> = {
+  teacher: 'teacher',
+  parent: 'parent',
 };
 
 export const REVIEW_OUTCOME_LABELS: Record<ReviewOutcome, string> = {

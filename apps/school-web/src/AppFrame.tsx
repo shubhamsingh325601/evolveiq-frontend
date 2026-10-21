@@ -12,13 +12,14 @@ import { AppLayout } from '@evolveiq/domain';
 import { menuForRole } from './app-menu';
 import { ClassesSidebarCard } from './components/ClassesSidebarCard';
 import { ReviewPulseCard } from './components/ReviewPulseCard';
+import { REVIEW_FILTERS } from './review-filters';
 import { staffNotifications } from './staff-notifications';
 
-/** The counts behind the psychologist's review pulse; the queue's tiles share their cache entries. */
+/** The counts behind the counsellor's review pulse; the queue's tiles share their cache entries. */
 const PULSE_FILTERS = {
-  pending: { status: 'pending' },
-  significantPending: { status: 'pending', level: 'significant' },
-  all: {},
+  pending: REVIEW_FILTERS.pending,
+  significantPending: { ...REVIEW_FILTERS.pending, level: 'significant' },
+  all: REVIEW_FILTERS.all,
 } satisfies Record<string, ReviewQueueFilters>;
 
 export function AppFrame() {
@@ -28,15 +29,22 @@ export function AppFrame() {
 
   const roster = useClassRoster({ isEnabled: isTeacher });
   const ownObservations = useTeacherObservations({ isEnabled: isTeacher });
-  const pending = useReviewQueue({ status: 'pending' }, { isEnabled: isPsychologist });
+  const pending = useReviewQueue(REVIEW_FILTERS.pending, { isEnabled: isPsychologist });
   const pulse = useReviewQueueCounts(PULSE_FILTERS, { isEnabled: isPsychologist });
   const school = useSchool(isTeacher ? user?.schoolId : undefined);
 
   if (!user) return null;
 
-  const ownPending = (ownObservations.data ?? []).filter((entry) => entry.status === 'pending').length;
+  const own = ownObservations.data ?? [];
+  const ownPending = own.filter((entry) => entry.status === 'pending').length;
+  const starsGiven = own.filter((entry) => entry.tone === 'positive').length;
   const contextCard = isTeacher ? (
-    <ClassesSidebarCard classes={roster.classes} students={roster.students} pendingCount={ownPending} />
+    <ClassesSidebarCard
+      classes={roster.classes}
+      students={roster.students}
+      pendingCount={ownPending}
+      starsGiven={starsGiven}
+    />
   ) : isPsychologist ? (
     <ReviewPulseCard pending={pulse.pending} significantPending={pulse.significantPending} total={pulse.all} />
   ) : null;
@@ -55,7 +63,7 @@ export function AppFrame() {
       notifications={staffNotifications({
         user,
         pending: pending.data ?? [],
-        ownObservations: ownObservations.data ?? [],
+        ownObservations: own,
         studentNameById: new Map(roster.students.map((student) => [student.id, student.fullName])),
       })}
     >

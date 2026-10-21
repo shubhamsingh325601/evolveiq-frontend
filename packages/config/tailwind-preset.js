@@ -16,10 +16,12 @@
  *   coral  flagged significant, or destructive — the only colour that means "look now"
  * Peach exists only inside the `dawn` and `hero` glows. It never means anything.
  *
- * Two small sets sit outside that scheme, each with a single job:
+ * Three small sets sit outside that scheme, each with a single job:
  *   ehi    the five pillars of the EvolvIQ Holistic Index, as chart series.
  *          Identity only, only inside an EHI chart, always beside a label.
  *   flame  a student's streak, and nothing else.
+ *   star   a star a child was given for something good someone noticed, and
+ *          nothing else. Always drawn with the star itself and a count or words.
  */
 
 /** @type {import('tailwindcss').Config} */
@@ -112,6 +114,18 @@ export default {
           200: '#FED7AA',
           500: '#F97316',
           700: '#C2410C',
+        },
+        // Gold, kept yellower than honey so a star never reads as "awaiting review".
+        star: {
+          50: '#FEFCE8',
+          100: '#FEF9C3',
+          200: '#FEF08A',
+          300: '#FDE047',
+          400: '#FACC15',
+          500: '#EAB308',
+          600: '#CA8A04',
+          700: '#A16207',
+          800: '#854D0E',
         },
       },
 
@@ -214,6 +228,12 @@ export default {
           '60%': { transform: 'scale(1.08) rotate(3deg)', opacity: '1' },
           '100%': { transform: 'scale(1) rotate(0)', opacity: '1' },
         },
+        // A newly given star settling into place on a child's profile.
+        'star-pop': {
+          '0%': { transform: 'scale(0.3) rotate(-30deg)', opacity: '0' },
+          '70%': { transform: 'scale(1.15) rotate(6deg)', opacity: '1' },
+          '100%': { transform: 'scale(1) rotate(0)', opacity: '1' },
+        },
         halo: {
           '0%': { boxShadow: '0 0 0 0 rgba(118, 80, 217, 0.45)' },
           '100%': { boxShadow: '0 0 0 36px rgba(118, 80, 217, 0)' },
@@ -241,6 +261,7 @@ export default {
         'streak-mark': 'streak-mark 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         rise: 'rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         celebrate: 'celebrate 640ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        'star-pop': 'star-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         halo: 'halo 1400ms ease-out 360ms both',
         'ring-fill': 'ring-fill 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         'line-draw': 'line-draw 1100ms cubic-bezier(0.4, 0, 0.2, 1) both',

@@ -128,7 +128,7 @@ export function AssignActivityScreen() {
             className="mt-5"
             icon={BookOpen}
             title="Nothing in the library matches"
-            description="Choose another type, clear the search, or ask your school psychologist to add one."
+            description="Choose another type, clear the search, or ask your school counsellor to add one."
           />
         ) : (
           <ul className="mt-1 grid gap-3 xl:grid-cols-2">

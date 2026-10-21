@@ -4,10 +4,11 @@ import {
   longestRun,
   useGrowthAreas,
   useMyAssignments,
+  useStars,
   useStreak,
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
-import { GrowthAreaList, relativeDayPhrase, StreakIndicator } from '@evolveiq/domain';
+import { GrowthAreaList, relativeDayPhrase, StarBoard, StreakIndicator } from '@evolveiq/domain';
 import { Card, Check, EmptyState, ErrorState, LoadingState, PageHeader, Sprout, Star } from '@evolveiq/ui';
 
 export function ProgressScreen() {
@@ -15,6 +16,7 @@ export function ProgressScreen() {
   const streak = useStreak(user?.id);
   const growthAreas = useGrowthAreas(user?.id);
   const missions = useMyAssignments();
+  const stars = useStars(user?.id);
 
   if (streak.isLoading || growthAreas.isLoading || missions.isLoading) {
     return <LoadingState label="Working out your progress" />;
@@ -31,7 +33,10 @@ export function ProgressScreen() {
 
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader title="My progress" subtitle="What you have been working on, and what you have finished." />
+      <PageHeader
+        title="My progress"
+        subtitle="Your stars, what you have been working on, and what you have finished."
+      />
 
       <Card isPlayful className="flex flex-wrap items-center justify-between gap-6 p-6">
         <StreakIndicator days={streak.data?.days ?? 0} lastSevenDays={lastSevenDays(finishedDays, businessDate())} />
@@ -42,6 +47,8 @@ export function ProgressScreen() {
           </div>
         ) : null}
       </Card>
+
+      <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={5} />
 
       <section>
         <h2 className="text-2xl font-semibold tracking-tight text-ink">What we are working on</h2>

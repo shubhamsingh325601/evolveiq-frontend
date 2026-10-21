@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from './class-names';
 import type { IconComponent } from './icons';
 
-export type StatTileTone = 'iris' | 'lilac' | 'jade' | 'honey' | 'coral' | 'night';
+export type StatTileTone = 'iris' | 'lilac' | 'jade' | 'honey' | 'coral' | 'star' | 'night';
 
 export interface StatTileProps {
   label: string;
@@ -10,8 +10,9 @@ export interface StatTileProps {
   icon: IconComponent;
   /**
    * The icon well's colour, which follows the hue's meaning: honey for what
-   * waits on review, coral for flagged, jade for growth. `night` turns the
-   * whole tile dark — one per row at most, for the figure that leads.
+   * waits on review, coral for flagged, jade for growth, gold for stars.
+   * `night` turns the whole tile dark — one per row at most, for the figure
+   * that leads.
    */
   tone?: StatTileTone;
   /** One line under the value: what it covers, or how it moved. */
@@ -28,6 +29,7 @@ const WELL_CLASSES: Record<StatTileTone, string> = {
   jade: 'bg-jade-50 text-jade-600 ring-jade-100',
   honey: 'bg-honey-50 text-honey-700 ring-honey-100',
   coral: 'bg-coral-50 text-coral-600 ring-coral-100',
+  star: 'bg-star-50 text-star-600 ring-star-200 [&>svg]:fill-star-400',
   night: 'bg-white/10 text-white ring-white/15',
 };
 

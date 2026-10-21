@@ -8,6 +8,7 @@ import {
   useObservationDetail,
   useReviewObservation,
   useSchools,
+  useStars,
   type DevelopmentArea,
   type ReviewDecision,
   type ReviewOutcome,
@@ -17,6 +18,7 @@ import {
   BackLink,
   DEVELOPMENT_AREA_LABELS,
   DEVELOPMENT_AREAS,
+  firstNameOf,
   formatDay,
   LEARNING_BEHAVIOUR_LABELS,
   OBSERVATION_AREA_ICONS,
@@ -43,6 +45,7 @@ import {
   RuledList,
   RuledListItem,
   SectionTitle,
+  Star,
   Textarea,
 } from '@evolveiq/ui';
 
@@ -63,10 +66,13 @@ function StepHeading({ step, title }: { step: number; title: string }) {
 }
 
 /**
- * One observation, everything a psychologist needs to decide on it, and the
+ * One observation, everything a counsellor needs to decide on it, and the
  * two actions that close it out. A review is one request: the activities are
  * assigned and the observation is marked reviewed together, and it can't be
  * changed afterwards. On desktop the decision sits beside the words it is about.
+ *
+ * Something good is a star, not a concern: it opens here from the student's
+ * history for context, with nothing to decide.
  */
 export function ObservationDetailScreen() {
   const { observationId } = useParams<{ observationId: string }>();
@@ -76,6 +82,7 @@ export function ObservationDetailScreen() {
   const activities = useActivities();
   const schools = useSchools();
   const growthAreas = useGrowthAreas(detail.data?.observation.student.id);
+  const stars = useStars(detail.data?.observation.student.id);
   const reviewObservation = useReviewObservation();
 
   const [developmentArea, setDevelopmentArea] = useState<DevelopmentArea | null>(null);
@@ -96,8 +103,11 @@ export function ObservationDetailScreen() {
 
   const { observation: entry, history } = detail.data;
   const review = entry.review;
+  const isStar = entry.tone === 'positive';
   const isClosed = entry.status !== 'pending';
   const needsArea = entry.level === 'significant';
+  const firstName = firstNameOf(entry.student.fullName);
+  const starCount = stars.data?.length;
   const AreaIcon = OBSERVATION_AREA_ICONS[entry.area];
   const library = activities.data ?? [];
   const titleById = new Map(library.map((activity) => [activity.id, activity.title]));
@@ -149,14 +159,25 @@ export function ObservationDetailScreen() {
               <div className="min-w-0">
                 <h1 className="text-2xl font-black tracking-tight text-ink sm:text-3xl">{entry.student.fullName}</h1>
                 <p className="mt-0.5 text-sm text-ink-muted">
-                  {schoolName ? `${schoolName}, ` : ''}
-                  {growthAreas.data ? `${growthAreas.data.length} of ${MAX_GROWTH_AREAS} growth areas open` : ''}
+                  {[
+                    schoolName,
+                    growthAreas.data ? `${growthAreas.data.length} of ${MAX_GROWTH_AREAS} growth areas open` : null,
+                    starCount === undefined ? null : `${starCount} ${starCount === 1 ? 'star' : 'stars'}`,
+                  ]
+                    .filter(Boolean)
+                    .join(', ')}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={isClosed ? 'reviewed' : 'pending'}>{isClosed ? 'Reviewed' : 'Awaiting review'}</Badge>
+              {isStar ? (
+                <Badge tone="star" icon={Star}>
+                  Star given
+                </Badge>
+              ) : (
+                <Badge tone={isClosed ? 'reviewed' : 'pending'}>{isClosed ? 'Reviewed' : 'Awaiting review'}</Badge>
+              )}
               {entry.level === 'significant' ? <Badge tone="significant">Significant</Badge> : null}
               <Badge icon={AreaIcon}>{OBSERVATION_AREA_LABELS[entry.area]}</Badge>
             </div>
@@ -209,7 +230,15 @@ export function ObservationDetailScreen() {
                   {history.map((item) => (
                     <RuledListItem
                       key={item.id}
-                      tone={item.level === 'significant' ? 'significant' : item.status === 'pending' ? 'pending' : 'default'}
+                      tone={
+                        item.tone === 'positive'
+                          ? 'star'
+                          : item.level === 'significant'
+                            ? 'significant'
+                            : item.status === 'pending'
+                              ? 'pending'
+                              : 'default'
+                      }
                     >
                       <ObservationEntry
                         observation={item}
@@ -226,7 +255,18 @@ export function ObservationDetailScreen() {
         </div>
 
         <Card as="section" isPlayful className="flex flex-col gap-8 p-6 sm:p-7 lg:sticky lg:top-24">
-          {isClosed && review ? (
+          {isStar ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 rounded-2xl bg-star-50 px-4 py-3.5 text-sm font-medium text-star-800 ring-1 ring-inset ring-star-200">
+                <Star className="size-4 shrink-0 fill-star-400 text-star-500" />
+                Something to celebrate: a star for {firstName}.
+              </div>
+              <p className="text-sm text-ink-muted">
+                Good news goes straight to {firstName} and their family as a star, so there is nothing to review.
+                It is here for the full picture alongside any concerns.
+              </p>
+            </div>
+          ) : isClosed && review ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 rounded-2xl bg-iris-50/80 px-4 py-3.5 text-sm text-iris-800">
                 <Check className="size-4 shrink-0" strokeWidth={2.5} />
@@ -310,7 +350,7 @@ export function ObservationDetailScreen() {
                 <p className="mt-1 text-sm text-ink-muted">
                   {entry.author.role === 'teacher'
                     ? `Optional. ${entry.author.fullName} sees it with their observation. Parents never do.`
-                    : 'Optional. Kept with the review for psychologists. Parents never see it.'}
+                    : 'Optional. Kept with the review for counsellors. Parents never see it.'}
                 </p>
                 <Textarea
                   rows={4}

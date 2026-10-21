@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  Avatar,
   BrandMark,
   ChevronsLeft,
   ChevronsRight,
@@ -11,6 +10,7 @@ import {
   Plus,
   type IconComponent,
 } from '@evolveiq/ui';
+import { AccountMenu, type AccountMenuSection } from './AccountMenu';
 
 /**
  * One navigation shell for all three apps. Each app passes a menu config built
@@ -56,6 +56,11 @@ export interface AppSidebarProps {
   contextLabel?: string;
   /** What this person should know at a glance, supplied by their app. */
   contextCard?: ReactNode;
+  /**
+   * Groups in the account menu at the foot of the rail (and behind the avatar
+   * on phones): a parent's children, or roles a test build can switch to.
+   */
+  accountSections?: AccountMenuSection[];
   /** Narrows the rail to its icons. `AppLayout` owns and remembers this. */
   isCollapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -73,6 +78,7 @@ export function AppSidebar({
   onSignOut,
   contextLabel,
   contextCard,
+  accountSections,
   isCollapsed = false,
   onToggleCollapsed,
   className,
@@ -248,17 +254,20 @@ export function AppSidebar({
 
       <div
         className={cn(
-          'relative flex shrink-0 items-center gap-3 border-t border-white/[0.08] py-3',
-          isCollapsed ? 'flex-col px-3' : 'pl-4 pr-3',
+          'relative flex shrink-0 items-center gap-1.5 border-t border-white/[0.08] py-3',
+          isCollapsed ? 'flex-col px-3' : 'pl-2.5 pr-3',
         )}
       >
-        <Avatar name={userName} />
-        {isCollapsed ? null : (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">{userName}</p>
-            {contextLabel ? <p className="truncate text-xs text-white/55">{contextLabel}</p> : null}
-          </div>
-        )}
+        <AccountMenu
+          placement="rail"
+          className="min-w-0 flex-1"
+          userName={userName}
+          roleLabel={roleLabel}
+          onSignOut={onSignOut}
+          isCollapsed={isCollapsed}
+          {...(accountSections ? { sections: accountSections } : {})}
+          {...(contextLabel ? { contextLabel } : {})}
+        />
         <button
           type="button"
           onClick={onSignOut}

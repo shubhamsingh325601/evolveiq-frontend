@@ -9,6 +9,7 @@ import type {
   ObservationArea,
   ObservationFrequency,
   ObservationLevel,
+  ObservationTone,
   ObservationWhen,
   LearningBehaviourArea,
   Pagination,
@@ -103,7 +104,8 @@ const Errors = {
 // ───────────────────────────── Value lists ─────────────────────────────
 
 const ROLES: Role[] = ['student', 'parent', 'teacher', 'psychologist', 'school_admin', 'platform_admin'];
-const AREAS: ObservationArea[] = ['emotions', 'behaviour', 'social', 'learning', 'communication', 'physical', 'routines', 'other'];
+const TONES: ObservationTone[] = ['positive', 'concern'];
+const AREAS: ObservationArea[] =['emotions', 'behaviour', 'social', 'learning', 'communication', 'physical', 'routines', 'other'];
 const WHENS: ObservationWhen[] = ['today', 'this_week', 'this_month', 'over_a_month'];
 const FREQUENCIES: ObservationFrequency[] = ['once', 'sometimes', 'often', 'daily'];
 const LEVELS: ObservationLevel[] = ['minor', 'moderate', 'significant'];
@@ -282,6 +284,7 @@ function toParentObservation(o: MockObservation) {
   return {
     id: o.id,
     studentId: o.studentId,
+    tone: o.tone,
     area: o.area,
     description: o.description,
     when: o.when,
@@ -308,6 +311,7 @@ function toReviewObservation(o: MockObservation) {
     schoolId: o.schoolId,
     student: person(userById(o.studentId)),
     author: { ...person(userById(o.authorId)), role: o.authorRole },
+    tone: o.tone,
     area: o.area,
     description: o.description,
     when: o.when,
@@ -813,8 +817,13 @@ const classHandlers = {
 
 function readObservationBody(body: Body, isTeacher: boolean) {
   const issues: FieldIssue[] = [];
-  rejectUnknown(body, ['studentId', 'area', 'description', 'when', 'howOften', ...(isTeacher ? ['level', 'learningBehaviourArea'] : [])], issues);
+  rejectUnknown(
+    body,
+    ['studentId', 'tone', 'area', 'description', 'when', 'howOften', ...(isTeacher ? ['level', 'learningBehaviourArea'] : [])],
+    issues,
+  );
   const studentId = text(body, 'studentId', issues, { max: 64 });
+  const tone = oneOf(body, 'tone', TONES, issues, true) ?? 'concern';
   const area = oneOf(body, 'area', AREAS, issues);
   const description = text(body, 'description', issues, { max: 2000 });
   const when = oneOf(body, 'when', WHENS, issues);
@@ -822,7 +831,11 @@ function readObservationBody(body: Body, isTeacher: boolean) {
   const level = isTeacher ? oneOf(body, 'level', LEVELS, issues, true) : undefined;
   const learningBehaviourArea = isTeacher ? oneOf(body, 'learningBehaviourArea', LEARNING_BEHAVIOUR_AREAS, issues, true) : undefined;
   assertValid(issues);
-  return { studentId: studentId ?? '', area: area!, description: description ?? '', when: when!, howOften: howOften!, level, learningBehaviourArea };
+  // Level says how worrying a concern is; something good is never Significant.
+  if (tone === 'positive' && level !== undefined) {
+    throw Errors.validation([{ field: 'level', message: 'is not allowed on a positive observation' }]);
+  }
+  return { studentId: studentId ?? '', tone, area: area!, description: description ?? '', when: when!, howOften: howOften!, level, learningBehaviourArea };
 }
 
 function createObservation(actor: MockUser, body: Body, authorRole: 'parent' | 'teacher'): MockObservation {
@@ -835,13 +848,15 @@ function createObservation(actor: MockUser, body: Body, authorRole: 'parent' | '
     studentId: student.id,
     authorId: actor.id,
     authorRole,
+    tone: input.tone,
     area: input.area,
     description: input.description,
     when: input.when,
     howOften: input.howOften,
     level: input.level ?? null,
     learningBehaviourArea: input.learningBehaviourArea ?? null,
-    status: 'pending',
+    // A star is celebrated straight away; a concern waits for review.
+    status: input.tone === 'positive' ? 'celebrated' : 'pending',
     reviewOutcome: null,
     developmentArea: null,
     teacherOnlyNote: null,
@@ -882,6 +897,7 @@ const observationHandlers = {
   queue({ query }: Context): Result {
     const direction = query.sortOrder === 'asc' ? -1 : 1;
     const observations = state.observations
+      .filter((o) => !query.tone || o.tone === query.tone)
       .filter((o) => !query.status || o.status === query.status)
       .filter((o) => !query.level || o.level === query.level)
       .filter((o) => !query.authorRole || o.authorRole === query.authorRole)
@@ -918,6 +934,7 @@ const observationHandlers = {
     assertValid(issues);
 
     const observation = findObservation(observationId);
+    if (observation.tone === 'positive') throw Errors.conflict('Positive observations are celebrated, not reviewed.');
     if (observation.status !== 'pending') throw Errors.conflict('This observation has already been reviewed.');
     if (observation.level === 'significant' && developmentArea === undefined) {
       throw Errors.validation([{ field: 'developmentArea', message: 'is required for Significant observations' }]);
@@ -1189,6 +1206,23 @@ function growthAreasOf(studentId: string, beforeDay?: string): string[] {
   return areas.slice(0, MAX_GROWTH_AREAS).map((area) => DEVELOPMENT_AREA_NAMES[area]);
 }
 
+/** A student's stars: their positive observations, newest first. */
+function starsOf(studentId: string): MockObservation[] {
+  return state.observations.filter((o) => o.studentId === studentId && o.tone === 'positive').sort(newestFirst);
+}
+
+/** The backend's star shape: the words, the area and who gave it — never the learning-behaviour area. */
+function toStar(o: MockObservation) {
+  return {
+    id: o.id,
+    studentId: o.studentId,
+    area: o.area,
+    description: o.description,
+    givenBy: { fullName: person(userById(o.authorId)).fullName, role: o.authorRole },
+    createdAt: o.createdAt,
+  };
+}
+
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const listOf = (items: string[]) =>
   items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
@@ -1219,6 +1253,11 @@ function buildSummaryText(student: MockUser, month: string, isCurrentMonth: bool
     const longest = longestRun(activeDays);
     if (longest >= 2) sentences.push(`Their longest streak was ${longest} days in a row.`);
   }
+  const stars = starsOf(student.id).filter((o) => businessDate(o.createdAt).startsWith(month)).length;
+  if (stars > 0) {
+    const count = plural(stars, 'star', 'stars');
+    sentences.push(isCurrentMonth ? `${name} has earned ${count} this month.` : `${name} earned ${count} that month.`);
+  }
   const areas = growthAreasOf(student.id, isCurrentMonth ? undefined : nextMonthFirst);
   if (areas.length > 0) sentences.push(`Areas ${name} is working on: ${listOf(areas)}.`);
   return sentences.join(' ');
@@ -1238,6 +1277,10 @@ const progressHandlers = {
   streak({ actor }: Context, studentId: string): Result {
     const student = progressStudent(actor, studentId);
     return { body: { streak: { days: currentStreak(completionDays(student.id), businessDate()) } } };
+  },
+  stars({ actor, query }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    return { body: paginate(starsOf(student.id).map(toStar), query, 'stars') };
   },
   monthlySummary({ actor }: Context, studentId: string, month: string): Result {
     const student = progressStudent(actor, studentId);
@@ -1324,6 +1367,7 @@ const ROUTES: Route[] = [
 
   { method: 'GET', path: '/students/:id/growth-areas', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.growthAreas },
   { method: 'GET', path: '/students/:id/streak', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.streak },
+  { method: 'GET', path: '/students/:id/stars', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.stars },
   {
     method: 'GET',
     path: '/students/:id/monthly-summaries/:id',

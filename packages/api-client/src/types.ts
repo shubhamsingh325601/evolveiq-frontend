@@ -158,7 +158,15 @@ export type DevelopmentArea =
   | 'learning_skills'
   | 'motor_skills';
 
-export type ObservationStatus = 'pending' | 'reviewed';
+/**
+ * Something good, or something to look into (client feedback, 21 Oct 2026). A
+ * positive observation is a star for the student: celebrated straight away,
+ * never reviewed, never given a Level. A concern goes to the review queue.
+ */
+export type ObservationTone = 'positive' | 'concern';
+
+/** Concerns go pending → reviewed; a positive observation is celebrated from the start. */
+export type ObservationStatus = 'pending' | 'reviewed' | 'celebrated';
 
 /** "Assign & mark reviewed" / "No action needed". */
 export type ReviewOutcome = 'assigned' | 'no_action';
@@ -167,6 +175,7 @@ export type ReviewOutcome = 'assigned' | 'no_action';
 export interface ParentObservation {
   id: string;
   studentId: string;
+  tone: ObservationTone;
   area: ObservationArea;
   /** The parent's own words. Always rendered in the serif face. */
   description: string;
@@ -200,6 +209,7 @@ export interface ReviewObservation {
   schoolId: string;
   student: Person;
   author: Person & { role: 'parent' | 'teacher' };
+  tone: ObservationTone;
   area: ObservationArea;
   description: string;
   when: ObservationWhen;
@@ -207,7 +217,7 @@ export interface ReviewObservation {
   level: ObservationLevel | null;
   learningBehaviourArea: LearningBehaviourArea | null;
   status: ObservationStatus;
-  /** Null while pending. */
+  /** Null while pending, and always for a positive observation. */
   review: ObservationReview | null;
   createdAt: string;
 }
@@ -220,11 +230,12 @@ export interface ObservationDetail {
 
 export interface NewObservation {
   studentId: string;
+  tone: ObservationTone;
   area: ObservationArea;
   description: string;
   when: ObservationWhen;
   howOften: ObservationFrequency;
-  /** Teachers only — a parent sending these is a 400. */
+  /** Teachers only — a parent sending these is a 400. Never on a positive observation (400). */
   level?: ObservationLevel;
   learningBehaviourArea?: LearningBehaviourArea;
 }
@@ -247,6 +258,8 @@ export type ReviewDecision =
 
 /** The psychologist's queue filters: Pending, Significant, From parents, Reviewed, by school. */
 export interface ReviewQueueFilters {
+  /** "concern" leaves the students' stars out of the queue. */
+  tone?: ObservationTone;
   status?: ObservationStatus;
   level?: ObservationLevel;
   authorRole?: 'parent' | 'teacher';
@@ -364,6 +377,23 @@ export interface GrowthArea {
 export interface Streak {
   /** Consecutive Asia/Kolkata days with at least one finished activity. */
   days: number;
+}
+
+/**
+ * A star: one positive observation about a student — something good a teacher
+ * or their parent noticed — in the giver's own words. The same shape for every
+ * audience, and parent-safe by construction: a positive observation has no
+ * Level or review, and its learning-behaviour area is never sent.
+ */
+export interface Star {
+  /** The positive observation it was given for. */
+  id: string;
+  studentId: string;
+  area: ObservationArea;
+  /** What was noticed, as the giver wrote it. Always rendered in the serif face. */
+  description: string;
+  givenBy: { fullName: string; role: 'parent' | 'teacher' };
+  createdAt: string;
 }
 
 export interface MonthlySummary {

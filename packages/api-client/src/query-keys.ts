@@ -64,6 +64,7 @@ export const queryKeys = {
     all: ['progress'] as const,
     growthAreas: (studentId: string) => ['progress', studentId, 'growth-areas'] as const,
     streak: (studentId: string) => ['progress', studentId, 'streak'] as const,
+    stars: (studentId: string) => ['progress', studentId, 'stars'] as const,
     monthlySummary: (studentId: string, month: string) =>
       ['progress', studentId, 'monthly-summary', month] as const,
   },

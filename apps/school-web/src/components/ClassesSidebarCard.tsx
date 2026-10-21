@@ -1,16 +1,18 @@
 import type { ClassDetail, RosterStudent } from '@evolveiq/api-client';
 import { SidebarCard } from '@evolveiq/domain';
-import { Avatar } from '@evolveiq/ui';
+import { Avatar, Star } from '@evolveiq/ui';
 
 export interface ClassesSidebarCardProps {
   classes: ClassDetail[];
   students: RosterStudent[];
-  /** The teacher's own observations still waiting on the psychologist. */
+  /** The teacher's own concerns still waiting on the counsellor. */
   pendingCount: number;
+  /** Stars this teacher has given. */
+  starsGiven: number;
 }
 
-/** A teacher's classes on the rail: who they teach, and what is still with the psychologist. */
-export function ClassesSidebarCard({ classes, students, pendingCount }: ClassesSidebarCardProps) {
+/** A teacher's classes on the rail: who they teach, the stars they have given, and what is still with the counsellor. */
+export function ClassesSidebarCard({ classes, students, pendingCount, starsGiven }: ClassesSidebarCardProps) {
   return (
     <SidebarCard title="Your classes">
       <div className="flex flex-wrap gap-1.5">
@@ -37,10 +39,14 @@ export function ClassesSidebarCard({ classes, students, pendingCount }: ClassesS
         </div>
       </div>
       <p className="mt-3 flex items-center gap-2 text-xs font-medium text-white/70">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-honey-400" />
+        <Star aria-hidden="true" className="size-3.5 fill-star-400 text-star-400" />
+        {starsGiven === 0 ? 'No stars given yet' : `${starsGiven} ${starsGiven === 1 ? 'star' : 'stars'} given`}
+      </p>
+      <p className="mt-1.5 flex items-center gap-2 text-xs font-medium text-white/70">
+        <span aria-hidden="true" className="mx-1 size-1.5 rounded-full bg-honey-400" />
         {pendingCount === 0
           ? 'Nothing waiting on review'
-          : `${pendingCount} of your ${pendingCount === 1 ? 'observation is' : 'observations are'} awaiting review`}
+          : `${pendingCount} ${pendingCount === 1 ? 'concern' : 'concerns'} awaiting review`}
       </p>
     </SidebarCard>
   );

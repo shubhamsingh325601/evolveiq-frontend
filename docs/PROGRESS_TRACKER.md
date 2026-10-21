@@ -22,14 +22,18 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | `packages/api-client` — typed fetch + TanStack Query setup | Done | | Mirrors the backend contract (one shape per audience, paging, error codes); built-in demo backend with the backend's rules; 39 tests |
 | Real backend integration (all three apps) | Done | | Verified against evolveiq-backend: every role through the full Observe → Review → Assign → Do → See loop in headless Chrome, plus token renewal, reload and two-tab checks |
 | CI: lint + typecheck + test on PR | Done | | `.github/workflows/ci.yml`, also builds |
+| Combined build: one sign-in screen for every role | Done | | Client feedback 21 Oct 2026; not yet committed. `tools/dev-shell` opens on `/sign-in` (email + password, or student ID + PIN) with test accounts named by role; replaces the role picker |
+| No floating role switcher; switching from the account menu | Done | | Client feedback 21 Oct 2026; not yet committed. Staff switch role from the profile menu (combined build only, `AccountSwitchProvider`); parents and students never switch roles; parents switch between children there; 10 dev-shell tests |
+| "Counsellor" for the psychologist role | Done | | Client feedback 21 Oct 2026; not yet committed. On screen only (`ROLE_LABELS`, copy); the API role stays `psychologist` |
 
 ## Shared domain components
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| `ObservationForm` (parent/teacher variants) | Done | | 5 tests; the backend's value lists (area, when, how often; teachers add Level and learning-behaviour area) |
+| `ObservationForm` (parent/teacher variants) | Done | | 9 tests; opens on the tone — something to celebrate (a star, no Level) or something to look into; the backend's value lists (area, when, how often; teachers add learning-behaviour area, and Level on a concern) |
+| Positive observations and stars | Done | | Client feedback 21 Oct 2026; not yet committed. `tone` in the contract and the demo backend, `useStars`, `StarBoard` (4 tests) on the student's home and progress, the parent's dashboard, the teacher's roster and profile; star notifications; a `star` gold token |
 | `ActivityPlayer` shell + 5 type renderers | Done | | 6 tests; one question per activity, answers in the backend's typed shape |
 | `RecordsTable` | Done | | 5 tests |
-| `AppSidebar` (role-based menu config) | Done | | 3 tests; collapsible, with an app-supplied context card; same config drives `AppBottomNav` on phones (3 tests) |
+| `AppSidebar` (role-based menu config) | Done | | 3 tests; collapsible, with an app-supplied context card; same config drives `AppBottomNav` on phones (3 tests); the account row opens the `AccountMenu` (4 tests) with app-supplied sections |
 | EHI charts: `RingsChart`, `TrendChart`, `RadarChart` | Done | | Hand-drawn SVG in `packages/ui`; palette validated; covered through `HolisticIndexCard` (3 tests) and `HolisticReport` (6 tests) |
 | EHI API contract | Blocked | | The backend has no EHI endpoint or scoring formula yet. EHI views are switched off (`FEATURES.holisticIndex`); the components above stay ready |
 
@@ -40,22 +44,25 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Student: activity player integration | Done | | One completion per activity; finish screen shows XP earned and the streak |
 | Student: progress/streak | Done | | Streak from the backend; seven-day marks from the student's own completions (Asia/Kolkata days) |
 | Student: level and XP | Done | | Worked out in the frontend from finished activities: 10 XP each, a level every 100 |
+| Student: stars | Done | | Client feedback 21 Oct 2026; not yet committed. Star count beside the streak, "Your stars" with the giver's words on Home and My progress, a star line on the rail, a notification per star |
 | Student: own Holistic Report Card | Blocked | | Hidden until the backend serves an EHI |
 | Parent: children list + development info | Done | | One dashboard per child with a switcher; KPI tiles, this month's summary, activities done / to do |
 | Parent: EvolvIQ Holistic Index | Blocked | | Hidden until the backend serves an EHI |
 | Parent: Holistic Report Card | Blocked | | Hidden until the backend serves an EHI |
-| Parent: observation submission | Done | | Shared `ObservationForm` |
-| Parent: teacher notes (read-only) | Blocked | | No backend endpoint: rule B17 limits parents to their own observations, their child's activities, streak, growth areas and monthly summary. Screen removed until that changes |
+| Parent: observation submission | Done | | Shared `ObservationForm`: something to celebrate (a star at once) or something to look into |
+| Parent: child's stars | Done | | Client feedback 21 Oct 2026; not yet committed. Stars tile, the child's star board (school and home), stars per child on the rail and in the account menu, notifications for stars from school |
+| Parent: teacher notes (read-only) | Blocked | | No backend endpoint: rule B17 limits parents to their own observations, their child's activities, streak, growth areas, stars and monthly summary. A teacher's praise does reach parents now, as a star; concerns and notes still do not |
 | Parent: growth areas + monthly summary | Done | | Plain language, no clinical scores; this month live, earlier months as the backend stored them |
 
 ## School Web App
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Teacher: student list | Done | | Students of the teacher's own classes; growth areas and awaiting-review counts |
-| Teacher: observation submission (with Level, LB area) | Done | | `variant="teacher"` |
+| Teacher: observation submission (with Level, LB area) | Done | | `variant="teacher"`; "Give a star" and "Raise a concern" open it on the right kind; a star has no Level |
+| Teacher: students' stars | Done | | Client feedback 21 Oct 2026; not yet committed. Stars column and "Stars given" tile on the roster, star board and badge on the profile, stars given on the rail |
 | Teacher: direct activity assignment | Done | | Library filtered by type and title |
 | Teacher: student profile (growth areas, progress, history) | Done | | Up to 5 growth areas, activities with the student's answers, and the teacher's own observations with the psychologist's note (teachers see only what they wrote, rule B7) |
-| Psychologist: review queue + filters | Done | | All 5 filters as KPI tiles (counts from the API), plus school |
+| Psychologist: review queue + filters | Done | | All 5 filters as KPI tiles (counts from the API), plus school; concerns only (`tone=concern`), stars appear in a student's history for context |
 | Psychologist: observation detail view | Done | | Metadata plus related history |
 | Psychologist: tag area / recommend activity / review actions | Done | | One development area (needed for Significant), 1–10 recommended activities, teacher-only note; both close-out actions |
 | Psychologist: activity authoring form | Done | | Plain form, no drag-and-drop; edit, with type and options locked once assigned; archive |
