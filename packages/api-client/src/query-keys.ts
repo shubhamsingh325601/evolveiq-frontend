@@ -60,11 +60,26 @@ export const queryKeys = {
     student: (studentId: string) => ['assignments', 'student', studentId] as const,
     child: (studentId: string) => ['assignments', 'child', studentId] as const,
   },
+  consents: {
+    student: (studentId: string) => ['consents', studentId] as const,
+  },
+  wellness: {
+    all: ['wellness'] as const,
+    student: (studentId: string, days: number) => ['wellness', studentId, days] as const,
+  },
+  supportPlans: {
+    student: (studentId: string) => ['support-plans', studentId] as const,
+  },
+  notifications: {
+    all: ['notifications'] as const,
+  },
   progress: {
     all: ['progress'] as const,
     growthAreas: (studentId: string) => ['progress', studentId, 'growth-areas'] as const,
     streak: (studentId: string) => ['progress', studentId, 'streak'] as const,
     stars: (studentId: string) => ['progress', studentId, 'stars'] as const,
+    holisticIndex: (studentId: string) => ['progress', studentId, 'holistic-index'] as const,
+    growthMoments: (studentId: string) => ['progress', studentId, 'growth-moments'] as const,
     monthlySummary: (studentId: string, month: string) =>
       ['progress', studentId, 'monthly-summary', month] as const,
   },

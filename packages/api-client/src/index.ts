@@ -30,7 +30,12 @@ export * from './hooks/useMonthlySummary';
 export * from './hooks/useObservations';
 export * from './hooks/useParentLinks';
 export * from './hooks/useSchools';
+export * from './hooks/useHolisticIndex';
 export * from './hooks/useStars';
 export * from './hooks/useStreak';
 export * from './hooks/useStudentLevel';
 export * from './hooks/useUsers';
+
+export * from './hooks/useWellbeing';
+export * from './hooks/useSupportPlans';
+export * from './hooks/useNotifications';

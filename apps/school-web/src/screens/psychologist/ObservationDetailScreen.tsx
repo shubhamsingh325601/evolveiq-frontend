@@ -48,6 +48,7 @@ import {
   Star,
   Textarea,
 } from '@evolveiq/ui';
+import { StudentSupport } from '../../components/StudentSupport';
 
 const MAX_ACTIVITIES = 10;
 
@@ -252,6 +253,8 @@ export function ObservationDetailScreen() {
               </Card>
             )}
           </section>
+
+          <StudentSupport studentId={entry.student.id} />
         </div>
 
         <Card as="section" isPlayful className="flex flex-col gap-8 p-6 sm:p-7 lg:sticky lg:top-24">

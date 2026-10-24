@@ -31,6 +31,7 @@ export {
   CirclePlay,
   ClipboardList,
   Clock,
+  Compass,
   Contact,
   Download,
   FileText,

@@ -17,11 +17,13 @@ import {
   TrendChart,
   TrendingUp,
 } from '@evolveiq/ui';
+import { HolisticInsights } from './HolisticInsights';
 import {
   firstNameOf,
+  monthlyTrendPointsFor,
   possessive,
-  shortGrade,
   trendPointsFor,
+  yearMark,
   yearsTracked,
 } from './holistic-index';
 import { SkillProfileCard } from './SkillProfileCard';
@@ -139,6 +141,17 @@ export function HolisticReport({ studentName, index, back }: HolisticReportProps
               valueName="EHI"
               label={`${possessive(firstName)} EvolvIQ Holistic Index, year by year`}
             />
+            {index.monthly.length > 1 ? (
+              <>
+                <h3 className="mt-6 text-sm font-black text-ink">The last six months</h3>
+                <TrendChart
+                  className="mt-2"
+                  points={monthlyTrendPointsFor(index)}
+                  valueName="EHI"
+                  label={`${possessive(firstName)} EvolvIQ Holistic Index, month by month`}
+                />
+              </>
+            ) : null}
           </Card>
 
           <SkillProfileCard
@@ -182,12 +195,12 @@ export function HolisticReport({ studentName, index, back }: HolisticReportProps
                   >
                     <div className="flex min-w-0 items-center gap-4">
                       <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-iris-100 bg-iris-50 text-sm font-black text-iris-600">
-                        {shortGrade(year.grade)}
+                        {yearMark(year)}
                       </span>
                       <div className="min-w-0">
                         <p className="text-[0.9375rem] font-bold text-ink">
                           Overall growth
-                          <span className="sr-only">, {year.grade}</span>
+                          {year.grade ? <span className="sr-only">, {year.grade}</span> : null}
                         </p>
                         <Eyebrow className="mt-0.5">
                           {year.isCurrent
@@ -207,6 +220,8 @@ export function HolisticReport({ studentName, index, back }: HolisticReportProps
               </ul>
             </Card>
           </section>
+
+          <HolisticInsights insights={index.insights} className="lg:col-span-7" />
 
           <section className="lg:col-span-7">
             <SectionTitle icon={Lightbulb} iconClassName="fill-honey-300 text-honey-500">

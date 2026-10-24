@@ -1,15 +1,27 @@
 import {
   businessDate,
   lastSevenDays,
+  FEATURES,
   longestRun,
   useGrowthAreas,
+  useGrowthMoments,
+  useHolisticIndex,
   useMyAssignments,
   useStars,
   useStreak,
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
-import { GrowthAreaList, relativeDayPhrase, StarBoard, StreakIndicator } from '@evolveiq/domain';
-import { Card, Check, EmptyState, ErrorState, LoadingState, PageHeader, Sprout, Star } from '@evolveiq/ui';
+import {
+  GrowthAreaList,
+  GrowthMoments,
+  HolisticIndexCard,
+  relativeDayPhrase,
+  StarBoard,
+  StarsOverTime,
+  StreakIndicator,
+} from '@evolveiq/domain';
+import { Link } from 'react-router-dom';
+import { buttonClasses, Card, Check, ChevronRight, EmptyState, ErrorState, LoadingState, PageHeader, Sprout, Star } from '@evolveiq/ui';
 
 export function ProgressScreen() {
   const { user } = useAuth();
@@ -17,6 +29,8 @@ export function ProgressScreen() {
   const growthAreas = useGrowthAreas(user?.id);
   const missions = useMyAssignments();
   const stars = useStars(user?.id);
+  const holistic = useHolisticIndex(user?.id);
+  const moments = useGrowthMoments(user?.id);
 
   if (streak.isLoading || growthAreas.isLoading || missions.isLoading) {
     return <LoadingState label="Working out your progress" />;
@@ -48,7 +62,22 @@ export function ProgressScreen() {
         ) : null}
       </Card>
 
+      {FEATURES.holisticIndex && holistic.data && user ? (
+        <div className="flex flex-col gap-4">
+          <HolisticIndexCard studentName={user.fullName} index={holistic.data} />
+          <Link to="/student/report" className={buttonClasses({ size: 'sm', variant: 'secondary', className: 'self-start' })}>
+            See my full report
+            <ChevronRight />
+          </Link>
+        </div>
+      ) : null}
+
       <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={5} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <StarsOverTime stars={stars.data ?? []} audience="student" />
+        <GrowthMoments moments={moments.data ?? []} audience="student" isLoading={moments.isLoading} />
+      </div>
 
       <section>
         <h2 className="text-2xl font-semibold tracking-tight text-ink">What we are working on</h2>

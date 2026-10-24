@@ -423,8 +423,8 @@ export interface StudentLevel {
 }
 
 // ───────────────────────────── EvolvIQ Holistic Index ─────────────────────────────
-// Not served by the backend yet (see FEATURES in `features.ts`). The types stay
-// for the EHI components in `@evolveiq/domain`, which are kept and tested.
+// Served by `GET /students/:id/holistic-index`: a documented formula over what teachers and
+// parents have noticed and the activities finished (not a model). Parent-safe by construction.
 
 /** The five pillars, in the order they are drawn: outermost ring first. */
 export type HolisticDimension = 'education' | 'skills' | 'physical' | 'wellbeing' | 'character';
@@ -438,12 +438,31 @@ export interface HolisticDimensionScore {
 export interface HolisticYear {
   /** e.g. "2025–26". */
   schoolYear: string;
-  /** The child's year group that year, e.g. "KG" or "Year 3". */
-  grade: string;
+  /** The child's year group that year, e.g. "KG" or "Year 3"; null when the platform has none on record. */
+  grade: string | null;
   /** The EHI at the end of that year; for the year in progress, the EHI so far. */
   score: number;
   /** True only for the year still in progress, which is always the last entry. */
   isCurrent: boolean;
+}
+
+export interface HolisticMonth {
+  /** "YYYY-MM", an Asia/Kolkata calendar month. */
+  month: string;
+  score: number;
+}
+
+export type HolisticTrend = 'up' | 'steady' | 'down';
+
+/** One pillar explained: why it moved, what fed it, and one thing to try. */
+export interface HolisticInsight {
+  dimension: HolisticDimension;
+  trend: HolisticTrend;
+  title: string;
+  why: string;
+  factors: string[];
+  action: string;
+  confidence: 'low' | 'medium' | 'high';
 }
 
 export interface SkillScore {
@@ -461,10 +480,26 @@ export interface HolisticIndex {
   score: number;
   dimensions: HolisticDimensionScore[];
   history: HolisticYear[];
+  /** The last six months, oldest first. */
+  monthly: HolisticMonth[];
   skills: SkillScore[];
   strengths: string[];
   playbook: string[];
+  insights: HolisticInsight[];
+  evidence: { stars: number; activitiesCompleted: number };
   updatedAt: string;
+}
+
+/** One entry on the Growth Moments timeline: a star, a finished activity or a milestone. */
+export interface GrowthMoment {
+  id: string;
+  kind: 'star' | 'activity' | 'milestone';
+  title: string;
+  /** The giver's own words for a star. */
+  detail: string | null;
+  area: ObservationArea | null;
+  givenBy: { fullName: string; role: 'parent' | 'teacher' } | null;
+  occurredAt: string;
 }
 
 // ───────────────────────────── Lists and errors ─────────────────────────────
@@ -492,4 +527,110 @@ export interface ApiErrorBody {
     message: string;
     details?: FieldIssue[] | Record<string, unknown>;
   };
+}
+
+// ───────────────────────────── Consent, wellbeing, support, notifications ─────────────────────────────
+
+export type ConsentPurpose = 'wellness_tracking' | 'wellness_sharing';
+
+/** A family's decision about one purpose. Not decided yet reads as not granted. */
+export interface Consent {
+  purpose: ConsentPurpose;
+  label: string;
+  granted: boolean;
+  decidedAt: string | null;
+}
+
+/** One self-reported day. Mood and energy are 1–5. Non-clinical. */
+export interface WellnessCheckin {
+  /** YYYY-MM-DD, Asia/Kolkata. */
+  day: string;
+  mood: number;
+  energy: number;
+  sleepMinutes: number | null;
+  activeMinutes: number | null;
+}
+
+export interface NewWellnessCheckin {
+  day?: string;
+  mood: number;
+  energy: number;
+  sleepMinutes?: number;
+  activeMinutes?: number;
+}
+
+export interface WellnessSummary {
+  days: number;
+  averageMood: number | null;
+  averageEnergy: number | null;
+  averageSleepMinutes: number | null;
+  averageActiveMinutes: number | null;
+}
+
+export interface WellnessCheckins {
+  isTracking: boolean;
+  isSharedWithSchool: boolean;
+  /** False when staff ask and the family has not shared: `checkins` is then empty. */
+  isVisible: boolean;
+  /** Oldest first. */
+  checkins: WellnessCheckin[];
+  summary: WellnessSummary;
+}
+
+export type SupportCategory =
+  | 'learning'
+  | 'attention'
+  | 'speech_language'
+  | 'sensory'
+  | 'physical_access'
+  | 'emotional'
+  | 'gifted'
+  | 'other';
+
+export type SupportStatus = 'active' | 'in_review' | 'closed';
+
+/** A school-side support plan. Staff only: never in a parent or student response. */
+export interface SupportPlan {
+  id: string;
+  studentId: string;
+  category: SupportCategory;
+  categoryLabel: string;
+  summary: string;
+  strategies: string | null;
+  status: SupportStatus;
+  statusLabel: string;
+  reviewOn: string | null;
+  isReviewDue: boolean;
+  createdBy: { fullName: string };
+  createdAt: string;
+  closedAt: string | null;
+}
+
+export interface NewSupportPlan {
+  category: SupportCategory;
+  summary: string;
+  strategies?: string;
+  reviewOn?: string;
+}
+
+export interface SupportPlanChanges {
+  summary?: string;
+  strategies?: string | null;
+  status?: SupportStatus;
+  reviewOn?: string | null;
+}
+
+export interface AppNotification {
+  id: string;
+  kind: 'star' | 'activity_assigned' | 'activity_finished' | 'review_queue';
+  title: string;
+  body: string;
+  studentId: string | null;
+  at: string;
+  isUnread: boolean;
+}
+
+export interface Notifications {
+  notifications: AppNotification[];
+  unreadCount: number;
 }

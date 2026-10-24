@@ -18,6 +18,22 @@ const INDEX: HolisticIndex = {
     { schoolYear: '2026–27', grade: 'Year 4', score: 78, isCurrent: true },
   ],
   skills: [],
+  monthly: [
+    { month: '2026-09', score: 74 },
+    { month: '2026-10', score: 78 },
+  ],
+  insights: [
+    {
+      dimension: 'education',
+      trend: 'up',
+      title: 'Education is growing',
+      why: 'Evidence in this area has been getting stronger over the last month.',
+      factors: ['3 good things noticed in the last 3 months'],
+      action: 'Keep a regular, calm time for learning; it is working.',
+      confidence: 'medium',
+    },
+  ],
+  evidence: { stars: 5, activitiesCompleted: 9 },
   strengths: [],
   playbook: [],
   updatedAt: '2026-10-06T08:00:00.000Z',

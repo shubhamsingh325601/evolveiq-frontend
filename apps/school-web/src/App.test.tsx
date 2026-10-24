@@ -145,4 +145,31 @@ describe('School app', () => {
 
     expect(screen.queryByRole('heading', { name: 'Review queue' })).not.toBeInTheDocument();
   });
+
+  it('lets a teacher open a support plan for a student, and says it is for staff only', async () => {
+    const user = await signInAs('rao@school.test');
+    await user.click(await screen.findByText('Maya Ahluwalia'));
+
+    expect(await screen.findByText(/School staff only/i)).toBeInTheDocument();
+    expect(await screen.findByText('No support plans for this student.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /New plan/ }));
+    await user.selectOptions(screen.getByLabelText('Kind of support'), 'sensory');
+    await user.type(screen.getByLabelText('What the student needs'), 'Loud rooms are hard to settle in.');
+    await user.type(screen.getByLabelText(/What works in class/), 'A quiet corner and a warning before bells.');
+    await user.click(screen.getByRole('button', { name: 'Save plan' }));
+
+    expect(await screen.findByText('Loud rooms are hard to settle in.')).toBeInTheDocument();
+    expect(screen.getByText('Sensory needs')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Status of the Sensory needs plan/), 'closed');
+    await waitFor(() => expect(screen.getByLabelText(/Status of the Sensory needs plan/)).toHaveValue('closed'));
+  });
+
+  it('shows a teacher that the family has not shared wellbeing check-ins, not an empty chart', async () => {
+    const user = await signInAs('rao@school.test');
+    await user.click(await screen.findByText('Maya Ahluwalia'));
+
+    expect(await screen.findByText(/has not turned on wellbeing check-ins/i)).toBeInTheDocument();
+  });
 });

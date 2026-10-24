@@ -2,6 +2,7 @@ import { addDays, businessDate } from '../business-time';
 import type {
   ActivityAnswer,
   ActivityContent,
+  ConsentPurpose,
   DevelopmentArea,
   LearningBehaviourArea,
   ObservationArea,
@@ -12,6 +13,8 @@ import type {
   ObservationWhen,
   ReviewOutcome,
   Role,
+  SupportCategory,
+  SupportStatus,
 } from '../types';
 
 /**
@@ -106,6 +109,36 @@ export interface MockCompletion {
   completedAt: string;
 }
 
+export interface MockConsent {
+  studentId: string;
+  purpose: ConsentPurpose;
+  granted: boolean;
+  decidedAt: string;
+}
+
+export interface MockCheckin {
+  studentId: string;
+  /** YYYY-MM-DD, Asia/Kolkata. */
+  day: string;
+  mood: number;
+  energy: number;
+  sleepMinutes: number | null;
+  activeMinutes: number | null;
+}
+
+export interface MockSupportPlan {
+  id: string;
+  studentId: string;
+  createdById: string;
+  category: SupportCategory;
+  summary: string;
+  strategies: string | null;
+  status: SupportStatus;
+  reviewOn: string | null;
+  createdAt: string;
+  closedAt: string | null;
+}
+
 export interface MockState {
   users: MockUser[];
   schools: MockSchool[];
@@ -121,6 +154,12 @@ export interface MockState {
   completions: MockCompletion[];
   /** Finished months' summaries, stored once and never changed: `${studentId}:${month}` → text. */
   monthlySummaries: Record<string, string>;
+  /** A family's decisions; no row means not decided, which means no. */
+  consents: MockConsent[];
+  checkins: MockCheckin[];
+  supportPlans: MockSupportPlan[];
+  /** When each user last marked their notifications seen. */
+  notificationSeen: Record<string, string>;
 }
 
 const placeholderImage = (text: string, colour: string): string =>
@@ -636,5 +675,9 @@ export function buildSeed(now: Date = new Date()): MockState {
     assignments,
     completions,
     monthlySummaries: {},
+    consents: [],
+    checkins: [],
+    supportPlans: [],
+    notificationSeen: {},
   };
 }

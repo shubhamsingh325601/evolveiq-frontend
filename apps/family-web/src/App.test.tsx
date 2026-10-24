@@ -174,4 +174,76 @@ describe('Family app', () => {
     expect(await screen.findByText('This account is for the school app. Sign in there instead.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
+
+  it('shows siblings side by side as strengths, never as a ranking', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    await user.click(screen.getAllByRole('link', { name: /^Siblings/ })[0]!);
+
+    expect(await screen.findByRole('heading', { name: 'Siblings' })).toBeInTheDocument();
+    expect((await screen.findAllByText('Shines at')).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/not a league table/i)).toBeInTheDocument();
+    expect(screen.queryByText(/winner|ranking|best/i)).not.toBeInTheDocument();
+  });
+
+  it('opens a child’s Holistic Report for their parent, without any concern language', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    await user.click(await screen.findByRole('link', { name: /full report/i }));
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();
+    expect(screen.queryByText(/concern|significant|clinical/i)).not.toBeInTheDocument();
+  });
+
+  it('opens a student their own report from their progress page', async () => {
+    const user = await signInAsStudent();
+    await screen.findByText(/streak/i);
+
+    await user.click(screen.getAllByRole('link', { name: /^Progress|^My progress/ })[0]!);
+    await user.click(await screen.findByRole('link', { name: /full report/i }));
+
+    expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();
+  });
+
+  it('keeps wellbeing check-ins off until a parent allows them, then records one', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    // Off by default, and the page says how to turn it on.
+    await user.click(await screen.findByRole('link', { name: /Wellbeing check-in/i }));
+    expect(await screen.findByText('Check-ins are off')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: /Choose in Privacy/i }));
+    const tracking = (await screen.findAllByLabelText('Record daily wellbeing check-ins'))[0]!;
+    expect(tracking).not.toBeChecked();
+    await user.click(tracking);
+    await waitFor(() => expect(screen.getAllByLabelText('Record daily wellbeing check-ins')[0]).toBeChecked());
+
+    // Back on the child's page, the check-in form is there and saves.
+    await user.click(screen.getAllByRole('link', { name: 'Home' })[0]!);
+    await user.click(await screen.findByRole('link', { name: /Wellbeing check-in/i }));
+    expect(await screen.findByRole('form', { name: 'Wellbeing check-in' })).toBeInTheDocument();
+    const form = screen.getByRole('form', { name: 'Wellbeing check-in' });
+    await user.click(within(form).getAllByRole('radio')[3]!); // mood: Good
+    await user.click(within(form).getAllByRole('radio')[7]!); // energy: Lively
+    await user.click(within(form).getByRole('button', { name: 'Save check-in' }));
+    expect(await screen.findByText('Saved. Thank you.')).toBeInTheDocument();
+    expect(await screen.findByText('Average mood')).toBeInTheDocument();
+  });
+
+  it('tells a student their check-in is off until a parent turns it on, and shows Explore ideas', async () => {
+    const user = await signInAsStudent();
+    await screen.findByText(/streak/i);
+
+    await user.click(screen.getAllByRole('link', { name: /How I feel|Feel/ })[0]!);
+    expect(await screen.findByText('Check-ins are off')).toBeInTheDocument();
+    expect(screen.getByText(/Ask your parent to turn it on/i)).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('link', { name: /Explore/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Explore' })).toBeInTheDocument();
+    expect(await screen.findByText(/Ideas to explore, not predictions/i)).toBeInTheDocument();
+  });
 });

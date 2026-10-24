@@ -1,4 +1,4 @@
-import type { HolisticDimension, HolisticIndex } from '@evolveiq/api-client';
+import type { HolisticDimension, HolisticIndex, HolisticYear } from '@evolveiq/api-client';
 import type { TrendChartPoint } from '@evolveiq/ui';
 
 /**
@@ -33,12 +33,29 @@ export function yearsTracked(index: HolisticIndex): number {
   return index.history.length;
 }
 
+/** The short mark for a school year: its year group when known ("Y3"), else "26–27". */
+export function yearMark(year: HolisticYear): string {
+  if (year.grade) return shortGrade(year.grade);
+  return year.schoolYear.replace(/^d{2}(d{2})–/, '$1–');
+}
+
 export function trendPointsFor(index: HolisticIndex): TrendChartPoint[] {
   return index.history.map((year) => ({
-    label: shortGrade(year.grade),
+    label: yearMark(year),
     value: year.score,
-    detail: `${year.grade}, ${year.schoolYear}${year.isCurrent ? ' so far' : ''}`,
+    detail: `${year.grade ? `${year.grade}, ` : ''}${year.schoolYear}${year.isCurrent ? ' so far' : ''}`,
   }));
+}
+
+const MONTH_SHORT = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' });
+const MONTH_LONG = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** The last six months of the index, oldest first, for the month-by-month graph. */
+export function monthlyTrendPointsFor(index: HolisticIndex): TrendChartPoint[] {
+  return index.monthly.map((entry) => {
+    const date = new Date(`${entry.month}-01T00:00:00Z`);
+    return { label: MONTH_SHORT.format(date), value: entry.score, detail: MONTH_LONG.format(date) };
+  });
 }
 
 export function firstNameOf(name: string): string {

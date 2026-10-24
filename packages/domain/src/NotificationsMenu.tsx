@@ -36,6 +36,23 @@ const WELL_CLASSES: Record<AppNotificationTone, string> = {
   star: 'bg-star-50 text-star-600 [&>svg]:fill-star-400',
 };
 
+/** Device alerts need the browser's Notification API, which not every browser or webview has. */
+function canAlert(): boolean {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+function alertPermission(): NotificationPermission | 'unsupported' {
+  return canAlert() ? window.Notification.permission : 'unsupported';
+}
+
+function showAlert(item: AppNotification): void {
+  try {
+    new window.Notification(item.title, { ...(item.detail ? { body: item.detail } : {}), tag: item.id });
+  } catch {
+    // Some browsers only allow alerts from a service worker; the bell still shows it.
+  }
+}
+
 function readSeenAt(key: string): string | null {
   try {
     return window.localStorage.getItem(key);
@@ -63,6 +80,26 @@ export function NotificationsMenu({ items, storageKey, className }: Notification
   const [seenAt, setSeenAt] = useState<string | null>(() => readSeenAt(seenKey));
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const [permission, setPermission] = useState(alertPermission);
+  // What had already arrived when the app opened is not new; only later arrivals raise an alert.
+  const alertedUpTo = useRef<string | null>(items.reduce<string | null>((newest, item) => (newest === null || item.at > newest ? item.at : newest), null));
+
+  useEffect(() => {
+    if (permission !== 'granted') return;
+    const fresh = items.filter((item) => alertedUpTo.current === null || item.at > alertedUpTo.current);
+    if (fresh.length === 0) return;
+    alertedUpTo.current = fresh.reduce((newest, item) => (item.at > newest ? item.at : newest), fresh[0]!.at);
+    // Only interrupt when the person is looking at something else.
+    if (document.visibilityState === 'hidden') fresh.slice(0, 3).forEach(showAlert);
+  }, [items, permission]);
+
+  const turnOnAlerts = async () => {
+    try {
+      setPermission(await window.Notification.requestPermission());
+    } catch {
+      setPermission(alertPermission());
+    }
+  };
 
   const newestFirst = useMemo(
     () => [...items].sort((a, b) => b.at.localeCompare(a.at)).slice(0, MAX_SHOWN),
@@ -143,6 +180,19 @@ export function NotificationsMenu({ items, storageKey, className }: Notification
               </button>
             ) : null}
           </div>
+
+          {permission === 'default' ? (
+            <div className="flex items-center justify-between gap-3 border-b border-line-soft bg-iris-50/50 px-4 py-2.5">
+              <p className="text-xs font-medium text-ink-muted">Get an alert on this device when something new arrives while the app is open.</p>
+              <button
+                type="button"
+                onClick={() => void turnOnAlerts()}
+                className="shrink-0 rounded-md text-xs font-semibold text-iris-600 hover:text-iris-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500"
+              >
+                Turn on
+              </button>
+            </div>
+          ) : null}
 
           {newestFirst.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-ink-muted">You are all caught up.</p>

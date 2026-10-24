@@ -1,12 +1,15 @@
 import { Link, useParams } from 'react-router-dom';
 import {
   businessDate,
+  FEATURES,
   lastSevenDays,
   MAX_GROWTH_AREAS,
   useChildAssignments,
   useChildren,
   useFamilyObservations,
   useGrowthAreas,
+  useGrowthMoments,
+  useHolisticIndex,
   useMonthlySummary,
   useStars,
   useStreak,
@@ -15,10 +18,13 @@ import {
   firstNameOf,
   formatMonth,
   GrowthAreaList,
+  GrowthMoments,
+  HolisticIndexCard,
   ObservationEntry,
   possessive,
   relativeDayPhrase,
   StarBoard,
+  StarsOverTime,
   StreakIndicator,
 } from '@evolveiq/domain';
 import {
@@ -64,6 +70,8 @@ export function ChildDashboardScreen() {
   const streak = useStreak(childId);
   const growthAreas = useGrowthAreas(childId);
   const stars = useStars(childId);
+  const holistic = useHolisticIndex(childId);
+  const moments = useGrowthMoments(childId);
   const observations = useFamilyObservations();
   const summary = useMonthlySummary(childId);
 
@@ -135,6 +143,32 @@ export function ChildDashboardScreen() {
         />
       </div>
 
+      {FEATURES.holisticIndex && holistic.data ? (
+        <div className="flex flex-col gap-4">
+          <HolisticIndexCard studentName={child.fullName} index={holistic.data} />
+          <div className="flex flex-wrap gap-3">
+            <Link to={`/parent/children/${child.id}/report`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+              {possessive(firstName)} full report
+              <ChevronRight />
+            </Link>
+            <Link to={`/parent/children/${child.id}/wellbeing`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+              Wellbeing check-in
+              <ChevronRight />
+            </Link>
+            <Link to={`/parent/children/${child.id}/explore`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+              Explore ideas
+              <ChevronRight />
+            </Link>
+            {(children.data ?? []).length > 1 ? (
+              <Link to="/parent/siblings" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+                Compare strengths
+                <ChevronRight />
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <Card isPlayful className="flex flex-col gap-5 p-6 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SectionTitle icon={CalendarDays} iconClassName="text-jade-500">
@@ -158,6 +192,8 @@ export function ChildDashboardScreen() {
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-6">
         <div className="flex flex-col gap-8">
           <StarBoard stars={childStars} name={firstName} audience="family" isLoading={stars.isLoading} />
+          <StarsOverTime stars={childStars} name={firstName} audience="family" />
+          <GrowthMoments moments={moments.data ?? []} name={firstName} audience="family" isLoading={moments.isLoading} />
 
           <section>
             <SectionTitle>Pending actions and tasks</SectionTitle>

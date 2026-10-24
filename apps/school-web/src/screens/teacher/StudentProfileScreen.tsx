@@ -1,11 +1,14 @@
 import { Link, useParams } from 'react-router-dom';
 import {
   businessDate,
+  FEATURES,
   lastSevenDays,
   MAX_GROWTH_AREAS,
   useActivities,
   useClassRoster,
   useGrowthAreas,
+  useGrowthMoments,
+  useHolisticIndex,
   useStars,
   useStreak,
   useStudentAssignments,
@@ -16,9 +19,13 @@ import {
   describeAnswer,
   firstNameOf,
   GrowthAreaList,
+  GrowthMoments,
+  HolisticIndexCard,
+  HolisticInsights,
   ObservationEntry,
   relativeDayPhrase,
   StarBoard,
+  StarsOverTime,
   StreakIndicator,
 } from '@evolveiq/domain';
 import {
@@ -41,6 +48,7 @@ import {
   Sprout,
   Star,
 } from '@evolveiq/ui';
+import { StudentSupport } from '../../components/StudentSupport';
 
 /**
  * A teacher's view of one student of their classes: the stars they have been
@@ -54,6 +62,8 @@ export function StudentProfileScreen() {
   const growthAreas = useGrowthAreas(studentId);
   const streak = useStreak(studentId);
   const stars = useStars(studentId);
+  const holistic = useHolisticIndex(studentId);
+  const moments = useGrowthMoments(studentId);
   const assignments = useStudentAssignments(studentId);
   const activities = useActivities();
   const ownObservations = useTeacherObservations();
@@ -140,7 +150,13 @@ export function StudentProfileScreen() {
 
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
         <div className="flex flex-col gap-10 lg:col-span-5">
+          {FEATURES.holisticIndex && holistic.data ? (
+            <HolisticIndexCard studentName={student.fullName} index={holistic.data} />
+          ) : null}
           <StarBoard stars={studentStars} name={firstName} audience="staff" isLoading={stars.isLoading} />
+          <StarsOverTime stars={studentStars} name={firstName} audience="staff" />
+          <GrowthMoments moments={moments.data ?? []} name={firstName} audience="staff" isLoading={moments.isLoading} />
+          <StudentSupport studentId={student.id} />
 
           <section>
             <SectionTitle
@@ -218,7 +234,9 @@ export function StudentProfileScreen() {
           </section>
         </div>
 
-        <section className="lg:col-span-7">
+        <div className="flex flex-col gap-10 lg:col-span-7">
+          {FEATURES.holisticIndex && holistic.data ? <HolisticInsights insights={holistic.data.insights} /> : null}
+        <section>
           <SectionTitle icon={NotebookPen} iconClassName="text-lilac-500">
             Your observations
           </SectionTitle>
@@ -258,6 +276,7 @@ export function StudentProfileScreen() {
             </Card>
           )}
         </section>
+        </div>
       </div>
     </div>
   );

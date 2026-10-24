@@ -1,9 +1,14 @@
-import { addMonths, businessDate, businessMonth, currentStreak, longestRun } from '../business-time';
+import { addDays, addMonths, businessDate, businessMonth, currentStreak, longestRun } from '../business-time';
+import { buildHolisticIndex, type Signal } from './holistic-index';
+import { buildGrowthMoments } from './growth-moments';
 import type { HttpMethod, RequestOptions, TransportResponse } from '../http-client';
 import type {
   ActivityAnswer,
   ActivityContent,
   ActivityType,
+  AppNotification,
+  Consent,
+  ConsentPurpose,
   DevelopmentArea,
   FieldIssue,
   ObservationArea,
@@ -14,6 +19,10 @@ import type {
   LearningBehaviourArea,
   Pagination,
   Role,
+  SupportCategory,
+  SupportPlan,
+  SupportStatus,
+  WellnessCheckin,
 } from '../types';
 import {
   buildSeed,
@@ -23,6 +32,7 @@ import {
   type MockAssignment,
   type MockObservation,
   type MockState,
+  type MockSupportPlan,
   type MockUser,
 } from './fixtures';
 
@@ -1269,7 +1279,40 @@ function progressStudent(actor: MockUser, studentId: string): MockUser {
   return student;
 }
 
+/** Everything the index needs about one child: observations, and activities set and finished. */
+function evidenceOf(studentId: string) {
+  const signals: Signal[] = state.observations
+    .filter((o) => o.studentId === studentId)
+    .map((o) => ({ tone: o.tone, area: o.area, level: o.level, status: o.status, at: new Date(o.createdAt) }));
+  const assignments = state.assignments.filter((a) => a.studentId === studentId);
+  const done = assignments.flatMap((a) => {
+    const completion = completionOf(a.id);
+    return completion ? [{ id: completion.id, activityTitle: activityOf(a).title, completedAt: new Date(completion.completedAt) }] : [];
+  });
+  return { signals, assigned: assignments.map((a) => new Date(a.createdAt)), done };
+}
+
 const progressHandlers = {
+  holisticIndex({ actor }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const { signals, assigned, done } = evidenceOf(student.id);
+    const now = new Date();
+    const index = buildHolisticIndex({ signals, assigned, completions: done.map((c) => c.completedAt) }, now, new Date(student.createdAt));
+    return { body: { holisticIndex: { studentId: student.id, ...index, updatedAt: now.toISOString() } } };
+  },
+  growthMoments({ actor, query }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const { done } = evidenceOf(student.id);
+    const stars = starsOf(student.id).map((o) => ({
+      id: o.id,
+      area: o.area,
+      description: o.description,
+      authorRole: o.authorRole,
+      authorName: person(userById(o.authorId)).fullName,
+      createdAt: new Date(o.createdAt),
+    }));
+    return { body: paginate(buildGrowthMoments(stars, done), query, 'moments') };
+  },
   growthAreas({ actor }: Context, studentId: string): Result {
     const student = progressStudent(actor, studentId);
     return { body: { growthAreas: growthAreasOf(student.id).map((name) => ({ name })) } };
@@ -1306,6 +1349,305 @@ const progressHandlers = {
 
 const ALL: Role[] = ROLES;
 const ADMINS: Role[] = ['platform_admin', 'school_admin'];
+
+/** Observation areas are named with these labels, as the backend names them. */
+const OBSERVATION_AREA_NAMES: Record<ObservationArea, string> = {
+  emotions: 'Emotions & feelings',
+  behaviour: 'Behaviour',
+  social: 'Friends & social',
+  learning: 'Learning & focus',
+  communication: 'Communication',
+  physical: 'Physical & movement',
+  routines: 'Sleep, eating & routines',
+  other: 'Other',
+};
+
+// ───────────────────────────── Consent, wellbeing, support plans, notifications ─────────────────────────────
+
+const CONSENT_PURPOSES: ConsentPurpose[] = ['wellness_tracking', 'wellness_sharing'];
+const CONSENT_LABELS: Record<ConsentPurpose, string> = {
+  wellness_tracking: 'Record daily wellbeing check-ins',
+  wellness_sharing: "Share those check-ins with my child's teachers and counsellor",
+};
+const SUPPORT_CATEGORY_NAMES: Record<SupportCategory, string> = {
+  learning: 'Learning support',
+  attention: 'Attention and focus',
+  speech_language: 'Speech and language',
+  sensory: 'Sensory needs',
+  physical_access: 'Physical access',
+  emotional: 'Emotional support',
+  gifted: 'Stretch and enrichment',
+  other: 'Other',
+};
+const SUPPORT_CATEGORIES = Object.keys(SUPPORT_CATEGORY_NAMES) as SupportCategory[];
+const SUPPORT_STATUS_NAMES: Record<SupportStatus, string> = {
+  active: 'In place',
+  in_review: 'Being reviewed',
+  closed: 'Closed',
+};
+const SUPPORT_STATUSES = Object.keys(SUPPORT_STATUS_NAMES) as SupportStatus[];
+const BACKFILL_DAYS = 30;
+const DAY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+const consentError = () =>
+  new MockHttpError(403, 'CONSENT_REQUIRED', 'A parent needs to allow wellbeing check-ins first (Privacy & safety).');
+
+function consentOf(studentId: string): { list: Consent[]; tracking: boolean; sharing: boolean } {
+  const list = CONSENT_PURPOSES.map((purpose): Consent => {
+    const record = state.consents.find((c) => c.studentId === studentId && c.purpose === purpose);
+    return { purpose, label: CONSENT_LABELS[purpose], granted: record?.granted ?? false, decidedAt: record?.decidedAt ?? null };
+  });
+  const granted = (purpose: ConsentPurpose) => list.find((c) => c.purpose === purpose)?.granted ?? false;
+  const tracking = granted('wellness_tracking');
+  return { list, tracking, sharing: tracking && granted('wellness_sharing') };
+}
+
+const mean = (values: number[], digits = 0): number | null => {
+  if (values.length === 0) return null;
+  const factor = 10 ** digits;
+  return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * factor) / factor;
+};
+
+function supportPlanDto(plan: MockSupportPlan): SupportPlan {
+  const author = userById(plan.createdById);
+  return {
+    id: plan.id,
+    studentId: plan.studentId,
+    category: plan.category,
+    categoryLabel: SUPPORT_CATEGORY_NAMES[plan.category],
+    summary: plan.summary,
+    strategies: plan.strategies,
+    status: plan.status,
+    statusLabel: SUPPORT_STATUS_NAMES[plan.status],
+    reviewOn: plan.reviewOn,
+    isReviewDue: plan.status !== 'closed' && plan.reviewOn !== null && plan.reviewOn <= businessDate(new Date()),
+    createdBy: { fullName: author?.fullName ?? 'Staff' },
+    createdAt: plan.createdAt,
+    closedAt: plan.closedAt,
+  };
+}
+
+const firstNameOf = (fullName: string): string => fullName.trim().split(/\s+/)[0] ?? fullName;
+
+const wellbeingHandlers = {
+  consents({ actor }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    if (actor.role !== 'student' && actor.role !== 'parent') throw Errors.forbidden();
+    return { body: { consents: consentOf(student.id).list } };
+  },
+  setConsent({ actor, body }: Context, studentId: string, purpose: string): Result {
+    if (actor.role !== 'parent') throw Errors.forbidden();
+    const student = progressStudent(actor, studentId);
+    const issues: FieldIssue[] = [];
+    if (!CONSENT_PURPOSES.includes(purpose as ConsentPurpose)) field(issues, 'purpose', `must be one of: ${CONSENT_PURPOSES.join(', ')}`);
+    rejectUnknown(body, ['granted'], issues);
+    if (typeof body.granted !== 'boolean') field(issues, 'granted', 'must be true or false');
+    assertValid(issues);
+    const decidedAt = nowIso();
+    const existing = state.consents.find((c) => c.studentId === student.id && c.purpose === purpose);
+    if (existing) Object.assign(existing, { granted: body.granted, decidedAt });
+    else state.consents.push({ studentId: student.id, purpose: purpose as ConsentPurpose, granted: body.granted as boolean, decidedAt });
+    const consent = consentOf(student.id).list.find((c) => c.purpose === purpose)!;
+    return { body: { consent } };
+  },
+  checkins({ actor, query }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const days = Math.min(90, Math.max(7, Number(query.days ?? 30) || 30));
+    const consent = consentOf(student.id);
+    const isFamily = actor.role === 'student' || actor.role === 'parent';
+    const isVisible = consent.tracking && (isFamily || consent.sharing);
+    const since = addDays(businessDate(new Date()), -(days - 1));
+    const checkins: WellnessCheckin[] = isVisible
+      ? state.checkins
+          .filter((c) => c.studentId === student.id && c.day >= since)
+          .sort((a, b) => a.day.localeCompare(b.day))
+          .map(({ day, mood, energy, sleepMinutes, activeMinutes }) => ({ day, mood, energy, sleepMinutes, activeMinutes }))
+      : [];
+    const given = (pick: (c: WellnessCheckin) => number | null) => checkins.map(pick).filter((v): v is number => v !== null);
+    return {
+      body: {
+        isTracking: consent.tracking,
+        isSharedWithSchool: consent.sharing,
+        isVisible,
+        checkins,
+        summary: {
+          days: checkins.length,
+          averageMood: mean(checkins.map((c) => c.mood), 1),
+          averageEnergy: mean(checkins.map((c) => c.energy), 1),
+          averageSleepMinutes: mean(given((c) => c.sleepMinutes)),
+          averageActiveMinutes: mean(given((c) => c.activeMinutes)),
+        },
+      },
+    };
+  },
+  recordCheckin({ actor, body }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    if (!consentOf(student.id).tracking) throw consentError();
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['day', 'mood', 'energy', 'sleepMinutes', 'activeMinutes'], issues);
+    const scale = (name: 'mood' | 'energy') => {
+      const value = body[name];
+      if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 5) {
+        field(issues, name, 'must be a whole number from 1 to 5');
+        return 0;
+      }
+      return value as number;
+    };
+    const optional = (name: 'sleepMinutes' | 'activeMinutes', max: number) => {
+      const value = body[name];
+      if (value === undefined) return null;
+      if (!Number.isInteger(value) || (value as number) < 0 || (value as number) > max) {
+        field(issues, name, `must be a whole number from 0 to ${max}`);
+        return null;
+      }
+      return value as number;
+    };
+    const mood = scale('mood');
+    const energy = scale('energy');
+    const sleepMinutes = optional('sleepMinutes', 1080);
+    const activeMinutes = optional('activeMinutes', 720);
+    const today = businessDate(new Date());
+    const day = body.day === undefined ? today : String(body.day);
+    if (!DAY_PATTERN.test(day)) field(issues, 'day', 'must be YYYY-MM-DD');
+    else if (day > today || day < addDays(today, -BACKFILL_DAYS)) field(issues, 'day', 'must be today or one of the last 30 days');
+    assertValid(issues);
+
+    const record = { studentId: student.id, day, mood, energy, sleepMinutes, activeMinutes };
+    const existing = state.checkins.find((c) => c.studentId === student.id && c.day === day);
+    if (existing) Object.assign(existing, record);
+    else state.checkins.push(record);
+    return { status: 201, body: { checkin: { day, mood, energy, sleepMinutes, activeMinutes } } };
+  },
+};
+
+const supportHandlers = {
+  list({ actor }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const plans = state.supportPlans
+      .filter((p) => p.studentId === student.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(supportPlanDto);
+    return { body: { plans: [...plans.filter((p) => p.status !== 'closed'), ...plans.filter((p) => p.status === 'closed')] } };
+  },
+  create({ actor, body }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['category', 'summary', 'strategies', 'reviewOn'], issues);
+    const category = oneOf(body, 'category', SUPPORT_CATEGORIES, issues);
+    const summary = text(body, 'summary', issues, { max: 1000 });
+    const strategies = text(body, 'strategies', issues, { max: 2000, isOptional: true });
+    if (body.reviewOn !== undefined && !DAY_PATTERN.test(String(body.reviewOn))) field(issues, 'reviewOn', 'must be YYYY-MM-DD');
+    assertValid(issues);
+    const plan: MockSupportPlan = {
+      id: nextId('plan'),
+      studentId: student.id,
+      createdById: actor.id,
+      category: category!,
+      summary: summary!,
+      strategies: strategies ?? null,
+      status: 'active',
+      reviewOn: body.reviewOn === undefined ? null : String(body.reviewOn),
+      createdAt: nowIso(),
+      closedAt: null,
+    };
+    state.supportPlans.unshift(plan);
+    return { status: 201, body: { plan: supportPlanDto(plan) } };
+  },
+  update({ actor, body }: Context, planId: string): Result {
+    const plan = state.supportPlans.find((p) => p.id === planId);
+    if (!plan || !studentInScope(actor, plan.studentId)) throw Errors.notFound('Support plan');
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['summary', 'strategies', 'status', 'reviewOn'], issues);
+    if (Object.keys(body).length === 0) field(issues, 'body', 'send at least one field to change');
+    const summary = text(body, 'summary', issues, { max: 1000, isOptional: true });
+    const status = oneOf(body, 'status', SUPPORT_STATUSES, issues, true);
+    if (body.strategies !== undefined && body.strategies !== null) text(body, 'strategies', issues, { max: 2000 });
+    if (body.reviewOn !== undefined && body.reviewOn !== null && !DAY_PATTERN.test(String(body.reviewOn))) {
+      field(issues, 'reviewOn', 'must be YYYY-MM-DD');
+    }
+    assertValid(issues);
+    if (summary !== undefined) plan.summary = summary;
+    if (body.strategies !== undefined) plan.strategies = body.strategies === null ? null : String(body.strategies).trim();
+    if (body.reviewOn !== undefined) plan.reviewOn = body.reviewOn === null ? null : String(body.reviewOn);
+    if (status !== undefined) {
+      plan.status = status;
+      plan.closedAt = status === 'closed' ? (plan.closedAt ?? nowIso()) : null;
+    }
+    return { body: { plan: supportPlanDto(plan) } };
+  },
+};
+
+const notificationHandlers = {
+  list({ actor }: Context): Result {
+    const reach = (studentId: string) => canReachStudent(actor, userById(studentId)!);
+    const items: AppNotification[] = [];
+    const seenAt = state.notificationSeen[actor.id] ?? null;
+    const push = (item: Omit<AppNotification, 'isUnread'>) =>
+      items.push({ ...item, isUnread: seenAt === null || item.at > seenAt });
+    const isStudent = actor.role === 'student';
+    const isParent = actor.role === 'parent';
+
+    if (isStudent || isParent) {
+      for (const star of state.observations.filter((o) => o.tone === 'positive' && reach(o.studentId))) {
+        const name = firstNameOf(userById(star.studentId)!.fullName);
+        push({
+          id: `star:${star.id}`,
+          kind: 'star',
+          title: isStudent ? 'You earned a star' : `${name} earned a star`,
+          body: `For ${OBSERVATION_AREA_NAMES[star.area].toLowerCase()}. Keep it up!`,
+          studentId: star.studentId,
+          at: star.createdAt,
+        });
+      }
+      for (const assignment of state.assignments.filter((a) => reach(a.studentId))) {
+        const name = firstNameOf(userById(assignment.studentId)!.fullName);
+        push({
+          id: `assigned:${assignment.id}`,
+          kind: 'activity_assigned',
+          title: isStudent ? 'A new activity for you' : `A new activity for ${name}`,
+          body: activityOf(assignment).title,
+          studentId: assignment.studentId,
+          at: assignment.createdAt,
+        });
+      }
+    }
+    if (isParent || actor.role === 'teacher') {
+      for (const completion of state.completions) {
+        const assignment = state.assignments.find((a) => a.id === completion.assignmentId);
+        if (!assignment || !reach(assignment.studentId)) continue;
+        push({
+          id: `finished:${completion.id}`,
+          kind: 'activity_finished',
+          title: `${firstNameOf(userById(assignment.studentId)!.fullName)} finished an activity`,
+          body: activityOf(assignment).title,
+          studentId: assignment.studentId,
+          at: completion.completedAt,
+        });
+      }
+    }
+    if (actor.role === 'psychologist') {
+      const pending = state.observations.filter((o) => o.status === 'pending').sort(newestFirst);
+      if (pending.length > 0) {
+        push({
+          id: 'review-queue',
+          kind: 'review_queue',
+          title: pending.length === 1 ? '1 observation is waiting for review' : `${pending.length} observations are waiting for review`,
+          body: 'Open the review queue to look at them.',
+          studentId: null,
+          at: pending[0]!.createdAt,
+        });
+      }
+    }
+    items.sort((a, b) => b.at.localeCompare(a.at) || a.id.localeCompare(b.id));
+    const notifications = items.slice(0, 30);
+    return { body: { notifications, unreadCount: notifications.filter((n) => n.isUnread).length } };
+  },
+  seen({ actor }: Context): Result {
+    const seenAt = nowIso();
+    state.notificationSeen[actor.id] = seenAt;
+    return { body: { seenAt } };
+  },
+};
 
 type Handler = (context: Context, ...params: string[]) => Result;
 
@@ -1367,6 +1709,17 @@ const ROUTES: Route[] = [
 
   { method: 'GET', path: '/students/:id/growth-areas', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.growthAreas },
   { method: 'GET', path: '/students/:id/streak', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.streak },
+  { method: 'GET', path: '/students/:id/holistic-index', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.holisticIndex },
+  { method: 'GET', path: '/students/:id/growth-moments', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.growthMoments },
+  { method: 'GET', path: '/students/:id/consents', roles: ['student', 'parent'], handle: wellbeingHandlers.consents },
+  { method: 'PUT', path: '/students/:id/consents/:purpose', roles: ['parent'], handle: wellbeingHandlers.setConsent },
+  { method: 'GET', path: '/students/:id/wellness-checkins', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: wellbeingHandlers.checkins },
+  { method: 'POST', path: '/students/:id/wellness-checkins', roles: ['student', 'parent'], handle: wellbeingHandlers.recordCheckin },
+  { method: 'GET', path: '/students/:id/support-plans', roles: ['teacher', 'psychologist'], handle: supportHandlers.list },
+  { method: 'POST', path: '/students/:id/support-plans', roles: ['teacher', 'psychologist'], handle: supportHandlers.create },
+  { method: 'PATCH', path: '/support-plans/:id', roles: ['teacher', 'psychologist'], handle: supportHandlers.update },
+  { method: 'GET', path: '/notifications', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: notificationHandlers.list },
+  { method: 'POST', path: '/notifications/seen', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: notificationHandlers.seen },
   { method: 'GET', path: '/students/:id/stars', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.stars },
   {
     method: 'GET',

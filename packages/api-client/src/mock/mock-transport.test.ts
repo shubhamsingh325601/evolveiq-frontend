@@ -369,3 +369,151 @@ describe('mock backend: administration', () => {
     expect(response.body.pagination.total).toBeGreaterThan(10);
   });
 });
+
+describe('mock backend: the Holistic Index', () => {
+  beforeEach(() => resetMockStore());
+
+  it('gives a parent the index for their own child, and 404 for anyone else’s', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const own = await call('GET', ENDPOINTS.students.holisticIndex('stu-maya'), { token: parent });
+    expect(own.status).toBe(200);
+    expect(own.body.holisticIndex.dimensions).toHaveLength(5);
+    expect(own.body.holisticIndex.score).toBeGreaterThanOrEqual(0);
+    expect(own.body.holisticIndex.score).toBeLessThanOrEqual(100);
+    expect(own.body.holisticIndex.monthly.length).toBeGreaterThan(0);
+
+    const other = await call('GET', ENDPOINTS.students.holisticIndex('stu-arjun'), { token: await tokenFor('neil@family.test') });
+    expect(other.status).toBe(404);
+  });
+
+  it('never leaks concerns, levels or review notes to a parent', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const index = await call('GET', ENDPOINTS.students.holisticIndex('stu-maya'), { token: parent });
+    const moments = await call('GET', ENDPOINTS.students.growthMoments('stu-maya'), { token: parent });
+    for (const response of [index, moments]) {
+      const text = JSON.stringify(response.body);
+      expect(text).not.toMatch(/concern|significant|clinical|reviewNote|developmentArea/i);
+    }
+  });
+
+  it('lists growth moments newest first', async () => {
+    const response = await call('GET', ENDPOINTS.students.growthMoments('stu-maya'), { token: await tokenFor('priya@family.test') });
+    expect(response.status).toBe(200);
+    const times = response.body.moments.map((m: { occurredAt: string }) => Date.parse(m.occurredAt));
+    expect([...times].sort((a, b) => b - a)).toEqual(times);
+  });
+
+  it('refuses a request without a token', async () => {
+    expect((await call('GET', ENDPOINTS.students.holisticIndex('stu-maya'))).status).toBe(401);
+  });
+});
+
+describe('mock backend: consent and wellbeing check-ins', () => {
+  beforeEach(() => resetMockStore());
+  const checkin = { mood: 4, energy: 3, sleepMinutes: 500 };
+
+  it('starts with nothing allowed, and only the parent can decide', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const before = await call('GET', ENDPOINTS.students.consents('stu-maya'), { token: parent });
+    expect(before.body.consents.map((c: { granted: boolean }) => c.granted)).toEqual([false, false]);
+
+    const student = (await signIn({ studentId: 'RV-1001' })).accessToken;
+    const byStudent = await call('PUT', ENDPOINTS.students.consent('stu-maya', 'wellness_tracking'), { token: student, body: { granted: true } });
+    expect(byStudent.status).toBe(403);
+    const other = await call('PUT', ENDPOINTS.students.consent('stu-maya', 'wellness_tracking'), {
+      token: await tokenFor('neil@family.test'),
+      body: { granted: true },
+    });
+    expect(other.status).toBe(404);
+  });
+
+  it('refuses a check-in until tracking is allowed', async () => {
+    const student = (await signIn({ studentId: 'RV-1001' })).accessToken;
+    const refused = await call('POST', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: student, body: checkin });
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.code).toBe('CONSENT_REQUIRED');
+  });
+
+  it('records one per day and replaces a second for the same day', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const student = (await signIn({ studentId: 'RV-1001' })).accessToken;
+    await call('PUT', ENDPOINTS.students.consent('stu-maya', 'wellness_tracking'), { token: parent, body: { granted: true } });
+    expect((await call('POST', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: student, body: checkin })).status).toBe(201);
+    await call('POST', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: parent, body: { mood: 2, energy: 2 } });
+
+    const list = await call('GET', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: parent });
+    expect(list.body.checkins).toHaveLength(1);
+    expect(list.body.checkins[0]).toMatchObject({ mood: 2, energy: 2, sleepMinutes: null });
+    expect(list.body.summary.averageMood).toBe(2);
+  });
+
+  it('validates ranges and days', async () => {
+    const parent = await tokenFor('priya@family.test');
+    await call('PUT', ENDPOINTS.students.consent('stu-maya', 'wellness_tracking'), { token: parent, body: { granted: true } });
+    for (const body of [{ mood: 6, energy: 3 }, { mood: 3, energy: 0 }, { mood: 3, energy: 3, day: '2999-01-01' }, { mood: 3, energy: 3, extra: 1 }]) {
+      expect((await call('POST', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: parent, body })).status).toBe(400);
+    }
+  });
+
+  it('shows a teacher nothing until the family shares with the school', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const teacher = await tokenFor('rao@school.test');
+    await call('PUT', ENDPOINTS.students.consent('stu-maya', 'wellness_tracking'), { token: parent, body: { granted: true } });
+    await call('POST', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: parent, body: checkin });
+
+    const hidden = await call('GET', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: teacher });
+    expect(hidden.body).toMatchObject({ isTracking: true, isSharedWithSchool: false, isVisible: false, checkins: [] });
+
+    await call('PUT', ENDPOINTS.students.consent('stu-maya', 'wellness_sharing'), { token: parent, body: { granted: true } });
+    const shared = await call('GET', ENDPOINTS.students.wellnessCheckins('stu-maya'), { token: teacher });
+    expect(shared.body.isVisible).toBe(true);
+    expect(shared.body.checkins).toHaveLength(1);
+  });
+});
+
+describe('mock backend: support plans', () => {
+  beforeEach(() => resetMockStore());
+  const plan = { category: 'sensory', summary: 'Loud rooms are hard.', strategies: 'A quiet corner.' };
+
+  it('lets staff of the student open, close and reopen a plan', async () => {
+    const teacher = await tokenFor('rao@school.test');
+    const created = await call('POST', ENDPOINTS.students.supportPlans('stu-maya'), { token: teacher, body: plan });
+    expect(created.status).toBe(201);
+    expect(created.body.plan).toMatchObject({ categoryLabel: 'Sensory needs', status: 'active' });
+
+    const id = created.body.plan.id as string;
+    const closed = await call('PATCH', ENDPOINTS.supportPlans.detail(id), { token: teacher, body: { status: 'closed' } });
+    expect(closed.body.plan.closedAt).not.toBeNull();
+    const reopened = await call('PATCH', ENDPOINTS.supportPlans.detail(id), { token: teacher, body: { status: 'in_review' } });
+    expect(reopened.body.plan).toMatchObject({ status: 'in_review', closedAt: null });
+  });
+
+  it('is never visible to families, and not to a teacher of another school', async () => {
+    const teacher = await tokenFor('rao@school.test');
+    await call('POST', ENDPOINTS.students.supportPlans('stu-maya'), { token: teacher, body: plan });
+    for (const token of [await tokenFor('priya@family.test'), (await signIn({ studentId: 'RV-1001' })).accessToken]) {
+      expect((await call('GET', ENDPOINTS.students.supportPlans('stu-maya'), { token })).status).toBe(403);
+    }
+    expect((await call('GET', ENDPOINTS.students.supportPlans('stu-maya'), { token: await tokenFor('omar@halden.test') })).status).toBe(404);
+  });
+});
+
+describe('mock backend: notifications', () => {
+  beforeEach(() => resetMockStore());
+
+  it('tells a parent about their child, then reads as seen', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const feed = await call('GET', ENDPOINTS.notifications.list, { token: parent });
+    expect(feed.status).toBe(200);
+    expect(feed.body.unreadCount).toBeGreaterThan(0);
+    expect(JSON.stringify(feed.body)).not.toMatch(/concern|review|significant/i);
+
+    await call('POST', ENDPOINTS.notifications.seen, { token: parent, body: {} });
+    expect((await call('GET', ENDPOINTS.notifications.list, { token: parent })).body.unreadCount).toBe(0);
+  });
+
+  it('is for family and staff only', async () => {
+    expect((await call('GET', ENDPOINTS.notifications.list)).status).toBe(401);
+    expect((await call('GET', ENDPOINTS.notifications.list, { token: await tokenFor('clara@school.test') })).status).toBe(403);
+  });
+});

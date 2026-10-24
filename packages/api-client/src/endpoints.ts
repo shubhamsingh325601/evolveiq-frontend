@@ -64,12 +64,26 @@ export const ENDPOINTS = {
   activityCompletions: {
     create: '/activity-completions',
   },
+  supportPlans: {
+    detail: (planId: string) => `/support-plans/${id(planId)}`,
+  },
+  notifications: {
+    list: '/notifications',
+    seen: '/notifications/seen',
+  },
   students: {
     assignments: (studentId: string) => `/students/${id(studentId)}/assignments`,
     growthAreas: (studentId: string) => `/students/${id(studentId)}/growth-areas`,
     streak: (studentId: string) => `/students/${id(studentId)}/streak`,
     /** One star per positive observation. The same parent-safe shape for every audience. */
     stars: (studentId: string) => `/students/${id(studentId)}/stars`,
+    holisticIndex: (studentId: string) => `/students/${id(studentId)}/holistic-index`,
+    growthMoments: (studentId: string) => `/students/${id(studentId)}/growth-moments`,
+    consents: (studentId: string) => `/students/${id(studentId)}/consents`,
+    consent: (studentId: string, purpose: string) => `/students/${id(studentId)}/consents/${id(purpose)}`,
+    wellnessCheckins: (studentId: string) => `/students/${id(studentId)}/wellness-checkins`,
+    /** Staff only: a school support plan for a student. */
+    supportPlans: (studentId: string) => `/students/${id(studentId)}/support-plans`,
     monthlySummary: (studentId: string, month: string) =>
       `/students/${id(studentId)}/monthly-summaries/${id(month)}`,
   },
