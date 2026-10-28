@@ -117,6 +117,28 @@ describe('Admin panel', () => {
     expect(await within(row).findByText('Halden Grove School')).toBeInTheDocument();
   });
 
+  it('shows a school admin CRM integration as coming soon, with their real counts and nothing to press', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByText('Maya Ahluwalia');
+
+    await user.click(screen.getAllByRole('link', { name: /CRM integration/ })[0]!);
+
+    expect(await screen.findByRole('heading', { name: 'CRM integration', level: 1 })).toBeInTheDocument();
+    expect(screen.getAllByText('Coming soon').length).toBeGreaterThan(1);
+    expect(screen.getByText('API keys and webhooks')).toBeInTheDocument();
+    // Ridgeview's seven students, counted from the list the school already has.
+    const studentsTile = screen.getByText('At your school today').parentElement!;
+    expect(await within(studentsTile).findByText('7')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /connect/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps CRM integration to school admins', async () => {
+    await signInAs('tunde@evolveiq.test');
+    await screen.findByRole('heading', { name: 'Schools' });
+
+    expect(screen.queryByRole('link', { name: /CRM integration/ })).not.toBeInTheDocument();
+  });
+
   it('sends a signed-out visitor to sign-in', async () => {
     renderApp('/platform/schools');
 

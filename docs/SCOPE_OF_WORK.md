@@ -28,6 +28,26 @@ teacher view was accepted as it is.
   with test accounts named by role: Parent, Student, Teacher, Counsellor,
   School admin, Platform admin.
 
+**Change, 28 Oct 2026 (client feedback):**
+- "Make the platform responsive." The list screens (every `RecordsTable`)
+  stretched a phone's page sideways and hid columns off the edge; on a phone
+  each row is now a card with every value labelled, and no screen is wider than
+  the phone. Checked on every role's screens at 360, 390, 768, 1024 and 1440px.
+- A **CRM integration** entry for the school admin, announced as **coming
+  soon**: what it will do and the school's real record counts. Nothing is
+  integrated and nothing on the page pretends to be.
+- A **chatbot in the centre** of the family app's tab bar, for students and
+  parents: the **EvolvIQ Guide** ("Ask EvolvIQ"). Static — every answer is
+  written in advance and filled from the person's own data; no live agent, no
+  AI, no person behind it, and it says so. A worry ("scared", "bullied",
+  "emergency"…) is answered first by pointing to a trusted adult or the school.
+- The **order** of the family screens: the graphs and progress, the USP, come
+  first — the EHI rings and trajectory on the parent's dashboard, then the
+  counts, the Holistic Report Card and the stars by month; level progress, the
+  rings and "My superpowers" radar on the student's home, then the missions.
+- **Explore** replaces **Siblings** in the parent's tabs (Siblings is still one
+  tap from the dashboard, as "Compare strengths").
+
 ## Apps to build
 1. **Family Web App** — Parent, Student
 2. **School Web App** — Teacher, Psychologist
@@ -41,9 +61,19 @@ teacher view was accepted as it is.
 - An account menu (the profile) at the foot of the rail and behind the avatar
   on phones: who is signed in, what they can switch between, and sign out
 - KPI tiles made of counts (no charts) at the top of working screens
+- Every screen usable at phone width without sideways scrolling; list screens
+  show each row as a labelled card on a phone
+
+### Student and Parent (Family Web App)
+- The EvolvIQ Guide in the middle of the phone tab bar (on the rail on larger
+  screens): prepared answers about the person's own missions, level, stars,
+  streak and score, or about their children, stars, the Holistic Index,
+  concerns, Explore and privacy. Never a live chat or an AI
 
 ### Student (Family Web App)
-- Home: today's assigned activities as Daily Missions, with XP per mission
+- Home: level progress and the EHI graphs first (score rings, "My superpowers"
+  radar, the Holistic Report Card), then today's assigned activities as Daily
+  Missions, with XP per mission
 - Level and XP progress, streak
 - Activity player: MCQ, text, image pick, 1–5 rating, media + response
 - Progress/streak indicator on completion
@@ -53,8 +83,10 @@ teacher view was accepted as it is.
 
 ### Parent (Family Web App)
 - Dashboard per child, with a switcher between children (on the dashboard, the
-  rail and the account menu)
-- EvolvIQ Holistic Index: score, change since last year, five-pillar rings
+  rail and the account menu), led by the graphs and progress
+- EvolvIQ Holistic Index: score, change since last year, five-pillar rings,
+  trajectory
+- Explore (a tab): ideas to try together, starting from the child's strengths
 - Holistic Report Card: EHI trajectory over the years, skill profile radar,
   strengths, year-by-year card, Growth Playbook, save as PDF / share
 - Observation submission form (something to celebrate or something to look
@@ -90,6 +122,7 @@ teacher view was accepted as it is.
 
 ### School Admin (Admin Panel)
 - Manage students, teachers, classes, parents (list/create/edit — RecordsTable-driven)
+- CRM integration, shown as coming soon (no integration built)
 
 ### Platform Admin (Admin Panel)
 - Add schools, manage users across roles
@@ -98,12 +131,14 @@ teacher view was accepted as it is.
 - Charts/graphs on any dashboard, apart from the EHI views on the parent and
   student screens listed above
 - Prototype features beyond the confirmed MVP, until the client confirms them:
-  SOS / safety centre, health and medical records, Explore (admissions, fests,
-  maps), alumni network, splash / intro tour / consent flow, settings and
-  language switch, AI career-path predictions
+  SOS / safety centre, health and medical records, Explore beyond the ideas
+  page (admissions, fests, maps), alumni network, splash / intro tour /
+  consent flow, settings and language switch, AI career-path predictions
 - More than 5 growth areas per student
 - Permission editor, audit log UI
-- Parent–teacher chat
+- Parent–teacher chat, a live or AI chat assistant (the EvolvIQ Guide is
+  scripted)
+- A working CRM integration (only its coming-soon page is in scope)
 - Guardian hierarchies, multi-school students
 - Drag-and-drop activity builder
 - Billing/payments UI

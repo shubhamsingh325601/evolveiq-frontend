@@ -1,6 +1,6 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { Backpack, Contact, HeartHandshake, LayoutGrid, Presentation, School } from '@evolveiq/ui';
+import { Backpack, Contact, HeartHandshake, LayoutGrid, Plug, Presentation, School } from '@evolveiq/ui';
 
 /** The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`. */
 export function menuForRole(role: Role): SidebarMenuSection[] {
@@ -14,6 +14,11 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
           { label: 'Classes', to: '/school/classes', icon: LayoutGrid },
           { label: 'Parents', to: '/school/parents', icon: HeartHandshake },
         ],
+      },
+      {
+        title: 'Connect',
+        // Announced, not built: the screen says what it will do (client feedback, 28 Oct 2026).
+        items: [{ label: 'CRM integration', shortLabel: 'CRM', to: '/school/integrations', icon: Plug, tag: 'Soon' }],
       },
     ];
   }

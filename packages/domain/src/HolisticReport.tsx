@@ -14,18 +14,10 @@ import {
   SectionTitle,
   Share2,
   Target,
-  TrendChart,
-  TrendingUp,
 } from '@evolveiq/ui';
 import { HolisticInsights } from './HolisticInsights';
-import {
-  firstNameOf,
-  monthlyTrendPointsFor,
-  possessive,
-  trendPointsFor,
-  yearMark,
-  yearsTracked,
-} from './holistic-index';
+import { HolisticTrendCard } from './HolisticTrendCard';
+import { firstNameOf, possessive, yearMark, yearsTracked } from './holistic-index';
 import { SkillProfileCard } from './SkillProfileCard';
 
 export interface HolisticReportProps {
@@ -125,34 +117,7 @@ export function HolisticReport({ studentName, index, back }: HolisticReportProps
       <div className="relative z-10 -mt-12 flex flex-col gap-8 sm:-mt-14">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Solid, not glass: these two sit over the header's gradient. */}
-          <Card isPlayful className="bg-white p-6 shadow-raised">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-lg font-black tracking-tight text-ink">
-                <TrendingUp className="size-5 shrink-0 text-iris-600" />
-                Trajectory
-              </h2>
-              <span className={cn(CHIP, 'border-iris-100 bg-iris-50 text-iris-700')}>
-                {years} yr trend
-              </span>
-            </div>
-            <TrendChart
-              className="mt-4"
-              points={trendPointsFor(index)}
-              valueName="EHI"
-              label={`${possessive(firstName)} EvolvIQ Holistic Index, year by year`}
-            />
-            {index.monthly.length > 1 ? (
-              <>
-                <h3 className="mt-6 text-sm font-black text-ink">The last six months</h3>
-                <TrendChart
-                  className="mt-2"
-                  points={monthlyTrendPointsFor(index)}
-                  valueName="EHI"
-                  label={`${possessive(firstName)} EvolvIQ Holistic Index, month by month`}
-                />
-              </>
-            ) : null}
-          </Card>
+          <HolisticTrendCard className="bg-white shadow-raised" studentName={studentName} index={index} />
 
           <SkillProfileCard
             className="bg-white shadow-raised"

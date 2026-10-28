@@ -6,6 +6,7 @@ import { ManageStudentsScreen } from './screens/school/ManageStudentsScreen';
 import { ManageTeachersScreen } from './screens/school/ManageTeachersScreen';
 import { ManageClassesScreen } from './screens/school/ManageClassesScreen';
 import { ManageParentsScreen } from './screens/school/ManageParentsScreen';
+import { CrmIntegrationScreen } from './screens/school/CrmIntegrationScreen';
 import { ManageSchoolsScreen } from './screens/platform/ManageSchoolsScreen';
 import { ManageUsersScreen } from './screens/platform/ManageUsersScreen';
 
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/school/teachers" element={<ManageTeachersScreen />} />
           <Route path="/school/classes" element={<ManageClassesScreen />} />
           <Route path="/school/parents" element={<ManageParentsScreen />} />
+          <Route path="/school/integrations" element={<CrmIntegrationScreen />} />
         </Route>
       </Route>
 

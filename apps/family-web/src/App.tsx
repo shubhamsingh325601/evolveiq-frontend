@@ -8,12 +8,15 @@ import { ProgressScreen } from './screens/student/ProgressScreen';
 import { ReportScreen as StudentReportScreen } from './screens/student/ReportScreen';
 import { WellbeingScreen as StudentWellbeingScreen } from './screens/student/WellbeingScreen';
 import { ExploreScreen as StudentExploreScreen } from './screens/student/ExploreScreen';
+import { AskScreen as StudentAskScreen } from './screens/student/AskScreen';
 import { ChildrenScreen } from './screens/parent/ChildrenScreen';
 import { ChildDashboardScreen } from './screens/parent/ChildDashboardScreen';
 import { MonthlySummaryScreen } from './screens/parent/MonthlySummaryScreen';
 import { ReportScreen as ParentReportScreen } from './screens/parent/ReportScreen';
 import { WellbeingScreen as ParentWellbeingScreen } from './screens/parent/WellbeingScreen';
 import { ExploreScreen as ParentExploreScreen } from './screens/parent/ExploreScreen';
+import { ExploreLandingScreen } from './screens/parent/ExploreLandingScreen';
+import { AskScreen as ParentAskScreen } from './screens/parent/AskScreen';
 import { SiblingsScreen } from './screens/parent/SiblingsScreen';
 import { PrivacyScreen } from './screens/parent/PrivacyScreen';
 import { ObservationsScreen } from './screens/parent/ObservationsScreen';
@@ -35,6 +38,7 @@ export function App() {
           <Route path="/student/report" element={<StudentReportScreen />} />
           <Route path="/student/wellbeing" element={<StudentWellbeingScreen />} />
           <Route path="/student/explore" element={<StudentExploreScreen />} />
+          <Route path="/student/ask" element={<StudentAskScreen />} />
         </Route>
       </Route>
 
@@ -45,7 +49,10 @@ export function App() {
           <Route path="/parent/children/:childId/summary" element={<MonthlySummaryScreen />} />
           <Route path="/parent/children/:childId/report" element={<ParentReportScreen />} />
           <Route path="/parent/children/:childId/wellbeing" element={<ParentWellbeingScreen />} />
-          <Route path="/parent/children/:childId/explore" element={<ParentExploreScreen />} />
+          <Route path="/parent/children/:childId/explore" element={<ExploreLandingScreen />} />
+          <Route path="/parent/explore" element={<ExploreLandingScreen />} />
+          <Route path="/parent/explore/:childId" element={<ParentExploreScreen />} />
+          <Route path="/parent/ask" element={<ParentAskScreen />} />
           <Route path="/parent/siblings" element={<SiblingsScreen />} />
           <Route path="/parent/privacy" element={<PrivacyScreen />} />
           <Route path="/parent/observations" element={<ObservationsScreen />} />

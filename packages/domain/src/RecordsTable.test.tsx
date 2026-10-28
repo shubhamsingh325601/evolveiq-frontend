@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { RecordsTable, type RecordsTableColumn } from './RecordsTable';
@@ -96,5 +96,17 @@ describe('RecordsTable', () => {
     await user.click(screen.getByText('Maya Ahluwalia'));
 
     expect(onRowClick).toHaveBeenCalledWith(ROWS[0]);
+  });
+
+  it('labels every cell after the first, for the cards a phone shows instead of columns', () => {
+    renderTable();
+
+    const [, firstRow] = screen.getAllByRole('row');
+    const cells = within(firstRow!).getAllByRole('cell');
+    // The first column is the card's heading; the rest are labelled lines. The label is drawn
+    // from this attribute by CSS, so a screen reader still hears the column header, once.
+    expect(cells[0]).not.toHaveAttribute('data-label');
+    expect(cells[1]).toHaveAttribute('data-label', 'Score');
+    expect(screen.getByRole('table', { name: 'People' })).toBeInTheDocument();
   });
 });

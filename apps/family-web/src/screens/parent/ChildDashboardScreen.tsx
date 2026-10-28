@@ -20,12 +20,15 @@ import {
   GrowthAreaList,
   GrowthMoments,
   HolisticIndexCard,
+  HolisticTrendCard,
   ObservationEntry,
   possessive,
   relativeDayPhrase,
+  ReportOverviewCard,
   StarBoard,
   StarsOverTime,
   StreakIndicator,
+  yearsTracked,
 } from '@evolveiq/domain';
 import {
   buttonClasses,
@@ -54,10 +57,12 @@ import { ChildSwitcher } from '../../components/ChildSwitcher';
 import { QuickLinkTile } from '../../components/QuickLinkTile';
 
 /**
- * The parent's home for one child — the Child Understanding Center: this
- * month in plain words, the stars the child has earned, what the school has
- * set and what is done, what is being worked on, and what the parent has
- * noticed.
+ * The parent's home for one child — the Child Understanding Center. It leads
+ * with the graphs and the progress, the product's headline (client feedback,
+ * 28 Oct 2026): the Holistic Index and how it has moved, the counts, the
+ * Holistic Report Card and the stars month by month. Then this month in plain
+ * words, the stars themselves, what the school has set, what is being worked
+ * on, and what the parent has noticed.
  *
  * Nothing clinical can appear here: every response a parent receives is the
  * backend's parent shape, and the family hooks copy only its fields. A star
@@ -104,6 +109,7 @@ export function ChildDashboardScreen() {
   const finishedDays = done.flatMap((assignment) => (assignment.completedAt ? [businessDate(assignment.completedAt)] : []));
   const entries = (observations.data ?? []).filter((observation) => observation.studentId === child.id);
   const openAreas = growthAreas.data ?? [];
+  const index = FEATURES.holisticIndex ? holistic.data : undefined;
 
   return (
     <div className="flex flex-col gap-8">
@@ -115,6 +121,13 @@ export function ChildDashboardScreen() {
           Review {possessive(firstName)} progress and pending tasks.
         </p>
       </header>
+
+      {index ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <HolisticIndexCard studentName={child.fullName} index={index} />
+          <HolisticTrendCard studentName={child.fullName} index={index} />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
         <StatTile
@@ -143,29 +156,33 @@ export function ChildDashboardScreen() {
         />
       </div>
 
-      {FEATURES.holisticIndex && holistic.data ? (
-        <div className="flex flex-col gap-4">
-          <HolisticIndexCard studentName={child.fullName} index={holistic.data} />
-          <div className="flex flex-wrap gap-3">
-            <Link to={`/parent/children/${child.id}/report`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-              {possessive(firstName)} full report
+      <div className="grid gap-6 lg:grid-cols-2">
+        {index ? (
+          <ReportOverviewCard
+            strengths={index.strengths}
+            yearsTracked={yearsTracked(index)}
+            to={`/parent/children/${child.id}/report`}
+          />
+        ) : null}
+        <StarsOverTime stars={childStars} name={firstName} audience="family" />
+      </div>
+
+      {index ? (
+        <div className="flex flex-wrap gap-3">
+          <Link to={`/parent/children/${child.id}/wellbeing`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+            Wellbeing check-in
+            <ChevronRight />
+          </Link>
+          <Link to={`/parent/explore/${child.id}`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+            Explore ideas
+            <ChevronRight />
+          </Link>
+          {(children.data ?? []).length > 1 ? (
+            <Link to="/parent/siblings" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+              Compare strengths
               <ChevronRight />
             </Link>
-            <Link to={`/parent/children/${child.id}/wellbeing`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-              Wellbeing check-in
-              <ChevronRight />
-            </Link>
-            <Link to={`/parent/children/${child.id}/explore`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-              Explore ideas
-              <ChevronRight />
-            </Link>
-            {(children.data ?? []).length > 1 ? (
-              <Link to="/parent/siblings" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-                Compare strengths
-                <ChevronRight />
-              </Link>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -192,7 +209,6 @@ export function ChildDashboardScreen() {
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-6">
         <div className="flex flex-col gap-8">
           <StarBoard stars={childStars} name={firstName} audience="family" isLoading={stars.isLoading} />
-          <StarsOverTime stars={childStars} name={firstName} audience="family" />
           <GrowthMoments moments={moments.data ?? []} name={firstName} audience="family" isLoading={moments.isLoading} />
 
           <section>

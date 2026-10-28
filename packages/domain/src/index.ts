@@ -16,6 +16,11 @@ export { AppSidebar } from './AppSidebar';
 export type { AppSidebarProps, SidebarMenuItem, SidebarMenuSection } from './AppSidebar';
 export { AppTopBar } from './AppTopBar';
 export type { AppTopBarProps } from './AppTopBar';
+export { HolisticTrendCard } from './HolisticTrendCard';
+export type { HolisticTrendCardProps } from './HolisticTrendCard';
+export { AssistantChat } from './AssistantChat';
+export type { AssistantChatProps } from './AssistantChat';
+export type { AssistantSafetyReply, AssistantTopic } from './assistant-match';
 export { NotificationsMenu } from './NotificationsMenu';
 export type {
   AppNotification,

@@ -26,7 +26,7 @@ students use their student ID (`RV-1001` is Maya) with the PIN `246810`.
 ```bash
 pnpm lint        # eslint across every workspace
 pnpm typecheck   # tsc --noEmit across every workspace
-pnpm test        # vitest, 135 tests
+pnpm test        # vitest, 178 tests
 pnpm build       # production build of all three apps
 ```
 
@@ -68,11 +68,14 @@ What the client does with the API, in one place (`packages/api-client`):
 - **Lists.** Every list endpoint is paginated. Hooks collect every page
   (`list.ts`, capped at 5,000 rows) and `RecordsTable` sorts, searches and
   pages on screen; counts for KPI tiles come from the list metadata alone.
-- **Not from the backend yet.** The EvolvIQ Holistic Index views and teacher
-  notes for parents are hidden (`FEATURES.holisticIndex` in `features.ts`;
-  the EHI components stay in `packages/domain`, tested). A student's level and
-  XP are worked out here from the activities they have finished
-  (`student-level.ts`: 10 XP each, a level every 100).
+- **Not from the backend yet.** Teacher notes for parents are not shown (no
+  endpoint; rule B17). The EvolvIQ Holistic Index comes from the backend's
+  progress module (`FEATURES.holisticIndex` in `features.ts` is on). A
+  student's level and XP are worked out here from the activities they have
+  finished (`student-level.ts`: 10 XP each, a level every 100).
+- **Not from the backend at all.** The EvolvIQ Guide's answers are written in
+  the family app (`assistant-topics.ts`) and filled from data already loaded;
+  it sends nothing anywhere.
 
 ## Layout
 

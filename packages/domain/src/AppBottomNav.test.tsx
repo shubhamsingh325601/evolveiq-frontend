@@ -54,4 +54,41 @@ describe('AppBottomNav', () => {
 
     expect(screen.getByRole('link', { name: /Review queue/ })).toHaveTextContent('4');
   });
+
+  it('raises the item marked as the centre in place of the action, and names it', () => {
+    const parentMenu: SidebarMenuSection[] = [
+      {
+        items: [
+          { label: 'Home', to: '/home' },
+          { label: 'Observations', to: '/observations' },
+          { label: 'Explore', to: '/explore' },
+          { label: 'Privacy', to: '/privacy' },
+        ],
+      },
+      { items: [{ label: 'Ask EvolvIQ', shortLabel: 'Ask', to: '/ask', isCenter: true }] },
+      { kind: 'action', items: [{ label: 'New observation', to: '/observations/new' }] },
+    ];
+    render(
+      <MemoryRouter initialEntries={['/ask']}>
+        <AppBottomNav sections={parentMenu} />
+      </MemoryRouter>,
+    );
+
+    const links = within(screen.getByRole('navigation')).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/home', '/observations', '/ask', '/explore', '/privacy']);
+    expect(screen.getByRole('link', { name: 'Ask EvolvIQ' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByText('Ask')).toBeInTheDocument();
+    // The action stays on the rail and the screens, not in the tab bar.
+    expect(screen.queryByRole('link', { name: 'New observation' })).not.toBeInTheDocument();
+  });
+
+  it('says when a tab leads somewhere not built yet', () => {
+    render(
+      <MemoryRouter>
+        <AppBottomNav sections={[{ items: [{ label: 'CRM integration', shortLabel: 'CRM', to: '/crm', tag: 'Soon' }] }]} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: 'CRM integration (Soon)' })).toBeInTheDocument();
+  });
 });

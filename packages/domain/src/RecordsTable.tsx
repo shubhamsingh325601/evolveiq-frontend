@@ -61,6 +61,28 @@ type SortState = { columnId: string; direction: 'asc' | 'desc' } | null;
 
 const SECONDARY_COLUMN_CLASSES = 'hidden [@container(min-width:56rem)]:table-cell';
 
+/*
+ * Below 40rem (a phone, measured on the table like the secondary columns) a row no longer
+ * fits on one line, so each one becomes a card: the first column as its heading, every other
+ * column as a labelled line under it (the secondary ones too), its actions at the foot, and
+ * the sortable headers as a "Sort by" bar above the cards. One table restyled, not a second
+ * copy, and explicit roles keep it a table to screen readers whatever its display.
+ */
+const STACKED_TABLE = '[@container(max-width:40rem)]:block';
+const STACKED_HEAD_ROW =
+  "[@container(max-width:40rem)]:flex [@container(max-width:40rem)]:flex-wrap [@container(max-width:40rem)]:items-center [@container(max-width:40rem)]:gap-x-4 [@container(max-width:40rem)]:gap-y-1 [@container(max-width:40rem)]:px-5 [@container(max-width:40rem)]:py-2.5 [@container(max-width:40rem)]:before:text-xs [@container(max-width:40rem)]:before:font-bold [@container(max-width:40rem)]:before:text-ink-faint [@container(max-width:40rem)]:before:content-['Sort_by']";
+// The table's `first:pl-5` / `last:pr-5` outrank a plain `p-0`, so stacked cells undo them by name.
+const STACKED_EDGES = '[@container(max-width:40rem)]:first:pl-0 [@container(max-width:40rem)]:last:pr-0';
+const STACKED_HEADER = `[@container(max-width:40rem)]:block [@container(max-width:40rem)]:p-0 ${STACKED_EDGES}`;
+const STACKED_HIDDEN = '[@container(max-width:40rem)]:hidden';
+const STACKED_ROW =
+  '[@container(max-width:40rem)]:relative [@container(max-width:40rem)]:flex [@container(max-width:40rem)]:flex-col [@container(max-width:40rem)]:gap-2 [@container(max-width:40rem)]:px-5 [@container(max-width:40rem)]:py-4';
+const STACKED_HEADING_CELL = `[@container(max-width:40rem)]:block [@container(max-width:40rem)]:p-0 [@container(max-width:40rem)]:text-left ${STACKED_EDGES}`;
+const STACKED_LABELLED_CELL = `[@container(max-width:40rem)]:grid [@container(max-width:40rem)]:grid-cols-[minmax(0,7rem)_minmax(0,1fr)] [@container(max-width:40rem)]:items-baseline [@container(max-width:40rem)]:gap-x-3 [@container(max-width:40rem)]:p-0 [@container(max-width:40rem)]:text-left [@container(max-width:40rem)]:before:text-xs [@container(max-width:40rem)]:before:font-semibold [@container(max-width:40rem)]:before:text-ink-faint [@container(max-width:40rem)]:before:content-[attr(data-label)] ${STACKED_EDGES}`;
+const STACKED_ACTIONS_CELL = `[@container(max-width:40rem)]:block [@container(max-width:40rem)]:p-0 [@container(max-width:40rem)]:pt-1 [@container(max-width:40rem)]:text-left ${STACKED_EDGES}`;
+const STACKED_OPEN_CUE_CELL =
+  '[@container(max-width:40rem)]:absolute [@container(max-width:40rem)]:right-4 [@container(max-width:40rem)]:top-4 [@container(max-width:40rem)]:w-auto [@container(max-width:40rem)]:p-0';
+
 export function RecordsTable<TRow>({
   rows,
   columns,
@@ -122,6 +144,7 @@ export function RecordsTable<TRow>({
   };
 
   const hasToolbar = Boolean(searchableText) || Boolean(toolbar);
+  const hasSortableColumn = columns.some((column) => column.sortValue);
   // A row that opens something says so with a chevron, unless it has its own actions.
   const hasOpenCue = Boolean(onRowClick) && !rowActions;
 
@@ -176,11 +199,14 @@ export function RecordsTable<TRow>({
       {!isLoading && sortedRows.length > 0 ? (
         <>
           <div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+            {/* `relative` keeps the screen-reader-only labels (absolutely positioned) inside
+                this box. Without it they hang off the right of a wide table, stretch the whole
+                page, and a phone zooms out to fit it. */}
+            <div className="relative overflow-x-auto">
+              <table role="table" className={cn('w-full border-collapse text-sm', STACKED_TABLE)}>
                 <caption className="sr-only">{caption}</caption>
-                <thead>
-                  <tr className="border-b border-line-soft bg-surface-sunk/80">
+                <thead role="rowgroup" className={cn(STACKED_TABLE, !hasSortableColumn && STACKED_HIDDEN)}>
+                  <tr role="row" className={cn('border-b border-line-soft bg-surface-sunk/80', STACKED_HEAD_ROW)}>
                     {columns.map((column) => {
                       const isSorted = sort?.columnId === column.id;
                       const SortIcon = isSorted
@@ -191,6 +217,7 @@ export function RecordsTable<TRow>({
                       return (
                         <th
                           key={column.id}
+                          role="columnheader"
                           scope="col"
                           aria-sort={
                             isSorted
@@ -203,6 +230,8 @@ export function RecordsTable<TRow>({
                             'whitespace-nowrap px-4 py-3 text-xs font-bold text-ink-faint first:pl-5 last:pr-5',
                             column.align === 'right' ? 'text-right' : 'text-left',
                             column.isSecondary && SECONDARY_COLUMN_CLASSES,
+                            // Only something to sort by belongs in the bar over the cards.
+                            column.sortValue ? STACKED_HEADER : STACKED_HIDDEN,
                           )}
                         >
                           {column.sortValue ? (
@@ -227,50 +256,58 @@ export function RecordsTable<TRow>({
                       );
                     })}
                     {rowActions ? (
-                      <th scope="col" className="px-4 py-3 pr-5 text-right">
+                      <th role="columnheader" scope="col" className={cn('px-4 py-3 pr-5 text-right', STACKED_HIDDEN)}>
                         <span className="sr-only">Actions</span>
                       </th>
                     ) : null}
                     {hasOpenCue ? (
-                      <th scope="col" className="w-10 pr-4">
+                      <th role="columnheader" scope="col" className={cn('w-10 pr-4', STACKED_HIDDEN)}>
                         <span className="sr-only">Open</span>
                       </th>
                     ) : null}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody role="rowgroup" className={STACKED_TABLE}>
                   {visibleRows.map((row) => (
                     <tr
                       key={getRowId(row)}
+                      role="row"
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
                       className={cn(
                         'group/row border-b border-line-soft transition-colors last:border-b-0',
                         onRowClick && 'cursor-pointer hover:bg-iris-50/50',
+                        STACKED_ROW,
                       )}
                     >
-                      {columns.map((column) => (
+                      {columns.map((column, index) => (
                         <td
                           key={column.id}
+                          role="cell"
+                          // Labels the line when the row is stacked; drawn by CSS, so it is never read twice.
+                          data-label={index === 0 ? undefined : column.header}
                           className={cn(
                             'px-4 py-4 align-middle text-ink first:pl-5 last:pr-5',
                             column.align === 'right' ? 'text-right' : 'text-left',
                             column.isSecondary && SECONDARY_COLUMN_CLASSES,
                             column.className,
+                            index === 0 ? STACKED_HEADING_CELL : STACKED_LABELLED_CELL,
+                            index === 0 && hasOpenCue && '[@container(max-width:40rem)]:pr-8',
                           )}
                         >
-                          {column.cell(row)}
+                          <div className="min-w-0">{column.cell(row)}</div>
                         </td>
                       ))}
                       {rowActions ? (
                         <td
-                          className="px-4 py-3 pr-5 text-right"
+                          role="cell"
+                          className={cn('px-4 py-3 pr-5 text-right', STACKED_ACTIONS_CELL)}
                           onClick={(event) => event.stopPropagation()}
                         >
                           {rowActions(row)}
                         </td>
                       ) : null}
                       {hasOpenCue ? (
-                        <td className="w-10 pr-4 text-right">
+                        <td role="cell" className={cn('w-10 pr-4 text-right', STACKED_OPEN_CUE_CELL)}>
                           <ChevronRight
                             aria-hidden="true"
                             className="ml-auto size-4 text-ink-faint transition-[color,transform] group-hover/row:translate-x-0.5 group-hover/row:text-iris-500"

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet, useMatch } from 'react-router-dom';
 import {
   useChildren,
@@ -13,6 +14,7 @@ import { menuForRole } from './app-menu';
 import { ChildrenSidebarCard } from './components/ChildrenSidebarCard';
 import { LevelSidebarCard } from './components/LevelSidebarCard';
 import { familyNotifications } from './family-notifications';
+import type { FamilyFrameContext } from './useLastChildId';
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
@@ -29,7 +31,14 @@ export function AppFrame() {
   const missions = useMyAssignments({ isEnabled: isStudent });
   const level = useStudentLevel({ isEnabled: isStudent });
   const myStars = useStars(user?.id, { isEnabled: isStudent });
-  const openChildId = useMatch('/parent/children/:childId/*')?.params.childId;
+  const childOnDashboard = useMatch('/parent/children/:childId/*')?.params.childId;
+  const childOnExplore = useMatch('/parent/explore/:childId')?.params.childId;
+  const openChildId = childOnDashboard ?? childOnExplore;
+  // Remembered across pages without a child in their path, so Explore and the guide start on them.
+  const [lastChildId, setLastChildId] = useState<string>();
+  useEffect(() => {
+    if (openChildId) setLastChildId(openChildId);
+  }, [openChildId]);
 
   if (!user) return null;
 
@@ -79,7 +88,7 @@ export function AppFrame() {
         starsByChild,
       })}
     >
-      <Outlet />
+      <Outlet context={{ lastChildId: openChildId ?? lastChildId } satisfies FamilyFrameContext} />
     </AppLayout>
   );
 }

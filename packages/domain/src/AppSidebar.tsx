@@ -31,6 +31,14 @@ export interface SidebarMenuItem {
    */
   isEndMatch?: boolean;
   badge?: number;
+  /** A word beside the label, such as "Soon" for something not built yet. */
+  tag?: string;
+  /**
+   * On the phone tab bar, this item takes the raised button in the middle in
+   * place of the role's action (which then lives on the rail and the screens).
+   * On the rail it is an ordinary link.
+   */
+  isCenter?: boolean;
   icon?: IconComponent;
 }
 
@@ -232,10 +240,18 @@ export function AppSidebar({
                             ) : null}
                           </span>
                           {isCollapsed ? (
-                            <span className="sr-only">{item.label}</span>
+                            <span className="sr-only">
+                              {item.label}
+                              {item.tag ? ` (${item.tag})` : ''}
+                            </span>
                           ) : (
                             <span className="min-w-0 flex-1 truncate">{item.label}</span>
                           )}
+                          {!isCollapsed && item.tag ? (
+                            <span className="mr-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-white/70">
+                              {item.tag}
+                            </span>
+                          ) : null}
                           {!isCollapsed && badge > 0 ? (
                             <span className="mr-1.5 min-w-[1.5rem] rounded-full bg-honey-400 px-1.5 py-0.5 text-center text-xs font-bold tabular-nums text-night">
                               {badge}

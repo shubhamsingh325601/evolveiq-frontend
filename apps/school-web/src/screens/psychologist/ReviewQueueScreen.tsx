@@ -116,7 +116,8 @@ export function ReviewQueueScreen() {
       align: 'right',
       sortValue: (observation) => observation.status,
       cell: (observation) => (
-        <span className="inline-flex flex-wrap justify-end gap-1.5">
+        // Left-aligned with the other lines once the table stacks into cards on a phone.
+        <span className="inline-flex flex-wrap justify-end gap-1.5 [@container(max-width:40rem)]:justify-start">
           {observation.level === 'significant' ? <Badge tone="significant">Significant</Badge> : null}
           <Badge tone={observation.status === 'pending' ? 'pending' : 'reviewed'}>
             {OBSERVATION_STATUS_LABELS[observation.status]}

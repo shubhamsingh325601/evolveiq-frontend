@@ -54,10 +54,17 @@ not be reimplemented per app:
   image-pick, 1–5 rating, media+response.
 - `RecordsTable` — one table component (sorting, pagination, filters) reused
   across every management/list screen (students, teachers, classes, parents,
-  schools, activity library, review queue).
+  schools, activity library, review queue). It responds to its own width (a
+  container query), not the screen's: narrower than 40rem — a phone — each row
+  becomes a card, the first column its heading and the rest labelled lines,
+  with the sortable headers as a "Sort by" bar. One table restyled, never a
+  second copy, with explicit table roles so it stays a table to screen readers.
 - `AppSidebar` — one sidebar shell; each app passes a role-based menu config
   rather than forking the component. On phones, `AppBottomNav` renders the
-  same config as a tab bar, so the two never disagree. `AppLayout` wraps both
+  same config as a tab bar, so the two never disagree. Its raised middle
+  button is the role's action, unless an item is marked `isCenter` (the family
+  app's EvolvIQ Guide), and an item can carry a `tag` such as "Soon" (the
+  school admin's CRM integration). `AppLayout` wraps both
   with `AppTopBar` (place, date, notifications). Apps pass a `contextCard`
   (built on `SidebarCard`) and a list of `AppNotification`s, both computed
   from queries the app already runs — the shell never fetches on its own.
@@ -70,6 +77,15 @@ not be reimplemented per app:
 `StarBoard` shows a child's stars — the count, where they came from (school or
 home) and the giver's words — the same way to the child, their family and their
 teachers, each in their own terms.
+
+`AssistantChat` is the EvolvIQ Guide (client feedback, 28 Oct 2026): a scripted
+chat, not an agent. The app hands it prepared topics (`AssistantTopic`: the
+question, its keywords, the answer, a link); a typed question goes to the topic
+whose keywords it mentions most (whole words, `assistant-match.ts`), and a
+safety list is checked first, so a worry is answered by pointing to a trusted
+adult or the school. The family app writes the topics in
+`assistant-topics.ts`, filled from data it already loads — a parent's from the
+family shapes only, so the guide has nothing clinical to repeat.
 
 ## Role-based access
 Each app has one entry point but the menu, routes, and visible data are
@@ -115,12 +131,14 @@ SCOPE_OF_WORK.md). They are hand-drawn SVG in `packages/ui` (`RingsChart`,
 jsdom, styled from the same tokens, and readable without hover — every value
 is printed or listed beside its chart, and the trajectory reads with the arrow
 keys. `packages/domain` gives them their EHI meaning (`HolisticIndexCard`,
-`HolisticReport`, `SkillProfileCard`).
+`HolisticTrendCard`, `HolisticReport`, `SkillProfileCard`, `ReportOverviewCard`).
 
-The backend does not serve an EHI yet (there is no scoring formula), so the
-EHI views are switched off (`FEATURES.holisticIndex` in `packages/api-client`)
-and no screen shows a made-up index. The components above stay, with their
-tests, ready to be wired to an EHI endpoint.
+The backend serves the EHI from its progress module
+(`/students/:studentId/holistic-index`), so the views are on
+(`FEATURES.holisticIndex` in `packages/api-client`, since 24 Oct 2026). Since
+the client's feedback of 28 Oct 2026 the family screens lead with them: the
+rings and trajectory open the parent's dashboard, and level progress, the rings
+and the skill radar open the student's home.
 
 ## What's deliberately out of scope for MVP
 Per the PRD's Scope Boundaries: no charts/graphs beyond the EHI views, no

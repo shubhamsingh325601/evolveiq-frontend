@@ -2,8 +2,11 @@ import { useParams } from 'react-router-dom';
 import { useChildren, useHolisticIndex } from '@evolveiq/api-client';
 import { firstNameOf, FutureExplorer, possessive } from '@evolveiq/domain';
 import { ErrorState, LoadingState, PageHeader } from '@evolveiq/ui';
+import { ChildSwitcher } from '../../components/ChildSwitcher';
 
-/** Future Explorer for a parent: where their child's strengths could lead. */
+const explorePath = (childId: string) => `/parent/explore/${childId}`;
+
+/** Future Explorer for a parent: where their child's strengths could lead. A tab of its own since 28 Oct 2026. */
 export function ExploreScreen() {
   const { childId } = useParams<{ childId: string }>();
   const children = useChildren();
@@ -16,6 +19,9 @@ export function ExploreScreen() {
   const name = firstNameOf(child.fullName);
   return (
     <div className="flex flex-col gap-8">
+      {(children.data ?? []).length > 1 ? (
+        <ChildSwitcher students={children.data ?? []} currentChildId={child.id} pathFor={explorePath} />
+      ) : null}
       <PageHeader title={`Explore with ${name}`} subtitle={`Ideas that start from what has been noticed about ${name}, not from a test.`} />
       <FutureExplorer strengths={holistic.data.strengths} name={name} audience="family" />
       <p className="text-xs font-medium text-ink-faint">

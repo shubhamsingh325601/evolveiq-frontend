@@ -6,10 +6,14 @@ import { cn } from '@evolveiq/ui';
 export interface ChildSwitcherProps {
   students: Person[];
   currentChildId: string;
+  /** Where a pill leads: the child's dashboard unless the page says otherwise (Explore keeps you in Explore). */
+  pathFor?: (childId: string) => string;
 }
 
-/** One pill per child across the top of the parent's home; the dark one is open. */
-export function ChildSwitcher({ students, currentChildId }: ChildSwitcherProps) {
+const dashboardPath = (childId: string) => `/parent/children/${childId}`;
+
+/** One pill per child across the top of a parent's page; the dark one is open. */
+export function ChildSwitcher({ students, currentChildId, pathFor = dashboardPath }: ChildSwitcherProps) {
   return (
     <nav
       aria-label="Your children"
@@ -21,7 +25,7 @@ export function ChildSwitcher({ students, currentChildId }: ChildSwitcherProps) 
           return (
             <li key={student.id} className="shrink-0">
               <Link
-                to={`/parent/children/${student.id}`}
+                to={pathFor(student.id)}
                 aria-current={isCurrent ? 'page' : undefined}
                 className={cn(
                   'inline-flex h-10 items-center whitespace-nowrap rounded-full border px-5 text-xs font-bold shadow-card transition-colors',

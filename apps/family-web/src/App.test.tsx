@@ -129,6 +129,32 @@ describe('Family app', () => {
     );
   });
 
+  it('leads a student’s home with their progress and their graphs, then today’s missions', async () => {
+    await signInAsStudent();
+
+    const progress = await screen.findByRole('progressbar', { name: 'Progress to level 2' });
+    const superpowers = await screen.findByRole('heading', { name: 'My superpowers' });
+    const missions = screen.getByRole('heading', { name: 'Daily missions' });
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(progress, superpowers)).toBe(true);
+    expect(follows(superpowers, missions)).toBe(true);
+    expect(screen.getByRole('heading', { name: 'Maya’s score' })).toBeInTheDocument();
+  });
+
+  it('gives a student the guide in the middle, and points a worry to a trusted adult', async () => {
+    const user = await signInAsStudent();
+    await screen.findByRole('heading', { name: /Hi, Maya/ });
+
+    await user.click(screen.getAllByRole('link', { name: 'Ask EvolvIQ' })[0]!);
+    await user.click(await screen.findByRole('button', { name: 'What should I do today?' }));
+    const log = screen.getByRole('log');
+    expect(await within(log).findByText(/missions? to do: .*Sort the morning/, {}, { timeout: 3000 })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Ask EvolvIQ Guide a question'), 'some kids bullied me at break');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await within(log).findByText(/talk to a grown-up you trust/, {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
   it('shows a student the stars they were given, with the words behind them', async () => {
     await signInAsStudent();
 
@@ -179,7 +205,8 @@ describe('Family app', () => {
     const user = await signInAsParent();
     await screen.findByRole('heading', { name: 'Parent Dashboard' });
 
-    await user.click(screen.getAllByRole('link', { name: /^Siblings/ })[0]!);
+    // Not a tab any more (Explore took its place); still one tap from the dashboard.
+    await user.click(await screen.findByRole('link', { name: /Compare strengths/ }));
 
     expect(await screen.findByRole('heading', { name: 'Siblings' })).toBeInTheDocument();
     expect((await screen.findAllByText('Shines at')).length).toBeGreaterThanOrEqual(2);
@@ -187,11 +214,55 @@ describe('Family app', () => {
     expect(screen.queryByText(/winner|ranking|best/i)).not.toBeInTheDocument();
   });
 
+  it('leads a parent’s dashboard with the graphs and progress, before the month in words', async () => {
+    await signInAsParent();
+
+    const score = await screen.findByRole('heading', { name: 'Arjun’s score' });
+    const trajectory = await screen.findByRole('heading', { name: 'Trajectory' });
+    const month = await screen.findByText(/Arjun Ahluwalia has earned \d+ stars? this month\./);
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(score, trajectory)).toBe(true);
+    expect(follows(trajectory, screen.getByText('Activities still open'))).toBe(true);
+    expect(follows(screen.getByText('Activities still open'), month)).toBe(true);
+    expect(screen.getByRole('heading', { name: 'Holistic Report Card' })).toBeInTheDocument();
+  });
+
+  it('gives a parent Explore as a tab in place of Siblings, on the child they had open', async () => {
+    const user = await signInAsParent();
+    const switcher = await screen.findByRole('navigation', { name: 'Your children' });
+    await user.click(within(switcher).getByRole('link', { name: 'Maya' }));
+    await screen.findByText('Review Maya’s progress and pending tasks.');
+
+    expect(screen.queryByRole('link', { name: /^Siblings/ })).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole('link', { name: /^Explore/ })[0]!);
+
+    expect(await screen.findByRole('heading', { name: 'Explore with Maya' })).toBeInTheDocument();
+    const pills = screen.getByRole('navigation', { name: 'Your children' });
+    await user.click(within(pills).getByRole('link', { name: 'Arjun' }));
+    expect(await screen.findByRole('heading', { name: 'Explore with Arjun' })).toBeInTheDocument();
+  });
+
+  it('puts the guide in the middle for a parent, answering from the family’s own data', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    await user.click(screen.getAllByRole('link', { name: 'Ask EvolvIQ' })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Ask EvolvIQ' })).toBeInTheDocument();
+    expect(screen.getByText(/Not a person, not a live chat/)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: 'How is Arjun doing?' }));
+    const log = screen.getByRole('log');
+    expect(await within(log).findByText(/Arjun’s EvolvIQ Holistic Index is \d+/, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(within(log).getByRole('link', { name: 'Open Arjun’s dashboard' })).toHaveAttribute('href', '/parent/children/stu-arjun');
+    // Parent-safe: the guide knows nothing clinical to repeat.
+    expect(within(log).queryByText(/significant|concern raised|counsellor’s note/i)).not.toBeInTheDocument();
+  });
+
   it('opens a child’s Holistic Report for their parent, without any concern language', async () => {
     const user = await signInAsParent();
     await screen.findByRole('heading', { name: 'Parent Dashboard' });
 
-    await user.click(await screen.findByRole('link', { name: /full report/i }));
+    await user.click(await screen.findByRole('link', { name: /View full .*analysis/i }));
 
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();

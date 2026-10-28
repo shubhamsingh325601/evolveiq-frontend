@@ -1,5 +1,8 @@
+import { Link } from 'react-router-dom';
 import {
+  FEATURES,
   useGrowthAreas,
+  useHolisticIndex,
   useMyAssignments,
   useStars,
   useStreak,
@@ -7,15 +10,38 @@ import {
   XP_PER_ACTIVITY,
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
-import { ACTIVITY_TYPE_LABELS, firstNameOf, GrowthAreaList, relativeDayPhrase, StarBoard } from '@evolveiq/domain';
-import { EmptyState, ErrorState, LoadingState, SectionTitle, Sprout, Sun, Target } from '@evolveiq/ui';
+import {
+  ACTIVITY_TYPE_LABELS,
+  firstNameOf,
+  GrowthAreaList,
+  HolisticIndexCard,
+  relativeDayPhrase,
+  ReportOverviewCard,
+  SkillProfileCard,
+  StarBoard,
+  yearsTracked,
+} from '@evolveiq/domain';
+import {
+  ChevronRight,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  SectionTitle,
+  Sparkles,
+  Sprout,
+  Sun,
+  Target,
+} from '@evolveiq/ui';
 import { AssignmentChecklist, type ChecklistItem } from '../../components/AssignmentChecklist';
 import { LevelProgress } from '../../components/LevelProgress';
 import { StarCount } from '../../components/StarCount';
 import { StreakFlame } from '../../components/StreakFlame';
 
 /**
- * The student's home: a personal growth companion. A student sees only their
+ * The student's home: a personal growth companion. As in the client's
+ * prototype it leads with progress and the graphs (client feedback, 28 Oct
+ * 2026): how close the next level is, their score as rings and their
+ * superpowers as a radar, then today's missions. A student sees only their
  * own work, and the stars they have been given for good things people noticed;
  * every request here is answered for them alone.
  */
@@ -26,6 +52,7 @@ export function TodayScreen() {
   const level = useStudentLevel();
   const growthAreas = useGrowthAreas(user?.id);
   const stars = useStars(user?.id);
+  const holistic = useHolisticIndex(FEATURES.holisticIndex ? user?.id : undefined);
 
   if (missions.isLoading) return <LoadingState label="Getting your missions" />;
   if (missions.isError) return <ErrorState onRetry={() => void missions.refetch()} />;
@@ -45,6 +72,7 @@ export function TodayScreen() {
     }));
   const firstName = user ? firstNameOf(user.fullName) : 'there';
   const areas = growthAreas.data ?? [];
+  const index = holistic.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,10 +91,32 @@ export function TodayScreen() {
         </div>
       </header>
 
+      {level.data ? <LevelProgress level={level.data} /> : null}
+
+      {index && user ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <HolisticIndexCard studentName={user.fullName} index={index} />
+          <SkillProfileCard
+            title="My superpowers"
+            icon={Sparkles}
+            iconClassName="text-iris-500"
+            hasAccentStrip
+            skills={index.skills}
+            action={
+              <Link
+                to="/student/report"
+                className="inline-flex items-center gap-1 rounded-md text-[0.625rem] font-bold uppercase tracking-widest text-iris-600 hover:text-iris-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500"
+              >
+                Deep dive
+                <ChevronRight className="size-3" />
+              </Link>
+            }
+          />
+        </div>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-7">
-          {level.data ? <LevelProgress level={level.data} /> : null}
-
           <section>
             <SectionTitle icon={Target} iconClassName="text-coral-500">
               Daily missions
@@ -85,6 +135,9 @@ export function TodayScreen() {
         </div>
 
         <div className="flex flex-col gap-6 lg:col-span-5">
+          {index ? (
+            <ReportOverviewCard strengths={index.strengths} yearsTracked={yearsTracked(index)} to="/student/report" />
+          ) : null}
           <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={2} />
 
           <section>

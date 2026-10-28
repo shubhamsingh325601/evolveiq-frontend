@@ -15,6 +15,7 @@ import {
   GrowthAreaList,
   GrowthMoments,
   HolisticIndexCard,
+  HolisticTrendCard,
   relativeDayPhrase,
   StarBoard,
   StarsOverTime,
@@ -23,6 +24,7 @@ import {
 import { Link } from 'react-router-dom';
 import { buttonClasses, Card, Check, ChevronRight, EmptyState, ErrorState, LoadingState, PageHeader, Sprout, Star } from '@evolveiq/ui';
 
+/** The student's progress, graphs first (client feedback, 28 Oct 2026): score and trajectory, stars by month and the streak, then the detail. */
 export function ProgressScreen() {
   const { user } = useAuth();
   const streak = useStreak(user?.id);
@@ -52,19 +54,12 @@ export function ProgressScreen() {
         subtitle="Your stars, what you have been working on, and what you have finished."
       />
 
-      <Card isPlayful className="flex flex-wrap items-center justify-between gap-6 p-6">
-        <StreakIndicator days={streak.data?.days ?? 0} lastSevenDays={lastSevenDays(finishedDays, businessDate())} />
-        {longest > 0 ? (
-          <div className="sm:text-right">
-            <p className="text-4xl font-semibold tabular-nums tracking-tight text-ink">{longest}</p>
-            <p className="text-sm text-ink-muted">{longest === 1 ? 'day' : 'days'}, your longest run</p>
-          </div>
-        ) : null}
-      </Card>
-
       {FEATURES.holisticIndex && holistic.data && user ? (
         <div className="flex flex-col gap-4">
-          <HolisticIndexCard studentName={user.fullName} index={holistic.data} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <HolisticIndexCard studentName={user.fullName} index={holistic.data} />
+            <HolisticTrendCard studentName={user.fullName} index={holistic.data} />
+          </div>
           <Link to="/student/report" className={buttonClasses({ size: 'sm', variant: 'secondary', className: 'self-start' })}>
             See my full report
             <ChevronRight />
@@ -72,12 +67,22 @@ export function ProgressScreen() {
         </div>
       ) : null}
 
-      <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={5} />
-
       <div className="grid gap-6 lg:grid-cols-2">
         <StarsOverTime stars={stars.data ?? []} audience="student" />
-        <GrowthMoments moments={moments.data ?? []} audience="student" isLoading={moments.isLoading} />
+        <Card isPlayful className="flex flex-wrap items-center justify-between gap-6 p-6">
+          <StreakIndicator days={streak.data?.days ?? 0} lastSevenDays={lastSevenDays(finishedDays, businessDate())} />
+          {longest > 0 ? (
+            <div className="sm:text-right">
+              <p className="text-4xl font-semibold tabular-nums tracking-tight text-ink">{longest}</p>
+              <p className="text-sm text-ink-muted">{longest === 1 ? 'day' : 'days'}, your longest run</p>
+            </div>
+          ) : null}
+        </Card>
       </div>
+
+      <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={5} />
+
+      <GrowthMoments moments={moments.data ?? []} audience="student" isLoading={moments.isLoading} />
 
       <section>
         <h2 className="text-2xl font-semibold tracking-tight text-ink">What we are working on</h2>
