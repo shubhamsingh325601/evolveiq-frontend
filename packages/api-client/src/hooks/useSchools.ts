@@ -49,3 +49,14 @@ export function useRenameSchool() {
     },
   });
 }
+
+/** Platform admins only, and only an empty school (else 409 `HAS_RECORDS`). */
+export function useDeleteSchool() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (schoolId: string) => request('DELETE', ENDPOINTS.schools.detail(schoolId)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.schools.all });
+    },
+  });
+}

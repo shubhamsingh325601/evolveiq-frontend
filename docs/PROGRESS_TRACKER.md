@@ -35,6 +35,11 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | `RecordsTable` | Done | | 6 tests. Client feedback 28 Oct 2026; not yet committed: on a phone (the table narrower than 40rem) each row is a card, the first column its heading and the rest labelled lines; its scroll box now holds the screen-reader labels, which used to stretch a phone's whole page |
 | `AppSidebar` (role-based menu config) | Done | | 3 tests; collapsible, with an app-supplied context card; same config drives `AppBottomNav` on phones (5 tests: an item can take the raised centre slot, `isCenter`, and carry a tag such as "Soon"); the account row opens the `AccountMenu` (4 tests) with app-supplied sections |
 | `AssistantChat` — the EvolvIQ Guide | Done | | Client feedback 28 Oct 2026; not yet committed. Scripted: prepared topics matched by whole words, a safety reply checked first, says it is not a person; 5 tests |
+| Health and care: `CareNeedsCard`, `HealthProfileForm`, `CareFlags` | Done | | Client feedback 29 Oct 2026; not yet committed. One shape for the family and the school (`toHealthProfile` copies it field by field); conditions in the client's words; a number to call; 4 tests |
+| `AttendanceMeter` | Done | | Client feedback 29 Oct 2026; not yet committed. "18/26 days" with the share; honey under 75% |
+| `NoticeBoard` | Done | | Client feedback 29 Oct 2026; not yet committed. Emergency numbers first (tap to call), then what is coming up, then policies and updates; edit and remove only on what the admin may manage; 2 tests |
+| Wall of fame: `HonourWall`, `HonourCard`, `HonourBanner` | Done | | Client feedback 29 Oct 2026; not yet committed. Staff of the Month in gold, Students of the Month in iris; the congratulations said to the child or their parent; 2 tests |
+| `AppBottomNav` "More" | Done | | Client feedback 29 Oct 2026; not yet committed. Five targets on a phone; a role with more places keeps four tabs and puts the rest behind "More" (the school admin); 1 test |
 | EHI charts: `RingsChart`, `TrendChart`, `RadarChart` | Done | | Hand-drawn SVG in `packages/ui`; palette validated; covered through `HolisticIndexCard` (3 tests) and `HolisticReport` (6 tests); `HolisticTrendCard` (trajectory) shared by the report and the family homes |
 | EHI API contract | Done | | Served by the backend's progress module (`/students/:studentId/holistic-index`, backend `5b694d2`); `FEATURES.holisticIndex` on since 24 Oct 2026 |
 
@@ -57,6 +62,8 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Parent: child's stars | Done | | Client feedback 21 Oct 2026; not yet committed. Stars tile, the child's star board (school and home), stars per child on the rail and in the account menu, notifications for stars from school |
 | Parent: teacher notes (read-only) | Blocked | | No backend endpoint: rule B17 limits parents to their own observations, their child's activities, streak, growth areas, stars and monthly summary. A teacher's praise does reach parents now, as a star; concerns and notes still do not |
 | Parent: growth areas + monthly summary | Done | | Plain language, no clinical scores; this month live, earlier months as the backend stored them |
+| Parent: Health tab in place of Privacy | Done | | Client feedback 29 Oct 2026; not yet committed. The child's health and care needs (written by the parent, read by the school) and the daily check-in, with a switcher between children; Privacy & safety and the notice board in the account menu; the old wellbeing address redirects; the guide answers health questions; 3 app tests |
+| Parent and student: notice board and celebrations | Done | | Client feedback 29 Oct 2026; not yet committed. "From school" on both homes (Staff of the Month, the next dates, the emergency numbers); a congratulations banner for a child named Student of the Month, on their home and their parent's dashboard; never another family's child; 2 app tests |
 
 ## School Web App
 | Item | Status | Owner | Notes |
@@ -70,6 +77,10 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Psychologist: observation detail view | Done | | Metadata plus related history |
 | Psychologist: tag area / recommend activity / review actions | Done | | One development area (needed for Significant), 1–10 recommended activities, teacher-only note; both close-out actions |
 | Psychologist: activity authoring form | Done | | Plain form, no drag-and-drop; edit, with type and options locked once assigned; archive |
+| Teacher: class drop-down | Done | | Client feedback 29 Oct 2026; not yet committed. On the roster, narrowing the table and the KPI tiles; remembered on the device and in the address, shared with the register |
+| Teacher: attendance | Done | | Client feedback 29 Oct 2026; not yet committed. A register per class and day (present, late, absent; everyone present to start; today or 30 days back); days in this month on the roster ("18/26 days") and the profile, with the days away; "In today" tile; 2 app tests |
+| Teacher: special care | Done | | Client feedback 29 Oct 2026; not yet committed. Care-needs flags on the roster and the register, the whole card on the profile, a "Special care" tile; 1 app test |
+| Teacher and counsellor: notice board; teacher's own reviews | Done | | Client feedback 29 Oct 2026; not yet committed. `/notices` with the wall of fame for teachers (a counsellor works across schools: board only); "Your reviews" in the teacher's account menu, private; 3 app tests |
 
 ## Admin Panel
 | Item | Status | Owner | Notes |
@@ -77,6 +88,12 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | School Admin: manage students/teachers/classes/parents | Done | | Create (students with ID + PIN), edit, switch accounts off and on; class teachers and students; parent links |
 | School Admin: CRM integration (coming soon) | Done | | Client feedback 28 Oct 2026; not yet committed. A menu entry tagged "Soon" and a page saying what it will do, with the school's real record counts; nothing to connect yet; 2 tests |
 | Platform Admin: manage schools + users across roles | Done | | Schools with live counts; accounts across every role and school |
+| Import from a spreadsheet | Done | | Client feedback 29 Oct 2026; not yet committed. School admin (own school) and platform admin (a chosen school): students, teachers, parents; a template per kind; columns matched by header in any order; every row checked by the API before anything is created; "Pull from your school system" shown as coming soon; CSV reader and column matching 5 tests, 2 app tests |
+| Remove beside Edit | Done | | Client feedback 29 Oct 2026; not yet committed. Accounts with no records (one with records: "Switch off instead"), classes (students stay, in no class), empty schools; 2 app tests |
+| Notice board (manage) | Done | | Client feedback 29 Oct 2026; not yet committed. Post, change, pin, take down; platform admin for one school or every school; an emergency contact needs a phone; 1 app test |
+| Staff reviews | Done | | Client feedback 29 Oct 2026; not yet committed. Five ratings 1–5 and a comment per teacher per month; the best rated suggested for Staff of the Month; private to the admin and the teacher; 1 app test |
+| Wall of fame (manage) | Done | | Client feedback 29 Oct 2026; not yet committed. Name a Staff of the Month and Students of the Month with why; take one down; 1 app test |
+| Health and care needs, by the school office | Done | | Client feedback 29 Oct 2026; not yet committed. A "Care needs" column and dialog on the students list; 1 app test |
 
 ## Quality
 | Item | Status | Owner | Notes |

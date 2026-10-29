@@ -5,6 +5,7 @@ import {
   MAX_GROWTH_AREAS,
   useActivities,
   useGrowthAreas,
+  useHealthProfile,
   useObservationDetail,
   useReviewObservation,
   useSchools,
@@ -16,6 +17,7 @@ import {
 import {
   ACTIVITY_TYPE_LABELS,
   BackLink,
+  CareNeedsCard,
   DEVELOPMENT_AREA_LABELS,
   DEVELOPMENT_AREAS,
   firstNameOf,
@@ -84,6 +86,8 @@ export function ObservationDetailScreen() {
   const schools = useSchools();
   const growthAreas = useGrowthAreas(detail.data?.observation.student.id);
   const stars = useStars(detail.data?.observation.student.id);
+  // What the family and the school office told the school: context for a concern, never part of the review.
+  const health = useHealthProfile(detail.data?.observation.student.id);
   const reviewObservation = useReviewObservation();
 
   const [developmentArea, setDevelopmentArea] = useState<DevelopmentArea | null>(null);
@@ -254,6 +258,7 @@ export function ObservationDetailScreen() {
             )}
           </section>
 
+          <CareNeedsCard profile={health.data} name={firstNameOf(entry.student.fullName)} audience="staff" isLoading={health.isLoading} />
           <StudentSupport studentId={entry.student.id} />
         </div>
 

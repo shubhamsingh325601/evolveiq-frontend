@@ -36,6 +36,27 @@ export const ENDPOINTS = {
     detail: (classId: string) => `/classes/${id(classId)}`,
     teacher: (classId: string, teacherId: string) => `/classes/${id(classId)}/teachers/${id(teacherId)}`,
     student: (classId: string, studentId: string) => `/classes/${id(classId)}/students/${id(studentId)}`,
+    /** GET: the class's register over a range of days. */
+    attendance: (classId: string) => `/classes/${id(classId)}/attendance`,
+    /** PUT: take or correct one day's register. */
+    attendanceDay: (classId: string, day: string) => `/classes/${id(classId)}/attendance/${id(day)}`,
+    /** Staff: the recorded health and care profiles of a class. */
+    health: (classId: string) => `/classes/${id(classId)}/health`,
+  },
+  notices: {
+    list: '/notices',
+    detail: (noticeId: string) => `/notices/${id(noticeId)}`,
+  },
+  staffReviews: {
+    list: '/staff-reviews',
+    detail: (staffId: string, month: string) => `/staff-reviews/${id(staffId)}/${id(month)}`,
+  },
+  honours: {
+    list: '/honours',
+    detail: (honourId: string) => `/honours/${id(honourId)}`,
+  },
+  imports: {
+    people: '/imports/people',
   },
   observations: {
     /** POST: a teacher writes one. GET: the psychologist's review queue. */
@@ -84,6 +105,8 @@ export const ENDPOINTS = {
     wellnessCheckins: (studentId: string) => `/students/${id(studentId)}/wellness-checkins`,
     /** Staff only: a school support plan for a student. */
     supportPlans: (studentId: string) => `/students/${id(studentId)}/support-plans`,
+    /** The child's health and care needs: the family and the school admin write it, staff read it. */
+    health: (studentId: string) => `/students/${id(studentId)}/health`,
     monthlySummary: (studentId: string, month: string) =>
       `/students/${id(studentId)}/monthly-summaries/${id(month)}`,
   },

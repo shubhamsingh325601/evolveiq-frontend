@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { RoleGuard, ROLE_APP, ROLE_HOME_PATH, useAuth } from '@evolveiq/auth';
 import { AppFrame } from './AppFrame';
 import { SignInScreen } from './screens/SignInScreen';
@@ -13,7 +13,6 @@ import { ChildrenScreen } from './screens/parent/ChildrenScreen';
 import { ChildDashboardScreen } from './screens/parent/ChildDashboardScreen';
 import { MonthlySummaryScreen } from './screens/parent/MonthlySummaryScreen';
 import { ReportScreen as ParentReportScreen } from './screens/parent/ReportScreen';
-import { WellbeingScreen as ParentWellbeingScreen } from './screens/parent/WellbeingScreen';
 import { ExploreScreen as ParentExploreScreen } from './screens/parent/ExploreScreen';
 import { ExploreLandingScreen } from './screens/parent/ExploreLandingScreen';
 import { AskScreen as ParentAskScreen } from './screens/parent/AskScreen';
@@ -21,6 +20,14 @@ import { SiblingsScreen } from './screens/parent/SiblingsScreen';
 import { PrivacyScreen } from './screens/parent/PrivacyScreen';
 import { ObservationsScreen } from './screens/parent/ObservationsScreen';
 import { NewObservationScreen } from './screens/parent/NewObservationScreen';
+import { HealthLandingScreen, HealthScreen } from './screens/parent/HealthScreen';
+import { NoticesScreen } from './screens/NoticesScreen';
+
+/** The old wellbeing address of a child: their health page now holds the check-in. */
+function WellbeingRedirect() {
+  const { childId } = useParams<{ childId: string }>();
+  return <Navigate to={childId ? `/parent/health/${childId}` : '/parent/health'} replace />;
+}
 
 /** Family web app: Student and Parent. Roles are guarded, never screen-checked. */
 export function App() {
@@ -39,6 +46,7 @@ export function App() {
           <Route path="/student/wellbeing" element={<StudentWellbeingScreen />} />
           <Route path="/student/explore" element={<StudentExploreScreen />} />
           <Route path="/student/ask" element={<StudentAskScreen />} />
+          <Route path="/student/notices" element={<NoticesScreen />} />
         </Route>
       </Route>
 
@@ -48,7 +56,10 @@ export function App() {
           <Route path="/parent/children/:childId" element={<ChildDashboardScreen />} />
           <Route path="/parent/children/:childId/summary" element={<MonthlySummaryScreen />} />
           <Route path="/parent/children/:childId/report" element={<ParentReportScreen />} />
-          <Route path="/parent/children/:childId/wellbeing" element={<ParentWellbeingScreen />} />
+          <Route path="/parent/children/:childId/wellbeing" element={<WellbeingRedirect />} />
+          <Route path="/parent/health" element={<HealthLandingScreen />} />
+          <Route path="/parent/health/:childId" element={<HealthScreen />} />
+          <Route path="/parent/notices" element={<NoticesScreen />} />
           <Route path="/parent/children/:childId/explore" element={<ExploreLandingScreen />} />
           <Route path="/parent/explore" element={<ExploreLandingScreen />} />
           <Route path="/parent/explore/:childId" element={<ParentExploreScreen />} />

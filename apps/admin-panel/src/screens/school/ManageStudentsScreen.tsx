@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  useClassesHealth,
   useClassRoster,
   useCreateUser,
   useDeactivateUser,
@@ -12,27 +14,35 @@ import {
   type User,
   type UserChanges,
 } from '@evolveiq/api-client';
-import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
+import { CareFlags, RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
 import {
   Avatar,
   Backpack,
   Button,
+  buttonClasses,
   ErrorState,
   HeartHandshake,
+  HeartPulse,
   Inbox,
   LayoutGrid,
   PageHeader,
   Plus,
   StatTile,
+  Trash2,
+  Upload,
 } from '@evolveiq/ui';
 import { AccountStatusBadge } from '../../components/AccountStatusBadge';
 import { FULL_NAME_FIELD, PIN_FIELD, saveErrorMessage, STUDENT_ID_FIELD } from '../../components/account-fields';
+import { HealthDialog } from '../../components/HealthDialog';
 import { RecordEditor, type RecordEditorField, type RecordValues } from '../../components/RecordEditor';
+import { RemoveAccountDialog } from '../../components/RemoveAccountDialog';
 
 /**
  * Everyone enrolled at the school. A student signs in with a student ID and a
  * six-digit PIN, is in one class at most, and has one parent account at most.
- * Accounts are switched off, never deleted.
+ * Students come one at a time or from a spreadsheet; an account is switched
+ * off, or removed while it has no records; and the school office can record a
+ * student's health and care needs (client feedback, 29 Oct 2026).
  */
 export function ManageStudentsScreen() {
   const students = useUsers({ role: 'student' });
@@ -49,6 +59,9 @@ export function ManageStudentsScreen() {
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   const [error, setError] = useState<string>();
   const [rowError, setRowError] = useState<string>();
+  const [removing, setRemoving] = useState<User | null>(null);
+  const [caringFor, setCaringFor] = useState<User | null>(null);
+  const health = useClassesHealth(roster.classes.map((detail) => detail.class.id));
 
   if (students.isError) return <ErrorState onRetry={() => void students.refetch()} />;
 
@@ -58,6 +71,7 @@ export function ManageStudentsScreen() {
   const active = enrolled.filter((student) => student.isActive);
   const withoutClass = active.filter((student) => !roster.classIdByStudentId.has(student.id)).length;
   const withParent = active.filter((student) => student.parentId).length;
+  const needsCare = active.filter((student) => (health.byStudentId.get(student.id)?.conditions.length ?? 0) > 0).length;
   const isSaving =
     createUser.isPending || updateUser.isPending || setStudentClass.isPending || linkParent.isPending || unlinkParent.isPending;
 
@@ -157,6 +171,19 @@ export function ManageStudentsScreen() {
         classNameById.get(roster.classIdByStudentId.get(student.id) ?? '') ?? <span className="text-ink-faint">Not placed</span>,
     },
     {
+      id: 'care',
+      header: 'Care needs',
+      isSecondary: true,
+      sortValue: (student) => health.byStudentId.get(student.id)?.conditions.length ?? 0,
+      // Profiles come by class; a student not in a class shows a dash rather than "none".
+      cell: (student) =>
+        roster.classIdByStudentId.has(student.id) ? (
+          <CareFlags conditions={health.byStudentId.get(student.id)?.conditions} hasNotes={Boolean(health.byStudentId.get(student.id)?.careNotes)} />
+        ) : (
+          <span className="text-ink-faint">—</span>
+        ),
+    },
+    {
       id: 'parent',
       header: 'Parent',
       isSecondary: true,
@@ -179,14 +206,20 @@ export function ManageStudentsScreen() {
         title="Students"
         subtitle="Everyone enrolled at your school."
         actions={
-          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
-            Add a student
-          </Button>
+          <>
+            <Link to="/school/import?role=student" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+              <Upload />
+              Import
+            </Link>
+            <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
+              Add a student
+            </Button>
+          </>
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatTile icon={Backpack} label="Students" value={active.length} detail="Enrolled at your school" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
+        <StatTile className="col-span-2 sm:col-span-1" icon={Backpack} label="Students" value={active.length} detail="Enrolled at your school" />
         <StatTile
           icon={LayoutGrid}
           tone="lilac"
@@ -208,6 +241,7 @@ export function ManageStudentsScreen() {
           value={withoutClass}
           detail={withoutClass === 0 ? 'Everyone is placed' : 'Waiting to be placed'}
         />
+        <StatTile icon={HeartPulse} tone="coral" label="Special care" value={needsCare} detail="Health needs on record" />
       </div>
 
       {rowError ? <ErrorState title="That did not save" description={rowError} /> : null}
@@ -222,13 +256,21 @@ export function ManageStudentsScreen() {
         isLoading={students.isLoading}
         onRowClick={(student) => setEditing(student)}
         rowActions={(student) => (
-          <Button
-            variant={student.isActive ? 'danger-quiet' : 'quiet'}
-            size="sm"
-            onClick={() => void toggleActive(student)}
-          >
-            {student.isActive ? 'Switch off' : 'Switch on'}
-          </Button>
+          <span className="inline-flex flex-wrap justify-end gap-1">
+            <Button variant="quiet" size="sm" icon={HeartPulse} aria-label={`Care needs for ${student.fullName}`} onClick={() => setCaringFor(student)}>
+              Care needs
+            </Button>
+            <Button
+              variant={student.isActive ? 'danger-quiet' : 'quiet'}
+              size="sm"
+              onClick={() => void toggleActive(student)}
+            >
+              {student.isActive ? 'Switch off' : 'Switch on'}
+            </Button>
+            <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${student.fullName}`} onClick={() => setRemoving(student)}>
+              Remove
+            </Button>
+          </span>
         )}
         emptyTitle="No students yet"
         emptyDescription="Add the first student, then place them in a class."
@@ -269,6 +311,9 @@ export function ManageStudentsScreen() {
         onSave={save}
         {...(error ? { error } : {})}
       />
+
+      <RemoveAccountDialog person={removing} onClose={() => setRemoving(null)} />
+      <HealthDialog student={caringFor} onClose={() => setCaringFor(null)} />
     </div>
   );
 }

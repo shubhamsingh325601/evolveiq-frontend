@@ -2,6 +2,8 @@ import { addDays, businessDate } from '../business-time';
 import type {
   ActivityAnswer,
   ActivityContent,
+  AttendanceStatus,
+  BloodGroup,
   ConsentPurpose,
   DevelopmentArea,
   LearningBehaviourArea,
@@ -11,6 +13,10 @@ import type {
   ObservationStatus,
   ObservationTone,
   ObservationWhen,
+  HealthCondition,
+  HonourKind,
+  NoticeAudience,
+  NoticeCategory,
   ReviewOutcome,
   Role,
   SupportCategory,
@@ -139,6 +145,75 @@ export interface MockSupportPlan {
   closedAt: string | null;
 }
 
+export interface MockHealthProfile {
+  studentId: string;
+  conditions: HealthCondition[];
+  bloodGroup: BloodGroup | null;
+  allergies: string | null;
+  medications: string | null;
+  careNotes: string | null;
+  emergencyName: string | null;
+  emergencyRelation: string | null;
+  emergencyPhone: string | null;
+  updatedById: string | null;
+  updatedAt: string;
+}
+
+export interface MockAttendance {
+  studentId: string;
+  /** YYYY-MM-DD, Asia/Kolkata. */
+  day: string;
+  status: AttendanceStatus;
+  markedById: string;
+  updatedAt: string;
+}
+
+export interface MockNotice {
+  id: string;
+  /** Null: a platform notice for every school. */
+  schoolId: string | null;
+  category: NoticeCategory;
+  title: string;
+  body: string | null;
+  startsOn: string | null;
+  location: string | null;
+  phone: string | null;
+  audience: NoticeAudience;
+  isPinned: boolean;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MockStaffReview {
+  id: string;
+  schoolId: string;
+  staffId: string;
+  reviewerId: string;
+  /** YYYY-MM. */
+  month: string;
+  teaching: number;
+  engagement: number;
+  punctuality: number;
+  teamwork: number;
+  communication: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MockHonour {
+  id: string;
+  schoolId: string;
+  kind: HonourKind;
+  /** YYYY-MM. */
+  month: string;
+  honoreeId: string;
+  citation: string;
+  awardedById: string;
+  createdAt: string;
+}
+
 export interface MockState {
   users: MockUser[];
   schools: MockSchool[];
@@ -160,6 +235,23 @@ export interface MockState {
   supportPlans: MockSupportPlan[];
   /** When each user last marked their notifications seen. */
   notificationSeen: Record<string, string>;
+  healthProfiles: MockHealthProfile[];
+  attendance: MockAttendance[];
+  notices: MockNotice[];
+  staffReviews: MockStaffReview[];
+  honours: MockHonour[];
+}
+
+/**
+ * A stable number in [0, 1) for a piece of text — the backend demo seed's own
+ * function, so the demo register reads the same with or without a server.
+ */
+function unit(text: string): number {
+  let hash = 2166136261;
+  for (const char of text) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b);
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+  return ((hash ^ (hash >>> 16)) >>> 0) / 2 ** 32;
 }
 
 const placeholderImage = (text: string, colour: string): string =>
@@ -663,6 +755,217 @@ export function buildSeed(now: Date = new Date()): MockState {
     },
   ];
 
+  // ---------- Added with the client's feedback of 29 Oct 2026 (the backend seed's later additions) ----------
+
+  const health = (
+    studentId: string,
+    updatedById: string,
+    profile: Partial<Omit<MockHealthProfile, 'studentId' | 'updatedById' | 'updatedAt'>>,
+  ): MockHealthProfile => ({
+    studentId,
+    conditions: [],
+    bloodGroup: null,
+    allergies: null,
+    medications: null,
+    careNotes: null,
+    emergencyName: null,
+    emergencyRelation: null,
+    emergencyPhone: null,
+    ...profile,
+    updatedById,
+    updatedAt: daysAgo(20),
+  });
+  const healthProfiles: MockHealthProfile[] = [
+    health('stu-maya', 'usr-priya', {
+      conditions: ['asthma', 'on_medication'],
+      bloodGroup: 'B+',
+      allergies: 'Dust and pollen',
+      medications: 'Blue reliever inhaler before PE and when wheezy. It is in the front pocket of her bag.',
+      careNotes: 'If she is wheezy, let her use her inhaler and sit out. Please call me if it has not settled within ten minutes.',
+      emergencyName: 'Priya Ahluwalia',
+      emergencyRelation: 'Mother',
+      emergencyPhone: '+91 98765 43210',
+    }),
+    health('stu-arjun', 'usr-priya', {
+      conditions: ['severe_allergy'],
+      bloodGroup: 'B+',
+      allergies: 'Peanuts and tree nuts (anaphylaxis)',
+      medications: 'Adrenaline auto-injector, kept in the school office.',
+      careNotes: 'No food sharing. If he has swelling or trouble breathing, use the auto-injector and call an ambulance (108), then me.',
+      emergencyName: 'Priya Ahluwalia',
+      emergencyRelation: 'Mother',
+      emergencyPhone: '+91 98765 43210',
+    }),
+    health('stu-devan', 'usr-neil', {
+      conditions: ['adhd'],
+      careNotes: 'Short tasks with a movement break between them work best. A two-minute warning before a change of activity helps him a lot.',
+      emergencyName: 'Neil D’Souza',
+      emergencyRelation: 'Father',
+      emergencyPhone: '+91 98765 43211',
+    }),
+    health('stu-noor', 'usr-clara', {
+      conditions: ['visual_impairment'],
+      careNotes: 'Wears glasses for distance. Seat her near the board and print worksheets in a larger font.',
+    }),
+    health('stu-ibrahim', 'usr-clara', {
+      conditions: ['dyslexia'],
+      careNotes: 'Give instructions one step at a time, and read written instructions aloud. Extra time in written tests.',
+    }),
+    health('stu-tara', 'usr-clara', {
+      conditions: ['diabetes', 'on_medication'],
+      bloodGroup: 'A+',
+      medications: 'Insulin before lunch, given by the school nurse.',
+      careNotes: 'Checks her blood sugar before lunch and PE. Glucose tablets are in the class first-aid box: give two if she feels shaky or dizzy.',
+    }),
+  ];
+
+  // The last 30 days, Monday to Saturday, taken by each class's teacher.
+  const usualRate: Record<string, number> = {
+    'RV-1001': 0.88, 'RV-1002': 0.96, 'RV-1003': 0.72, 'RV-1004': 0.92, 'RV-1005': 0.9, 'RV-1006': 0.84, 'RV-1007': 0.94,
+    'HG-2001': 0.9, 'HG-2002': 0.86,
+  };
+  const teacherOfClass = new Map(classTeachers.map((row) => [row.classId, row.teacherId]));
+  const attendance: MockAttendance[] = [];
+  for (let back = 29; back >= 0; back -= 1) {
+    const day = addDays(today, -back);
+    if (new Date(`${day}T00:00:00Z`).getUTCDay() === 0) continue; // Sunday
+    for (const { classId, studentId } of classStudents) {
+      const loginId = users.find((user) => user.id === studentId)?.studentLoginId ?? '';
+      const roll = unit(`${loginId}:${day}`);
+      const rate = usualRate[loginId] ?? 0.9;
+      attendance.push({
+        studentId,
+        day,
+        status: roll >= rate ? 'absent' : roll < 0.06 ? 'late' : 'present',
+        markedById: teacherOfClass.get(classId) ?? 'usr-clara',
+        updatedAt: daysAgo(back, 9),
+      });
+    }
+  }
+
+  const notice = (
+    id: string,
+    schoolId: string | null,
+    createdById: string,
+    fields: Partial<MockNotice> & Pick<MockNotice, 'category' | 'title'>,
+    createdDaysAgo: number,
+  ): MockNotice => ({
+    id,
+    schoolId,
+    body: null,
+    startsOn: null,
+    location: null,
+    phone: null,
+    audience: 'everyone',
+    isPinned: false,
+    ...fields,
+    createdById,
+    createdAt: daysAgo(createdDaysAgo, 9),
+    updatedAt: daysAgo(createdDaysAgo, 9),
+  });
+  const notices: MockNotice[] = [
+    notice('ntc-sports-day', RIDGEVIEW, 'usr-clara', {
+      category: 'event',
+      title: 'Annual Sports Day',
+      startsOn: addDays(today, 10),
+      location: 'Main ground',
+      isPinned: true,
+      body: 'Races, relays and a tug of war for every class. Families are welcome from 9:00. Please send your child in their house colours with a water bottle.',
+    }, 3),
+    notice('ntc-science-fair', RIDGEVIEW, 'usr-clara', {
+      category: 'activity',
+      title: 'Inter-house science fair',
+      startsOn: addDays(today, 20),
+      location: 'Hall B',
+      body: 'Projects in pairs, on anything that makes you curious. Sign up with your class teacher by Friday.',
+    }, 3),
+    notice('ntc-ptm', RIDGEVIEW, 'usr-clara', {
+      category: 'event',
+      title: 'Parent–teacher meeting',
+      startsOn: addDays(today, 14),
+      location: 'Classrooms',
+      audience: 'families',
+      body: 'Fifteen-minute conversations with your child’s class teacher. Book a slot through the school office.',
+    }, 2),
+    notice('ntc-first-aid', RIDGEVIEW, 'usr-clara', {
+      category: 'training',
+      title: 'First aid and CPR training',
+      startsOn: addDays(today, 6),
+      location: 'Staff room',
+      audience: 'staff',
+      body: 'A three-hour session with a certified trainer, for every class teacher. Bring the class first-aid box so we can restock it.',
+    }, 2),
+    notice('ntc-fire-drills', null, 'usr-tunde', {
+      category: 'policy',
+      title: 'Fire-safety drills: what changes this term',
+      body: 'Every school runs two fire drills a term, marks its assembly points, and names a fire warden for each class. Your school will share its dates on this board.',
+    }, 5),
+    notice('ntc-safeguarding', null, 'usr-tunde', {
+      category: 'policy',
+      title: 'Safeguarding refresher for every staff member',
+      audience: 'staff',
+      body: 'Please complete the yearly safeguarding refresher this term. It covers spotting concerns, recording them and who to tell.',
+    }, 5),
+    notice('ntc-112', null, 'usr-tunde', { category: 'emergency_contact', title: 'National emergency number', phone: '112', body: 'Police, fire and ambulance, from any phone.' }, 6),
+    notice('ntc-108', null, 'usr-tunde', { category: 'emergency_contact', title: 'Ambulance', phone: '108', body: 'Free emergency ambulance.' }, 6),
+    notice('ntc-1098', null, 'usr-tunde', {
+      category: 'emergency_contact',
+      title: 'Childline',
+      phone: '1098',
+      body: 'Free, 24-hour help for children and for adults worried about a child.',
+    }, 6),
+  ];
+
+  const thisMonth = today.slice(0, 7);
+  const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
+  const review = (
+    id: string,
+    staffId: string,
+    month: string,
+    ratings: [number, number, number, number, number],
+    comment: string | null,
+  ): MockStaffReview => ({
+    id,
+    schoolId: RIDGEVIEW,
+    staffId,
+    reviewerId: 'usr-clara',
+    month,
+    teaching: ratings[0],
+    engagement: ratings[1],
+    punctuality: ratings[2],
+    teamwork: ratings[3],
+    communication: ratings[4],
+    comment,
+    createdAt: daysAgo(4, 15),
+    updatedAt: daysAgo(4, 15),
+  });
+  const staffReviews: MockStaffReview[] = [
+    review('rev-rao-last', 'usr-rao', lastMonth, [5, 5, 4, 5, 5], 'Started the reading-buddies scheme and kept every family in the loop.'),
+    review('rev-kapoor-last', 'usr-kapoor', lastMonth, [4, 4, 5, 4, 3], 'Well-run lessons. Let us find a way to share more with parents each week.'),
+    review('rev-rao-now', 'usr-rao', thisMonth, [5, 4, 5, 5, 4], null),
+    review('rev-kapoor-now', 'usr-kapoor', thisMonth, [4, 5, 5, 4, 4], 'The new art corner has every child in 5C talking about their work.'),
+  ];
+
+  const honour = (id: string, kind: HonourKind, month: string, honoreeId: string, citation: string): MockHonour => ({
+    id,
+    schoolId: RIDGEVIEW,
+    kind,
+    month,
+    honoreeId,
+    citation,
+    awardedById: 'usr-clara',
+    createdAt: daysAgo(3, 16),
+  });
+  const honours: MockHonour[] = [
+    honour('hon-rao', 'staff_of_month', lastMonth, 'usr-rao',
+      'For the reading-buddies scheme: every Year 3 reader now has a Year 4 buddy, and every family heard how it went.'),
+    honour('hon-noor', 'student_of_month', lastMonth, 'stu-noor',
+      'For kindness: Noor noticed a classmate sitting alone at lunch and made her feel at home.'),
+    honour('hon-kapoor', 'staff_of_month', thisMonth, 'usr-kapoor', 'For the new art corner, where every pupil in 5C now has a piece on the wall.'),
+    honour('hon-arjun', 'student_of_month', thisMonth, 'stu-arjun',
+      'For telling the class about the museum trip with a clear beginning, middle and end, and answering every question.'),
+  ];
+
   return {
     users,
     schools,
@@ -679,5 +982,10 @@ export function buildSeed(now: Date = new Date()): MockState {
     checkins: [],
     supportPlans: [],
     notificationSeen: {},
+    healthProfiles,
+    attendance,
+    notices,
+    staffReviews,
+    honours,
   };
 }

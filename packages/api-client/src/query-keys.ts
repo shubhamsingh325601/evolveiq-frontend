@@ -1,4 +1,24 @@
-import type { ActivityType, ReviewQueueFilters, Role } from './types';
+import type { ActivityType, HonourKind, NoticeCategory, ReviewQueueFilters, Role } from './types';
+
+export interface NoticeFilters {
+  category?: NoticeCategory;
+  /** Platform admins only: one school's notices. */
+  schoolId?: string;
+}
+
+export interface StaffReviewFilters {
+  /** "YYYY-MM". */
+  month?: string;
+  staffId?: string;
+}
+
+export interface HonourFilters {
+  /** "YYYY-MM". */
+  month?: string;
+  kind?: HonourKind;
+  /** Platform admins only: one school's wall. */
+  schoolId?: string;
+}
 
 export interface UserFilters {
   role?: Role;
@@ -72,6 +92,27 @@ export const queryKeys = {
   },
   notifications: {
     all: ['notifications'] as const,
+  },
+  health: {
+    all: ['health'] as const,
+    student: (studentId: string) => ['health', 'student', studentId] as const,
+    class: (classId: string) => ['health', 'class', classId] as const,
+  },
+  attendance: {
+    all: ['attendance'] as const,
+    class: (classId: string, from: string, to: string) => ['attendance', classId, from, to] as const,
+  },
+  notices: {
+    all: ['notices'] as const,
+    list: (filters: NoticeFilters = {}) => ['notices', 'list', filters] as const,
+  },
+  staffReviews: {
+    all: ['staff-reviews'] as const,
+    list: (filters: StaffReviewFilters = {}) => ['staff-reviews', 'list', filters] as const,
+  },
+  honours: {
+    all: ['honours'] as const,
+    list: (filters: HonourFilters = {}) => ['honours', 'list', filters] as const,
   },
   progress: {
     all: ['progress'] as const,

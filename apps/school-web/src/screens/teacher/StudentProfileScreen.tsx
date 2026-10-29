@@ -4,10 +4,13 @@ import {
   FEATURES,
   lastSevenDays,
   MAX_GROWTH_AREAS,
+  monthRange,
   useActivities,
+  useClassAttendance,
   useClassRoster,
   useGrowthAreas,
   useGrowthMoments,
+  useHealthProfile,
   useHolisticIndex,
   useStars,
   useStreak,
@@ -15,8 +18,13 @@ import {
   useTeacherObservations,
 } from '@evolveiq/api-client';
 import {
+  AttendanceMeter,
+  attendanceSummary,
   BackLink,
+  CareNeedsCard,
   describeAnswer,
+  formatDayShort,
+  formatMonth,
   firstNameOf,
   GrowthAreaList,
   GrowthMoments,
@@ -33,6 +41,7 @@ import {
   Badge,
   buttonClasses,
   Card,
+  ClipboardCheck,
   ClipboardList,
   EmptyState,
   ErrorState,
@@ -67,6 +76,10 @@ export function StudentProfileScreen() {
   const assignments = useStudentAssignments(studentId);
   const activities = useActivities();
   const ownObservations = useTeacherObservations();
+  const health = useHealthProfile(studentId);
+  const month = monthRange();
+  const placed = roster.students.find((candidate) => candidate.id === studentId);
+  const attendance = useClassAttendance(placed?.classId, month);
 
   if (roster.isLoading) return <LoadingState label="Loading the student" />;
   const student = roster.students.find((candidate) => candidate.id === studentId);
@@ -88,6 +101,12 @@ export function StudentProfileScreen() {
   const assignPath = `/teacher/assign?studentId=${student.id}`;
   const starPath = `/teacher/observations/new?studentId=${student.id}&tone=positive`;
   const concernPath = `/teacher/observations/new?studentId=${student.id}&tone=concern`;
+  const attendanceRow = attendance.data?.students.find((candidate) => candidate.id === student.id);
+  const days = attendanceSummary(attendanceRow);
+  const daysAway = Object.entries(attendanceRow?.records ?? {})
+    .filter(([, status]) => status === 'absent')
+    .map(([day]) => day)
+    .sort();
 
   return (
     <div className="flex flex-col gap-8">
@@ -121,6 +140,18 @@ export function StudentProfileScreen() {
                     {openGrowthAreas.length} of {MAX_GROWTH_AREAS} growth areas
                   </Badge>
                 </li>
+                {days.recorded > 0 ? (
+                  <li>
+                    <Badge icon={ClipboardCheck}>
+                      {days.attended}/{days.recorded} days in this month
+                    </Badge>
+                  </li>
+                ) : null}
+                {health.data?.conditions.length ? (
+                  <li>
+                    <Badge tone="significant">Special care</Badge>
+                  </li>
+                ) : null}
                 {streak.data ? (
                   <li>
                     <Badge icon={Flame}>
@@ -150,6 +181,24 @@ export function StudentProfileScreen() {
 
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
         <div className="flex flex-col gap-10 lg:col-span-5">
+          <CareNeedsCard profile={health.data} name={firstName} audience="staff" isLoading={health.isLoading} />
+
+          <Card as="section" aria-labelledby="attendance-heading" className="p-6">
+            <h2 id="attendance-heading" className="flex items-center gap-2 text-lg font-black tracking-tight text-ink">
+              <ClipboardCheck className="size-5 shrink-0 text-jade-500" />
+              Attendance, {formatMonth(month.from.slice(0, 7))}
+            </h2>
+            <div className="mt-4">
+              <AttendanceMeter attended={days.attended} recorded={days.recorded} size="md" period={formatMonth(month.from.slice(0, 7))} />
+            </div>
+            {attendanceRow ? (
+              <p className="mt-3 text-sm font-medium text-ink-muted">
+                {attendanceRow.present} present, {attendanceRow.late} late, {attendanceRow.absent} away
+                {daysAway.length > 0 ? ` — away on ${daysAway.map(formatDayShort).join(', ')}` : ''}.
+              </p>
+            ) : null}
+          </Card>
+
           {FEATURES.holisticIndex && holistic.data ? (
             <HolisticIndexCard studentName={student.fullName} index={holistic.data} />
           ) : null}

@@ -1,7 +1,7 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
 import { FEATURES } from '@evolveiq/api-client';
-import { BotMessageSquare, Compass, Heart, House, NotebookPen, Plus, ShieldCheck, Sprout } from '@evolveiq/ui';
+import { BotMessageSquare, Compass, Heart, HeartPulse, House, NotebookPen, Plus, Sprout } from '@evolveiq/ui';
 
 /**
  * The family app's menu, by role. `AppSidebar` and `AppBottomNav` are shared
@@ -9,7 +9,9 @@ import { BotMessageSquare, Compass, Heart, House, NotebookPen, Plus, ShieldCheck
  *
  * The guide sits in the middle of the phone tab bar for both roles (client
  * feedback, 28 Oct 2026); a parent's "New observation" stays on the rail and
- * on their screens.
+ * on their screens. Health took Privacy's place in the parent's tabs (client
+ * feedback, 29 Oct 2026), like the student's own "How I feel"; Privacy & safety
+ * and the notice board are in the account menu.
  */
 export function menuForRole(role: Role): SidebarMenuSection[] {
   if (role === 'student') {
@@ -44,7 +46,7 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
           },
           // Explore starts from a child's strengths, so it needs the Holistic Index.
           ...(FEATURES.holisticIndex ? [{ label: 'Explore', to: '/parent/explore', icon: Compass }] : []),
-          { label: 'Privacy & safety', shortLabel: 'Privacy', to: '/parent/privacy', icon: ShieldCheck },
+          { label: 'Health', to: '/parent/health', icon: HeartPulse },
         ],
       },
       {

@@ -1,14 +1,19 @@
 import { Outlet } from 'react-router-dom';
 import {
+  businessMonth,
   useClassRoster,
+  useHonours,
+  useNotices,
   useReviewQueue,
   useReviewQueueCounts,
   useSchool,
+  useStaffReviews,
   useTeacherObservations,
   type ReviewQueueFilters,
 } from '@evolveiq/api-client';
 import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
-import { AppLayout } from '@evolveiq/domain';
+import { AppLayout, formatMonth, schoolLifeNotifications, type AccountMenuSection } from '@evolveiq/domain';
+import { Award } from '@evolveiq/ui';
 import { menuForRole } from './app-menu';
 import { ClassesSidebarCard } from './components/ClassesSidebarCard';
 import { ReviewPulseCard } from './components/ReviewPulseCard';
@@ -32,6 +37,9 @@ export function AppFrame() {
   const pending = useReviewQueue(REVIEW_FILTERS.pending, { isEnabled: isPsychologist });
   const pulse = useReviewQueueCounts(PULSE_FILTERS, { isEnabled: isPsychologist });
   const school = useSchool(isTeacher ? user?.schoolId : undefined);
+  const notices = useNotices({}, { isEnabled: Boolean(user) });
+  const honours = useHonours({}, { isEnabled: isTeacher });
+  const reviews = useStaffReviews({}, { isEnabled: isTeacher });
 
   if (!user) return null;
 
@@ -49,6 +57,26 @@ export function AppFrame() {
     <ReviewPulseCard pending={pulse.pending} significantPending={pulse.significantPending} total={pulse.all} />
   ) : null;
   const contextLabel = isTeacher ? school.data?.name : 'All schools';
+  // A teacher's own monthly reviews: private, so in their account menu rather than on a shared page.
+  const latestReview = (reviews.data ?? [])[0];
+  const accountSections: AccountMenuSection[] = isTeacher
+    ? [
+        {
+          title: 'You',
+          items: [
+            {
+              id: 'reviews',
+              label: 'Your reviews',
+              detail: latestReview
+                ? `${formatMonth(latestReview.month)}: ${latestReview.average.toFixed(1)} of 5`
+                : `None yet for ${formatMonth(businessMonth())}`,
+              to: '/teacher/reviews',
+              icon: Award,
+            },
+          ],
+        },
+      ]
+    : [];
 
   return (
     <AppLayout
@@ -59,13 +87,23 @@ export function AppFrame() {
       onSignOut={signOut}
       {...(contextLabel ? { contextLabel } : {})}
       contextCard={contextCard}
+      accountSections={accountSections}
       notificationsKey={user.id}
-      notifications={staffNotifications({
-        user,
-        pending: pending.data ?? [],
-        ownObservations: own,
-        studentNameById: new Map(roster.students.map((student) => [student.id, student.fullName])),
-      })}
+      notifications={[
+        ...staffNotifications({
+          user,
+          pending: pending.data ?? [],
+          ownObservations: own,
+          studentNameById: new Map(roster.students.map((student) => [student.id, student.fullName])),
+        }),
+        ...schoolLifeNotifications({
+          notices: notices.data ?? [],
+          honours: honours.data ?? [],
+          viewerId: user.id,
+          noticesPath: '/notices',
+          honourPath: (honour) => (honour.kind === 'student_of_month' ? `/teacher/students/${honour.honoree.id}` : '/notices'),
+        }),
+      ]}
     >
       <Outlet />
     </AppLayout>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   useClassRoster,
   useCreateClass,
+  useDeleteClass,
   useRenameClass,
   useUpdateClassMembers,
   useUsers,
@@ -17,16 +18,19 @@ import {
   Plus,
   Presentation,
   StatTile,
+  Trash2,
   UsersRound,
 } from '@evolveiq/ui';
 import { saveErrorMessage } from '../../components/account-fields';
 import { ClassEditor, type ClassDraft } from '../../components/ClassEditor';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 const difference = (left: string[], right: string[]) => left.filter((id) => !right.includes(id));
 
 /**
  * Class groups at the school: a name, any number of teachers, and students
- * (each in one class). Classes are not deleted in the MVP.
+ * (each in one class). Deleting a class leaves its students at the school,
+ * waiting for another, with every record kept (client feedback, 29 Oct 2026).
  */
 export function ManageClassesScreen() {
   const roster = useClassRoster();
@@ -35,9 +39,12 @@ export function ManageClassesScreen() {
   const createClass = useCreateClass();
   const renameClass = useRenameClass();
   const updateMembers = useUpdateClassMembers();
+  const deleteClass = useDeleteClass();
 
   const [editing, setEditing] = useState<ClassDetail | 'new' | null>(null);
   const [error, setError] = useState<string>();
+  const [deleting, setDeleting] = useState<ClassDetail | null>(null);
+  const [deleteError, setDeleteError] = useState<string>();
 
   if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
 
@@ -74,6 +81,20 @@ export function ManageClassesScreen() {
       setEditing(null);
     } catch (caught) {
       setError(saveErrorMessage(caught, 'We could not save that class. Try again.'));
+    }
+  };
+
+  const closeDelete = () => {
+    setDeleting(null);
+    setDeleteError(undefined);
+  };
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await deleteClass.mutateAsync(deleting.class.id);
+      closeDelete();
+    } catch (caught) {
+      setDeleteError(saveErrorMessage(caught, `We could not delete ${deleting.class.name}. Try again.`));
     }
   };
 
@@ -145,6 +166,16 @@ export function ManageClassesScreen() {
         searchPlaceholder="Search classes"
         isLoading={roster.isLoading}
         onRowClick={(detail) => setEditing(detail)}
+        rowActions={(detail) => (
+          <span className="inline-flex gap-1">
+            <Button variant="quiet" size="sm" onClick={() => setEditing(detail)}>
+              Edit
+            </Button>
+            <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Delete ${detail.class.name}`} onClick={() => setDeleting(detail)}>
+              Delete
+            </Button>
+          </span>
+        )}
         emptyTitle="No classes yet"
         emptyDescription="Add a class, then choose its teachers and students."
         emptyAction={
@@ -167,6 +198,21 @@ export function ManageClassesScreen() {
         onSave={save}
         isSaving={createClass.isPending || renameClass.isPending || updateMembers.isPending}
         {...(error ? { error } : {})}
+      />
+
+      <ConfirmDialog
+        isOpen={deleting !== null}
+        title={deleting ? `Delete class ${deleting.class.name}?` : 'Delete class'}
+        description={
+          deleting
+            ? `${deleting.teachers.length} ${deleting.teachers.length === 1 ? 'teacher is' : 'teachers are'} unassigned, and ${deleting.students.length} ${deleting.students.length === 1 ? 'student waits' : 'students wait'} for another class. Their accounts and records stay.`
+            : ''
+        }
+        confirmLabel="Delete class"
+        onConfirm={() => void confirmDelete()}
+        onClose={closeDelete}
+        isWorking={deleteClass.isPending}
+        error={deleteError}
       />
     </div>
   );

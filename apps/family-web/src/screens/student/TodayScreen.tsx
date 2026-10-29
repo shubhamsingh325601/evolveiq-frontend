@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
 import {
+  addMonths,
+  businessMonth,
   FEATURES,
   useGrowthAreas,
   useHolisticIndex,
+  useHonours,
   useMyAssignments,
+  useNotices,
   useStars,
   useStreak,
   useStudentLevel,
@@ -15,6 +19,7 @@ import {
   firstNameOf,
   GrowthAreaList,
   HolisticIndexCard,
+  HonourBanner,
   relativeDayPhrase,
   ReportOverviewCard,
   SkillProfileCard,
@@ -34,6 +39,7 @@ import {
 } from '@evolveiq/ui';
 import { AssignmentChecklist, type ChecklistItem } from '../../components/AssignmentChecklist';
 import { LevelProgress } from '../../components/LevelProgress';
+import { SchoolNewsCard } from '../../components/SchoolNewsCard';
 import { StarCount } from '../../components/StarCount';
 import { StreakFlame } from '../../components/StreakFlame';
 
@@ -53,6 +59,8 @@ export function TodayScreen() {
   const growthAreas = useGrowthAreas(user?.id);
   const stars = useStars(user?.id);
   const holistic = useHolisticIndex(FEATURES.holisticIndex ? user?.id : undefined);
+  const honours = useHonours();
+  const notices = useNotices();
 
   if (missions.isLoading) return <LoadingState label="Getting your missions" />;
   if (missions.isError) return <ErrorState onRetry={() => void missions.refetch()} />;
@@ -73,6 +81,11 @@ export function TodayScreen() {
   const firstName = user ? firstNameOf(user.fullName) : 'there';
   const areas = growthAreas.data ?? [];
   const index = holistic.data;
+  // Their own honour this month or last, while it is still news.
+  const recentMonths = [businessMonth(), addMonths(businessMonth(), -1)];
+  const myHonour = (honours.data ?? [])
+    .filter((honour) => honour.honoree.id === user?.id && recentMonths.includes(honour.month))
+    .sort((a, b) => b.month.localeCompare(a.month))[0];
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,6 +103,8 @@ export function TodayScreen() {
           {streak.data ? <StreakFlame days={streak.data.days} /> : null}
         </div>
       </header>
+
+      {myHonour ? <HonourBanner honour={myHonour} audience="self" /> : null}
 
       {level.data ? <LevelProgress level={level.data} /> : null}
 
@@ -139,6 +154,7 @@ export function TodayScreen() {
             <ReportOverviewCard strengths={index.strengths} yearsTracked={yearsTracked(index)} to="/student/report" />
           ) : null}
           <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={2} />
+          <SchoolNewsCard notices={notices.data ?? []} honours={honours.data ?? []} to="/student/notices" />
 
           <section>
             <SectionTitle icon={Sprout} iconClassName="text-jade-500">

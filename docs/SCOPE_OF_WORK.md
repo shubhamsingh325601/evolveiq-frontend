@@ -48,6 +48,41 @@ teacher view was accepted as it is.
 - **Explore** replaces **Siblings** in the parent's tabs (Siblings is still one
   tap from the dashboard, as "Compare strengths").
 
+**Change, 29 Oct 2026 (client feedback):**
+- **Health** replaces **Privacy** in the parent's tabs, like the student's own
+  "How I feel": the child's **health and care needs** — conditions the school
+  should know about (diabetes, asthma, epilepsy, a severe allergy, on
+  medication, specially abled, visually or hearing impaired, dyslexia, ADHD,
+  autism, speech and language, other), allergies, medication, blood group,
+  what the school should do and who to call — and the daily check-in. It is
+  the family's word, not a clinical record or a medical file, and never feeds
+  the EHI. Privacy & safety and the notice board move to the account menu.
+- Teachers get a **class drop-down** on the roster; each student's **days in
+  this month** ("18/26 days": present or late, out of the days the register
+  was taken), from a register the teacher takes on a new **Attendance**
+  screen; and **special-care** flags from the health and care needs, with the
+  whole card (and a number to call) on the student's profile, "for special
+  care and attention by school and teachers".
+- School and platform admins **import** students, teachers and parents from a
+  spreadsheet (CSV): every row is checked first, and nothing is created until
+  every row is right. "Pulling data" from the school's own system is the CRM
+  integration, still coming soon; adding by hand stays. **Remove** sits
+  beside Edit: an account with no records, a class (its students stay, in no
+  class) or an empty school. An account with records is switched off instead,
+  so the school keeps what happened.
+- A **notice board**: events, activities, trainings, policies and government
+  updates, and emergency contacts (tap to call). The school admin posts for
+  their school; the platform admin for one school or every school. Staff,
+  parents and students read it in their own apps, for their audience.
+- **Staff reviews**: once a month the school admin rates each teacher 1–5 on
+  teaching, engagement, punctuality, teamwork and communication with parents,
+  with a word of feedback. Private to the admin and the teacher.
+- A **wall of fame**: a **Staff of the Month** "promoted on the wall", and
+  **Students of the Month** to encourage children. Staff see the school's
+  whole wall; a family sees the Staff of the Month and their own child's
+  honours only — a student still never sees another student's data — and a
+  child named is congratulated on their own home and their parent's dashboard.
+
 ## Apps to build
 1. **Family Web App** — Parent, Student
 2. **School Web App** — Teacher, Psychologist
@@ -79,6 +114,8 @@ teacher view was accepted as it is.
 - Progress/streak indicator on completion
 - Their stars, each with the words of the teacher or parent who gave it
 - Own Holistic Report Card (EHI trajectory, skill profile, strengths, Growth Playbook)
+- The school's notice board, and a celebration on their home when they are
+  Student of the Month
 - No access to any other student's data
 
 ### Parent (Family Web App)
@@ -92,6 +129,10 @@ teacher view was accepted as it is.
 - Observation submission form (something to celebrate or something to look
   into; area, free text, when, how often)
 - The child's stars, from school and from home, with the giver's words
+- Health (a tab): the child's health and care needs, written by the parent and
+  read by the school, and the daily check-in
+- The school's notice board, the Staff of the Month, and their own child's
+  honours
 - Teacher notes (read-only)
 - Growth areas + monthly summary (plain-language, not clinical)
 - No access to clinical scores or psychologist notes. The EHI is a
@@ -99,7 +140,14 @@ teacher view was accepted as it is.
   significance flags or psychologist notes
 
 ### Teacher (School Web App)
-- Own students list, with each student's stars
+- Own students list, with each student's stars, narrowed to one class from a
+  drop-down
+- Attendance: take or correct a class's register (present, late, absent) for
+  today or the last 30 days; each student's days in this month on the roster
+  and profile
+- Each student's health and care needs: flags on the roster, the whole card on
+  the profile
+- The notice board with the school's wall of fame; their own monthly reviews
 - Observation submission form: something to celebrate (a star) or something
   to look into; area, free text, when, how often, Learning-behaviour area, and
   Level for a concern only
@@ -119,31 +167,40 @@ teacher view was accepted as it is.
 - Optional teacher-only note field
 - Actions: "Assign & mark reviewed" / "No action needed"
 - Activity authoring via simple form (no drag-and-drop builder)
+- The notice board (staff notices of every school)
 
 ### School Admin (Admin Panel)
-- Manage students, teachers, classes, parents (list/create/edit — RecordsTable-driven)
+- Manage students, teachers, classes, parents (list/create/edit/remove — RecordsTable-driven)
+- Import students, teachers and parents from a spreadsheet, checked row by row
+- Each student's health and care needs
+- The notice board: post, change, pin and take down
+- Staff reviews, and the wall of fame (Staff and Students of the Month)
 - CRM integration, shown as coming soon (no integration built)
 
 ### Platform Admin (Admin Panel)
-- Add schools, manage users across roles
+- Add and remove (empty) schools, manage users across roles
+- Import a school's people from a spreadsheet
+- Notices for one school or for every school
 
 ## Explicitly out of scope (do not build)
 - Charts/graphs on any dashboard, apart from the EHI views on the parent and
   student screens listed above
 - Prototype features beyond the confirmed MVP, until the client confirms them:
-  SOS / safety centre, health and medical records, Explore beyond the ideas
-  page (admissions, fests, maps), alumni network, splash / intro tour /
-  consent flow, settings and language switch, AI career-path predictions
+  SOS / safety centre, medical files, report uploads and "verified vitals"
+  (the health and care needs above are in, since 29 Oct 2026), Explore beyond
+  the ideas page (admissions, fests, maps), alumni network, splash / intro
+  tour / consent flow, settings and language switch, AI career-path predictions
 - More than 5 growth areas per student
 - Permission editor, audit log UI
 - Parent–teacher chat, a live or AI chat assistant (the EvolvIQ Guide is
   scripted)
-- A working CRM integration (only its coming-soon page is in scope)
+- A working CRM integration or school-system sync (only its coming-soon page
+  is in scope; spreadsheet import is in since 29 Oct 2026)
 - Guardian hierarchies, multi-school students
 - Drag-and-drop activity builder
 - Billing/payments UI
 - Native mobile app (responsive web only)
-- CSV import (PRD marks this V1, not MVP)
+- A public wall: another family's child is never shown on a family's screens
 
 ## Definition of done (per screen/feature)
 - Matches the role's data-visibility rules (see ARCHITECTURE.md access rules)

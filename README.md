@@ -26,7 +26,7 @@ students use their student ID (`RV-1001` is Maya) with the PIN `246810`.
 ```bash
 pnpm lint        # eslint across every workspace
 pnpm typecheck   # tsc --noEmit across every workspace
-pnpm test        # vitest, 178 tests
+pnpm test        # vitest, 221 tests
 pnpm build       # production build of all three apps
 ```
 
@@ -36,7 +36,9 @@ The frontend talks to evolveiq-backend (`/api/v1`), checked out alongside this r
 
 1. Start the backend with demo data (in `evolveiq-backend`):
    `npm run db:migrate && npm run db:seed-demo && npm run dev` — it listens on
-   port 3000. The demo seed creates the same people as the built-in demo.
+   port 3000. The demo seed creates the same people as the built-in demo. Run
+   on a database seeded before 29 Oct 2026, it adds only what came later: care
+   needs, a month of attendance, notices, staff reviews and the wall of fame.
 2. Copy `.env.example` to `.env` at this repo's root and set
    `VITE_API_BASE_URL=/api/v1`. Optionally set `VITE_SHOW_DEMO_ACCOUNTS=true`
    to keep the one-tap demo accounts on the sign-in screens.
@@ -49,7 +51,10 @@ Windows rewrites a value like `/api/v1` into a Windows path.
 
 When the contract changes, deploy the backend first. Since 21 Oct 2026 the
 frontend sends `tone` with every observation, which a backend without the
-`20261021…` migrations refuses.
+`20261021…` migrations refuses. Since 29 Oct 2026 it also reads and writes
+health and care needs, attendance, notices, staff reviews and honours, imports
+people, and removes accounts, classes and schools: the backend's
+`20261029000000…` migration and its new modules.
 
 For a deployed build, set `VITE_API_BASE_URL` to the API's full URL and serve
 the apps from the same site as the API (or enable CORS for them there).
@@ -109,7 +114,10 @@ field too many from the API would never reach a parent's cache or screen;
 `redaction.test.ts` and `mock-transport.test.ts` cover it. A star — something
 good a teacher or parent noticed — does reach parents and students, with the
 giver's words, but never with a Level or learning-behaviour area (`toStar`).
-And the query cache
+A child's health and care needs are the family's own word, not a clinical
+record, and are copied field by field the same way (`toHealthProfile`). A
+Student of the Month reaches staff and that child's own family, never another
+family. And the query cache
 is cleared whenever someone signs in or out (`AuthProvider`), so one person's
 cached responses can never be served to whoever signs in next on the same
 device; `DevShell.test.tsx` covers that.

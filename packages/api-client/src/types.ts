@@ -634,3 +634,228 @@ export interface Notifications {
   notifications: AppNotification[];
   unreadCount: number;
 }
+
+// ───────────────────────────── Client feedback, 29 Oct 2026 ─────────────────────────────
+
+/** What the school should know to take care of a child. Labels live in `@evolveiq/domain`. */
+export type HealthCondition =
+  | 'diabetes'
+  | 'asthma'
+  | 'epilepsy'
+  | 'severe_allergy'
+  | 'on_medication'
+  | 'specially_abled'
+  | 'visual_impairment'
+  | 'hearing_impairment'
+  | 'dyslexia'
+  | 'adhd'
+  | 'autism'
+  | 'speech_language'
+  | 'other';
+
+export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+
+export interface EmergencyContact {
+  name: string;
+  relation: string | null;
+  phone: string;
+}
+
+/**
+ * A child's health and care needs (`/students/:studentId/health`): written by
+ * their parent or the school admin, read by the staff who teach or support
+ * them. It is what the family tells the school, not a clinical record, and it
+ * never feeds the Holistic Index.
+ */
+export interface HealthProfile {
+  studentId: string;
+  conditions: HealthCondition[];
+  bloodGroup: BloodGroup | null;
+  allergies: string | null;
+  medications: string | null;
+  careNotes: string | null;
+  emergencyContact: EmergencyContact | null;
+  /** Who last changed it; null if nothing is recorded yet. */
+  updatedBy: { fullName: string; role: Role } | null;
+  /** Null when nothing has been recorded yet. */
+  updatedAt: string | null;
+}
+
+/** A write replaces the whole profile: a field left out is cleared. */
+export interface HealthProfileInput {
+  conditions: HealthCondition[];
+  bloodGroup?: BloodGroup | null;
+  allergies?: string | null;
+  medications?: string | null;
+  careNotes?: string | null;
+  emergencyContact?: { name: string; relation?: string; phone: string } | null;
+}
+
+export type AttendanceStatus = 'present' | 'late' | 'absent';
+
+export interface AttendanceStudent {
+  id: string;
+  fullName: string;
+  present: number;
+  late: number;
+  absent: number;
+  /** Day ("YYYY-MM-DD") → status, for the days recorded. */
+  records: Record<string, AttendanceStatus>;
+}
+
+/** `GET /classes/:classId/attendance`: a class's register over a range of Asia/Kolkata days. */
+export interface ClassAttendance {
+  classId: string;
+  from: string;
+  to: string;
+  /** Days the register was taken, oldest first. */
+  days: { day: string; markedBy: { fullName: string } | null; markedAt: string }[];
+  /** The class as it is today, by name. */
+  students: AttendanceStudent[];
+}
+
+export interface AttendanceMark {
+  studentId: string;
+  status: AttendanceStatus;
+}
+
+export type NoticeCategory = 'event' | 'activity' | 'training' | 'policy' | 'emergency_contact' | 'general';
+export type NoticeAudience = 'everyone' | 'staff' | 'families';
+
+/** A notice on the board. A null school is a platform notice for every school. */
+export interface Notice {
+  id: string;
+  schoolId: string | null;
+  schoolName: string | null;
+  category: NoticeCategory;
+  title: string;
+  body: string | null;
+  /** "YYYY-MM-DD": when an event, activity or training happens. */
+  startsOn: string | null;
+  location: string | null;
+  /** Always set on an emergency contact. */
+  phone: string | null;
+  audience: NoticeAudience;
+  isPinned: boolean;
+  createdBy: { fullName: string };
+  createdAt: string;
+  updatedAt: string;
+  /** Whether the signed-in admin may edit or take it down. */
+  canManage: boolean;
+}
+
+export interface NewNotice {
+  category: NoticeCategory;
+  title: string;
+  body?: string;
+  startsOn?: string;
+  location?: string;
+  phone?: string;
+  audience?: NoticeAudience;
+  isPinned?: boolean;
+  /** Platform admins: one school, or left out for every school. */
+  schoolId?: string;
+}
+
+/** null clears an optional field. */
+export interface NoticeChanges {
+  category?: NoticeCategory;
+  title?: string;
+  body?: string | null;
+  startsOn?: string | null;
+  location?: string | null;
+  phone?: string | null;
+  audience?: NoticeAudience;
+  isPinned?: boolean;
+}
+
+/** The five things a school admin rates each teacher on, 1–5, once a month. */
+export interface StaffRatings {
+  teaching: number;
+  engagement: number;
+  punctuality: number;
+  teamwork: number;
+  communication: number;
+}
+
+export interface StaffReview {
+  id: string;
+  staff: Person;
+  /** "YYYY-MM". */
+  month: string;
+  ratings: StaffRatings;
+  /** Mean of the five ratings, to one decimal. */
+  average: number;
+  comment: string | null;
+  reviewedBy: { fullName: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffReviewInput extends StaffRatings {
+  comment?: string;
+}
+
+export type HonourKind = 'staff_of_month' | 'student_of_month';
+
+/** One entry on the celebration wall. */
+export interface Honour {
+  id: string;
+  kind: HonourKind;
+  /** "YYYY-MM". */
+  month: string;
+  honoree: { id: string; fullName: string; role: 'teacher' | 'student'; className: string | null };
+  citation: string;
+  awardedBy: { fullName: string };
+  createdAt: string;
+}
+
+export interface NewHonour {
+  kind: HonourKind;
+  month: string;
+  honoreeId: string;
+  citation: string;
+}
+
+export type ImportRole = 'student' | 'teacher' | 'parent';
+
+export interface StudentImportRow {
+  fullName?: string;
+  studentId?: string;
+  pin?: string;
+  className?: string;
+  parentEmail?: string;
+}
+
+export interface TeacherImportRow {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  classNames?: string[];
+}
+
+export interface ParentImportRow {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  childStudentIds?: string[];
+}
+
+/** `POST /imports/people`. A dry run (the default) checks only. */
+export type ImportRequest = { schoolId?: string; dryRun: boolean } & (
+  | { role: 'student'; rows: StudentImportRow[] }
+  | { role: 'teacher'; rows: TeacherImportRow[] }
+  | { role: 'parent'; rows: ParentImportRow[] }
+);
+
+export interface ImportReport {
+  role: ImportRole;
+  dryRun: boolean;
+  /** Every row is fine. */
+  isValid: boolean;
+  /** Accounts created: 0 on a dry run, or when any row has a problem. */
+  created: number;
+  /** Classes the import creates (or would). */
+  newClasses: string[];
+  rows: { row: number; fullName: string; identifier: string; problems: string[] }[];
+}

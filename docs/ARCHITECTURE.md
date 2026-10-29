@@ -64,7 +64,9 @@ not be reimplemented per app:
   same config as a tab bar, so the two never disagree. Its raised middle
   button is the role's action, unless an item is marked `isCenter` (the family
   app's EvolvIQ Guide), and an item can carry a `tag` such as "Soon" (the
-  school admin's CRM integration). `AppLayout` wraps both
+  school admin's CRM integration). A phone's bar holds five targets: a role
+  with more places keeps the first tabs and puts the rest behind "More" (the
+  school admin, since 29 Oct 2026). `AppLayout` wraps both
   with `AppTopBar` (place, date, notifications). Apps pass a `contextCard`
   (built on `SidebarCard`) and a list of `AppNotification`s, both computed
   from queries the app already runs — the shell never fetches on its own.
@@ -77,6 +79,23 @@ not be reimplemented per app:
 `StarBoard` shows a child's stars — the count, where they came from (school or
 home) and the giver's words — the same way to the child, their family and their
 teachers, each in their own terms.
+
+What came with the client's feedback of 29 Oct 2026 is shared the same way,
+one component for every app that shows it:
+- `CareNeedsCard` (read) and `HealthProfileForm` (write) are a child's health
+  and care needs — the parent's Health tab, the teacher's student profile, the
+  school admin's student list — and `CareFlags` is the same as chips on a
+  roster ("Asthma", "ADHD", "+1").
+- `AttendanceMeter` reads a register as "18/26 days" with a bar that turns
+  honey under 75% (`attendanceSummary`, `ATTENDANCE_WATCH_THRESHOLD`).
+- `NoticeBoard` is every reader's notice board and the admins' list to manage,
+  given `onEdit` / `onRemove`: emergency numbers first (they call), then what
+  is coming up, then policies and updates.
+- `HonourWall`, `HonourCard` and `HonourBanner` are the wall of fame and the
+  congratulations a child or their parent sees.
+- `schoolLifeNotifications` adds new notices and recent honours to any app's
+  bell, from lists the app already loads.
+The value lists and their words are in `school-life.ts`.
 
 `AssistantChat` is the EvolvIQ Guide (client feedback, 28 Oct 2026): a scripted
 chat, not an agent. The app hands it prepared topics (`AssistantTopic`: the
@@ -117,6 +136,21 @@ new roles or permission changes are made there, not per-screen.
   (`apps/school-web/src/review-filters.ts`). The backend accepts `tone` from
   its `20261021…` migrations on, so deploy the backend before a frontend that
   sends it.
+- Since 29 Oct 2026: a child's health and care needs
+  (`/students/:studentId/health`, and `/classes/:classId/health` for a roster)
+  are one shape for the family and the school, copied field by field
+  (`toHealthProfile`); a parent or the school admin writes them, a write
+  replaces the whole profile. Attendance is a class register
+  (`/classes/:classId/attendance`, a range of days, at most 62; `PUT …/:day`
+  for one day, today or up to 30 days back). The notice board (`/notices`)
+  answers each person for their audience. Staff reviews (`/staff-reviews`)
+  reach only the school admin and the teacher reviewed. Honours (`/honours`)
+  reach a family only for the Staff of the Month and their own child. An
+  import (`/imports/people`) answers with a report row by row and creates
+  nothing unless every row is fine. `DELETE` on a user, a class or a school
+  removes only what has no records; an account with records answers 409
+  `HAS_RECORDS`, and the screen offers to switch it off instead. Deploy the
+  backend's `20261029000000…` migration first.
 - With `VITE_API_BASE_URL` unset, the same paths are answered by the in-memory
   mock in `api-client/src/mock`, which keeps the backend's roles and rules. It
   backs the demo and every app-level test.

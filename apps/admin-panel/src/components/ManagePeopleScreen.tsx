@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import {
   useCreateUser,
   useDeactivateUser,
@@ -10,16 +11,18 @@ import {
 } from '@evolveiq/api-client';
 import { ROLE_LABELS } from '@evolveiq/auth';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
-import { Avatar, Button, ErrorState, PageHeader, Plus } from '@evolveiq/ui';
+import { Avatar, Button, buttonClasses, ErrorState, PageHeader, Plus, Trash2, Upload } from '@evolveiq/ui';
 import { AccountStatusBadge } from './AccountStatusBadge';
 import { EMAIL_FIELD, FULL_NAME_FIELD, PASSWORD_FIELD, saveErrorMessage } from './account-fields';
 import { RecordEditor, type RecordValues } from './RecordEditor';
+import { RemoveAccountDialog } from './RemoveAccountDialog';
 
 /**
  * Teachers and parents differ only in the role they are created with, so both
  * screens are this one component with a different role. Accounts are created
- * by the school admin (there is no sign-up), edited by name and email, and
- * switched off rather than deleted.
+ * by the school admin (there is no sign-up) one at a time or from a
+ * spreadsheet, edited by name and email, switched off, and removed only while
+ * they have no records (client feedback, 29 Oct 2026).
  */
 
 export interface ManagePeopleScreenProps {
@@ -53,6 +56,7 @@ export function ManagePeopleScreen({
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   const [error, setError] = useState<string>();
   const [rowError, setRowError] = useState<string>();
+  const [removing, setRemoving] = useState<User | null>(null);
 
   if (people.isError) return <ErrorState onRetry={() => void people.refetch()} />;
 
@@ -123,9 +127,15 @@ export function ManagePeopleScreen({
         title={title}
         subtitle={subtitle}
         actions={
-          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
-            {addLabel}
-          </Button>
+          <>
+            <Link to={`/school/import?role=${role}`} className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+              <Upload />
+              Import
+            </Link>
+            <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
+              {addLabel}
+            </Button>
+          </>
         }
       />
 
@@ -143,13 +153,18 @@ export function ManagePeopleScreen({
         isLoading={people.isLoading}
         onRowClick={(person) => setEditing(person)}
         rowActions={(person) => (
-          <Button
-            variant={person.isActive ? 'danger-quiet' : 'quiet'}
-            size="sm"
-            onClick={() => void toggleActive(person)}
-          >
-            {person.isActive ? 'Switch off' : 'Switch on'}
-          </Button>
+          <span className="inline-flex gap-1">
+            <Button
+              variant={person.isActive ? 'danger-quiet' : 'quiet'}
+              size="sm"
+              onClick={() => void toggleActive(person)}
+            >
+              {person.isActive ? 'Switch off' : 'Switch on'}
+            </Button>
+            <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${person.fullName}`} onClick={() => setRemoving(person)}>
+              Remove
+            </Button>
+          </span>
         )}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
@@ -179,6 +194,8 @@ export function ManagePeopleScreen({
         onSave={save}
         {...(error ? { error } : {})}
       />
+
+      <RemoveAccountDialog person={removing} onClose={() => setRemoving(null)} />
     </div>
   );
 }

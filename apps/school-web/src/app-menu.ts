@@ -1,8 +1,13 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { BookOpen, ClipboardList, Inbox, Plus, UsersRound } from '@evolveiq/ui';
+import { BookOpen, ClipboardCheck, ClipboardList, Inbox, Megaphone, Plus, UsersRound } from '@evolveiq/ui';
 
-/** The school app's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`. */
+const NOTICE_BOARD = { label: 'Notice board', shortLabel: 'Notices', to: '/notices', icon: Megaphone };
+
+/**
+ * The school app's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`.
+ * Attendance and the notice board came with the client's feedback of 29 Oct 2026.
+ */
 export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSection[] {
   if (role === 'teacher') {
     return [
@@ -14,6 +19,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
         title: 'Classroom',
         items: [
           { label: 'My students', shortLabel: 'Students', to: '/teacher/students', icon: UsersRound },
+          { label: 'Attendance', to: '/teacher/attendance', icon: ClipboardCheck },
           {
             label: 'Assign an activity',
             shortLabel: 'Assign',
@@ -22,6 +28,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
           },
         ],
       },
+      { title: 'School', items: [NOTICE_BOARD] },
     ];
   }
 
@@ -55,6 +62,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
           },
         ],
       },
+      { title: 'School', items: [NOTICE_BOARD] },
     ];
   }
 

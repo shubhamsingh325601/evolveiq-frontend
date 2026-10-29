@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   useCreateUser,
   useDeactivateUser,
@@ -18,6 +19,7 @@ import {
   Avatar,
   Badge,
   Button,
+  buttonClasses,
   Contact,
   ErrorState,
   HeartHandshake,
@@ -27,6 +29,8 @@ import {
   School,
   SegmentedControl,
   StatTile,
+  Trash2,
+  Upload,
 } from '@evolveiq/ui';
 import { AccountStatusBadge } from '../../components/AccountStatusBadge';
 import {
@@ -38,6 +42,7 @@ import {
   STUDENT_ID_FIELD,
 } from '../../components/account-fields';
 import { RecordEditor, type RecordEditorField, type RecordValues } from '../../components/RecordEditor';
+import { RemoveAccountDialog } from '../../components/RemoveAccountDialog';
 
 const ALL_ROLES: Role[] = ['student', 'parent', 'teacher', 'school_admin', 'psychologist', 'platform_admin'];
 
@@ -67,6 +72,7 @@ export function ManageUsersScreen() {
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   const [error, setError] = useState<string>();
   const [rowError, setRowError] = useState<string>();
+  const [removing, setRemoving] = useState<User | null>(null);
 
   if (users.isError) return <ErrorState onRetry={() => void users.refetch()} />;
 
@@ -196,9 +202,15 @@ export function ManageUsersScreen() {
         title="People"
         subtitle="Every account across every school."
         actions={
-          <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
-            Add an account
-          </Button>
+          <>
+            <Link to="/platform/import" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+              <Upload />
+              Import
+            </Link>
+            <Button size="sm" icon={Plus} onClick={() => setEditing('new')}>
+              Add an account
+            </Button>
+          </>
         }
       />
 
@@ -234,13 +246,18 @@ export function ManageUsersScreen() {
           person.id === me?.id ? (
             <span className="text-xs text-ink-faint">You</span>
           ) : (
-            <Button
-              variant={person.isActive ? 'danger-quiet' : 'quiet'}
-              size="sm"
-              onClick={() => void toggleActive(person)}
-            >
-              {person.isActive ? 'Switch off' : 'Switch on'}
-            </Button>
+            <span className="inline-flex gap-1">
+              <Button
+                variant={person.isActive ? 'danger-quiet' : 'quiet'}
+                size="sm"
+                onClick={() => void toggleActive(person)}
+              >
+                {person.isActive ? 'Switch off' : 'Switch on'}
+              </Button>
+              <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${person.fullName}`} onClick={() => setRemoving(person)}>
+                Remove
+              </Button>
+            </span>
           )
         }
         emptyTitle="No accounts in this filter"
@@ -275,6 +292,8 @@ export function ManageUsersScreen() {
         onSave={save}
         {...(error ? { error } : {})}
       />
+
+      <RemoveAccountDialog person={removing} onClose={() => setRemoving(null)} />
     </div>
   );
 }

@@ -129,7 +129,11 @@ export function CrmIntegrationScreen() {
       </section>
 
       <p className="text-sm text-ink-muted">
-        Until then, add and edit records by hand:{' '}
+        Until then,{' '}
+        <Link to="/school/import" className="font-semibold text-iris-700 underline-offset-2 hover:underline">
+          import a spreadsheet
+        </Link>{' '}
+        from your current system, or add and edit records by hand:{' '}
         {BY_HAND.map((item, index) => (
           <span key={item.to}>
             <Link to={item.to} className="font-semibold text-iris-700 underline-offset-2 hover:underline">

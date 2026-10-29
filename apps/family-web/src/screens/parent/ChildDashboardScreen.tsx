@@ -1,6 +1,8 @@
 import { Link, useParams } from 'react-router-dom';
 import {
+  addMonths,
   businessDate,
+  businessMonth,
   FEATURES,
   lastSevenDays,
   MAX_GROWTH_AREAS,
@@ -10,7 +12,9 @@ import {
   useGrowthAreas,
   useGrowthMoments,
   useHolisticIndex,
+  useHonours,
   useMonthlySummary,
+  useNotices,
   useStars,
   useStreak,
 } from '@evolveiq/api-client';
@@ -21,6 +25,7 @@ import {
   GrowthMoments,
   HolisticIndexCard,
   HolisticTrendCard,
+  HonourBanner,
   ObservationEntry,
   possessive,
   relativeDayPhrase,
@@ -55,6 +60,7 @@ import {
 import { AssignmentChecklist, type ChecklistItem } from '../../components/AssignmentChecklist';
 import { ChildSwitcher } from '../../components/ChildSwitcher';
 import { QuickLinkTile } from '../../components/QuickLinkTile';
+import { SchoolNewsCard } from '../../components/SchoolNewsCard';
 
 /**
  * The parent's home for one child — the Child Understanding Center. It leads
@@ -79,6 +85,8 @@ export function ChildDashboardScreen() {
   const moments = useGrowthMoments(childId);
   const observations = useFamilyObservations();
   const summary = useMonthlySummary(childId);
+  const honours = useHonours();
+  const notices = useNotices();
 
   if (children.isLoading) return <LoadingState label="Loading" />;
   const child = (children.data ?? []).find((candidate) => candidate.id === childId);
@@ -110,6 +118,11 @@ export function ChildDashboardScreen() {
   const entries = (observations.data ?? []).filter((observation) => observation.studentId === child.id);
   const openAreas = growthAreas.data ?? [];
   const index = FEATURES.holisticIndex ? holistic.data : undefined;
+  // This month's honour, or last month's while it is still news.
+  const recentMonths = [businessMonth(), addMonths(businessMonth(), -1)];
+  const childHonour = (honours.data ?? [])
+    .filter((honour) => honour.honoree.id === child.id && recentMonths.includes(honour.month))
+    .sort((a, b) => b.month.localeCompare(a.month))[0];
 
   return (
     <div className="flex flex-col gap-8">
@@ -121,6 +134,8 @@ export function ChildDashboardScreen() {
           Review {possessive(firstName)} progress and pending tasks.
         </p>
       </header>
+
+      {childHonour ? <HonourBanner honour={childHonour} audience="family" /> : null}
 
       {index ? (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -169,8 +184,8 @@ export function ChildDashboardScreen() {
 
       {index ? (
         <div className="flex flex-wrap gap-3">
-          <Link to={`/parent/children/${child.id}/wellbeing`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-            Wellbeing check-in
+          <Link to={`/parent/health/${child.id}`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+            Health and care
             <ChevronRight />
           </Link>
           <Link to={`/parent/explore/${child.id}`} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
@@ -248,6 +263,8 @@ export function ChildDashboardScreen() {
               iconClassName="border-jade-100 bg-jade-50 text-jade-600"
             />
           </div>
+
+          <SchoolNewsCard notices={notices.data ?? []} honours={honours.data ?? []} to="/parent/notices" />
 
           <section>
             <SectionTitle icon={Sprout} iconClassName="text-jade-500">

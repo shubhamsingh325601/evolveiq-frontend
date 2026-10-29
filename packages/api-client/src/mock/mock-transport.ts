@@ -7,10 +7,16 @@ import type {
   ActivityContent,
   ActivityType,
   AppNotification,
+  AttendanceStatus,
+  BloodGroup,
   Consent,
   ConsentPurpose,
   DevelopmentArea,
   FieldIssue,
+  HealthCondition,
+  HonourKind,
+  NoticeAudience,
+  NoticeCategory,
   ObservationArea,
   ObservationFrequency,
   ObservationLevel,
@@ -30,7 +36,12 @@ import {
   DEMO_PIN,
   type MockActivity,
   type MockAssignment,
+  type MockAttendance,
+  type MockHealthProfile,
+  type MockHonour,
+  type MockNotice,
   type MockObservation,
+  type MockStaffReview,
   type MockState,
   type MockSupportPlan,
   type MockUser,
@@ -1649,6 +1660,761 @@ const notificationHandlers = {
   },
 };
 
+// ───────────────────────────── Client feedback, 29 Oct 2026 ─────────────────────────────
+// Health and care needs, attendance, the notice board, staff reviews, the celebration wall,
+// imports, and removing what has no records. The backend's rules, one for one.
+
+const HEALTH_CONDITIONS: HealthCondition[] = [
+  'diabetes',
+  'asthma',
+  'epilepsy',
+  'severe_allergy',
+  'on_medication',
+  'specially_abled',
+  'visual_impairment',
+  'hearing_impairment',
+  'dyslexia',
+  'adhd',
+  'autism',
+  'speech_language',
+  'other',
+];
+const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const PHONE_PATTERN = /^\+?[0-9][0-9 ()-]*[0-9]$/;
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+const ATTENDANCE_STATUSES: AttendanceStatus[] = ['present', 'late', 'absent'];
+const ATTENDANCE_BACKFILL_DAYS = 30;
+const ATTENDANCE_MAX_RANGE_DAYS = 62;
+const NOTICE_CATEGORIES: NoticeCategory[] = ['event', 'activity', 'training', 'policy', 'emergency_contact', 'general'];
+const NOTICE_AUDIENCES: NoticeAudience[] = ['everyone', 'staff', 'families'];
+const HONOUR_KINDS: HonourKind[] = ['staff_of_month', 'student_of_month'];
+const RATING_FIELDS = ['teaching', 'engagement', 'punctuality', 'teamwork', 'communication'] as const;
+const MAX_IMPORT_ROWS = 500;
+
+const hasRecords = (message: string) => new MockHttpError(409, 'HAS_RECORDS', message);
+
+/** Optional free text: undefined (absent), null (clear) or a trimmed, non-blank string. */
+function optionalText(body: Body, name: string, issues: FieldIssue[], max: number): string | null | undefined {
+  const value = body[name];
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string' || value.trim() === '') {
+    field(issues, name, 'must not be blank');
+    return undefined;
+  }
+  if (value.length > max) field(issues, name, `must be at most ${max} characters`);
+  return value.trim();
+}
+
+function optionalPhone(body: Body, name: string, issues: FieldIssue[]): string | null | undefined {
+  const value = body[name];
+  if (value === undefined || value === null) return value as undefined | null;
+  if (typeof value !== 'string' || value.length < 3 || value.length > 20 || !PHONE_PATTERN.test(value)) {
+    field(issues, name, 'must be a phone number');
+    return undefined;
+  }
+  return value.trim();
+}
+
+// Health and care needs ─────────────────────────────
+
+function healthDto(studentId: string) {
+  const profile = state.healthProfiles.find((p) => p.studentId === studentId);
+  if (!profile) {
+    return {
+      studentId,
+      conditions: [],
+      bloodGroup: null,
+      allergies: null,
+      medications: null,
+      careNotes: null,
+      emergencyContact: null,
+      updatedBy: null,
+      updatedAt: null,
+    };
+  }
+  const editor = userById(profile.updatedById);
+  return {
+    studentId,
+    conditions: [...profile.conditions],
+    bloodGroup: profile.bloodGroup,
+    allergies: profile.allergies,
+    medications: profile.medications,
+    careNotes: profile.careNotes,
+    emergencyContact:
+      profile.emergencyName && profile.emergencyPhone
+        ? { name: profile.emergencyName, relation: profile.emergencyRelation, phone: profile.emergencyPhone }
+        : null,
+    updatedBy: editor ? { fullName: editor.fullName, role: editor.role } : null,
+    updatedAt: profile.updatedAt,
+  };
+}
+
+const healthHandlers = {
+  view({ actor }: Context, studentId: string): Result {
+    return { body: { health: healthDto(progressStudent(actor, studentId).id) } };
+  },
+  save({ actor, body }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['conditions', 'bloodGroup', 'allergies', 'medications', 'careNotes', 'emergencyContact'], issues);
+    const conditions = body.conditions;
+    if (!Array.isArray(conditions) || conditions.some((c) => !HEALTH_CONDITIONS.includes(c as HealthCondition))) {
+      field(issues, 'conditions', `must list only: ${HEALTH_CONDITIONS.join(', ')}`);
+    } else if (new Set(conditions).size !== conditions.length) {
+      field(issues, 'conditions', 'must not repeat a condition');
+    }
+    if (body.bloodGroup !== undefined && body.bloodGroup !== null && !BLOOD_GROUPS.includes(body.bloodGroup as BloodGroup)) {
+      field(issues, 'bloodGroup', `must be one of: ${BLOOD_GROUPS.join(', ')}`);
+    }
+    const allergies = optionalText(body, 'allergies', issues, 500);
+    const medications = optionalText(body, 'medications', issues, 500);
+    const careNotes = optionalText(body, 'careNotes', issues, 1000);
+    let contact: { name: string; relation: string | null; phone: string } | null = null;
+    if (body.emergencyContact !== undefined && body.emergencyContact !== null) {
+      const raw = body.emergencyContact as Body;
+      const contactIssues: FieldIssue[] = [];
+      rejectUnknown(raw, ['name', 'relation', 'phone'], contactIssues);
+      const name = text(raw, 'name', contactIssues, { max: 100 });
+      const relation = text(raw, 'relation', contactIssues, { max: 50, isOptional: true });
+      const phone = optionalPhone(raw, 'phone', contactIssues);
+      if (!phone) field(contactIssues, 'phone', 'is required');
+      issues.push(...contactIssues.map((issue) => ({ field: `emergencyContact.${issue.field}`, message: issue.message })));
+      if (name && phone) contact = { name, relation: relation ?? null, phone };
+    }
+    assertValid(issues);
+    const record: MockHealthProfile = {
+      studentId: student.id,
+      conditions: [...(conditions as HealthCondition[])],
+      bloodGroup: (body.bloodGroup as BloodGroup | null | undefined) ?? null,
+      allergies: allergies ?? null,
+      medications: medications ?? null,
+      careNotes: careNotes ?? null,
+      emergencyName: contact?.name ?? null,
+      emergencyRelation: contact?.relation ?? null,
+      emergencyPhone: contact?.phone ?? null,
+      updatedById: actor.id,
+      updatedAt: nowIso(),
+    };
+    state.healthProfiles = [...state.healthProfiles.filter((p) => p.studentId !== student.id), record];
+    return { body: { health: healthDto(student.id) } };
+  },
+  forClass({ actor }: Context, classId: string): Result {
+    visibleClass(actor, classId);
+    const profiles = state.classStudents
+      .filter((row) => row.classId === classId && state.healthProfiles.some((p) => p.studentId === row.studentId))
+      .map((row) => healthDto(row.studentId))
+      .sort((a, b) => (userById(a.studentId)?.fullName ?? '').localeCompare(userById(b.studentId)?.fullName ?? ''));
+    return { body: { profiles } };
+  },
+};
+
+// Attendance ─────────────────────────────
+
+const daySpan = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+
+function classAttendance(classId: string, from: string, to: string) {
+  const members = state.classStudents
+    .filter((row) => row.classId === classId)
+    .map((row) => userById(row.studentId))
+    .filter((user): user is MockUser => user !== undefined)
+    .sort(byName);
+  const memberIds = new Set(members.map((m) => m.id));
+  const rows = state.attendance.filter((r) => memberIds.has(r.studentId) && r.day >= from && r.day <= to);
+  const byDay = new Map<string, MockAttendance>();
+  for (const row of rows) {
+    const seen = byDay.get(row.day);
+    if (!seen || row.updatedAt > seen.updatedAt) byDay.set(row.day, row);
+  }
+  return {
+    classId,
+    from,
+    to,
+    days: [...byDay.values()]
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .map((row) => ({ day: row.day, markedBy: { fullName: person(userById(row.markedById)).fullName }, markedAt: row.updatedAt })),
+    students: members.map((member) => {
+      const own = rows.filter((r) => r.studentId === member.id);
+      return {
+        id: member.id,
+        fullName: member.fullName,
+        present: own.filter((r) => r.status === 'present').length,
+        late: own.filter((r) => r.status === 'late').length,
+        absent: own.filter((r) => r.status === 'absent').length,
+        records: Object.fromEntries(own.map((r) => [r.day, r.status])),
+      };
+    }),
+  };
+}
+
+const attendanceHandlers = {
+  forClass({ actor, query }: Context, classId: string): Result {
+    visibleClass(actor, classId);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(query, ['from', 'to'], issues);
+    for (const name of ['from', 'to'] as const) {
+      if (query[name] !== undefined && !DAY_PATTERN.test(query[name])) field(issues, name, 'must be YYYY-MM-DD');
+    }
+    assertValid(issues);
+    const today = businessDate(new Date());
+    const to = query.to ?? today;
+    const from = query.from ?? `${to.slice(0, 7)}-01`;
+    if (to > today) throw Errors.validation([{ field: 'to', message: 'must not be in the future' }]);
+    if (from > to) throw Errors.validation([{ field: 'from', message: 'must not be after "to"' }]);
+    if (daySpan(from, to) > ATTENDANCE_MAX_RANGE_DAYS) {
+      throw Errors.validation([{ field: 'from', message: `must be at most ${ATTENDANCE_MAX_RANGE_DAYS} days before "to"` }]);
+    }
+    return { body: { attendance: classAttendance(classId, from, to) } };
+  },
+  mark({ actor, body }: Context, classId: string, day: string): Result {
+    visibleClass(actor, classId);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['records'], issues);
+    if (!DAY_PATTERN.test(day)) field(issues, 'day', 'must be YYYY-MM-DD');
+    const records = Array.isArray(body.records) ? (body.records as Body[]) : [];
+    if (records.length < 1 || records.length > 200) field(issues, 'records', 'must list 1–200 students');
+    if (records.some((r) => typeof r.studentId !== 'string' || !ATTENDANCE_STATUSES.includes(r.status as AttendanceStatus))) {
+      field(issues, 'records', 'each needs a studentId and a status of present, late or absent');
+    }
+    if (new Set(records.map((r) => r.studentId)).size !== records.length) field(issues, 'records', 'must list each student once');
+    assertValid(issues);
+    const today = businessDate(new Date());
+    if (day > today) throw Errors.validation([{ field: 'day', message: 'must not be in the future' }]);
+    if (day < addDays(today, -ATTENDANCE_BACKFILL_DAYS)) {
+      throw Errors.validation([{ field: 'day', message: `must be today or one of the last ${ATTENDANCE_BACKFILL_DAYS} days` }]);
+    }
+    const members = new Set(state.classStudents.filter((row) => row.classId === classId).map((row) => row.studentId));
+    if (records.some((r) => !members.has(String(r.studentId)))) {
+      throw Errors.invalidReference('records', 'Every student must be in this class.');
+    }
+    const at = nowIso();
+    for (const r of records) {
+      const record: MockAttendance = { studentId: String(r.studentId), day, status: r.status as AttendanceStatus, markedById: actor.id, updatedAt: at };
+      state.attendance = [...state.attendance.filter((a) => !(a.studentId === record.studentId && a.day === day)), record];
+    }
+    return { body: { attendance: classAttendance(classId, day, day) } };
+  },
+};
+
+// Notices ─────────────────────────────
+
+function canManageNotice(actor: MockUser, notice: MockNotice): boolean {
+  if (actor.role === 'platform_admin') return true;
+  return actor.role === 'school_admin' && actor.schoolId !== null && notice.schoolId === actor.schoolId;
+}
+
+function canReadNotice(actor: MockUser, notice: MockNotice): boolean {
+  const ownOrEverySchool = notice.schoolId === null || notice.schoolId === actor.schoolId;
+  switch (actor.role) {
+    case 'platform_admin':
+      return true;
+    case 'school_admin':
+      return ownOrEverySchool;
+    case 'teacher':
+      return ownOrEverySchool && notice.audience !== 'families';
+    case 'psychologist':
+      return notice.audience !== 'families';
+    case 'parent':
+    case 'student':
+      return ownOrEverySchool && notice.audience !== 'staff';
+  }
+}
+
+function noticeDto(actor: MockUser, notice: MockNotice) {
+  return {
+    id: notice.id,
+    schoolId: notice.schoolId,
+    schoolName: notice.schoolId ? (state.schools.find((s) => s.id === notice.schoolId)?.name ?? null) : null,
+    category: notice.category,
+    title: notice.title,
+    body: notice.body,
+    startsOn: notice.startsOn,
+    location: notice.location,
+    phone: notice.phone,
+    audience: notice.audience,
+    isPinned: notice.isPinned,
+    createdBy: { fullName: person(userById(notice.createdById)).fullName },
+    createdAt: notice.createdAt,
+    updatedAt: notice.updatedAt,
+    canManage: canManageNotice(actor, notice),
+  };
+}
+
+function readNoticeFields(body: Body, issues: FieldIssue[], isCreate: boolean) {
+  const category = oneOf(body, 'category', NOTICE_CATEGORIES, issues, !isCreate);
+  const title = text(body, 'title', issues, { max: 120, isOptional: !isCreate });
+  const details = optionalText(body, 'body', issues, 2000);
+  const location = optionalText(body, 'location', issues, 120);
+  const phone = optionalPhone(body, 'phone', issues);
+  let startsOn: string | null | undefined;
+  if (body.startsOn === null) startsOn = null;
+  else if (body.startsOn !== undefined) {
+    if (typeof body.startsOn !== 'string' || !DAY_PATTERN.test(body.startsOn)) field(issues, 'startsOn', 'must be YYYY-MM-DD');
+    else startsOn = body.startsOn;
+  }
+  const audience = oneOf(body, 'audience', NOTICE_AUDIENCES, issues, true);
+  if (body.isPinned !== undefined && typeof body.isPinned !== 'boolean') field(issues, 'isPinned', 'must be true or false');
+  return { category, title, details, location, phone, startsOn, audience, isPinned: body.isPinned as boolean | undefined };
+}
+
+function findManagedNotice(actor: MockUser, noticeId: string): MockNotice {
+  const notice = state.notices.find((n) => n.id === noticeId);
+  if (!notice || !canManageNotice(actor, notice)) throw Errors.notFound('Notice');
+  return notice;
+}
+
+const noticeHandlers = {
+  list({ actor, query }: Context): Result {
+    if (query.schoolId && actor.role !== 'platform_admin') throw Errors.forbidden('Only Platform Admins can filter notices by school.');
+    const notices = state.notices
+      .filter((n) => canReadNotice(actor, n))
+      .filter((n) => !query.category || n.category === query.category)
+      .filter((n) => !query.schoolId || n.schoolId === query.schoolId)
+      .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || newestFirst(a, b))
+      .map((n) => noticeDto(actor, n));
+    return { body: paginate(notices, query, 'notices') };
+  },
+  create({ actor, body }: Context): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['category', 'title', 'body', 'startsOn', 'location', 'phone', 'audience', 'isPinned', 'schoolId'], issues);
+    const fields = readNoticeFields(body, issues, true);
+    assertValid(issues);
+    let schoolId: string | null;
+    if (actor.role === 'school_admin') {
+      if (body.schoolId !== undefined && body.schoolId !== actor.schoolId) {
+        throw Errors.forbidden('School Admins can only post notices for their own school.');
+      }
+      schoolId = actor.schoolId;
+    } else {
+      schoolId = typeof body.schoolId === 'string' ? body.schoolId : null;
+      if (schoolId !== null && !state.schools.some((s) => s.id === schoolId)) throw Errors.invalidReference('schoolId', 'School not found.');
+    }
+    if (fields.category === 'emergency_contact' && !fields.phone) {
+      throw Errors.validation([{ field: 'phone', message: 'is required for an emergency contact' }]);
+    }
+    const notice: MockNotice = {
+      id: nextId('ntc'),
+      schoolId,
+      category: fields.category!,
+      title: fields.title ?? '',
+      body: fields.details ?? null,
+      startsOn: fields.startsOn ?? null,
+      location: fields.location ?? null,
+      phone: fields.phone ?? null,
+      audience: fields.audience ?? 'everyone',
+      isPinned: fields.isPinned ?? false,
+      createdById: actor.id,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.notices.unshift(notice);
+    return { status: 201, body: { notice: noticeDto(actor, notice) } };
+  },
+  update({ actor, body }: Context, noticeId: string): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['category', 'title', 'body', 'startsOn', 'location', 'phone', 'audience', 'isPinned'], issues);
+    if (Object.keys(body).length === 0) field(issues, 'body', 'send at least one field to change');
+    const fields = readNoticeFields(body, issues, false);
+    assertValid(issues);
+    const notice = findManagedNotice(actor, noticeId);
+    const category = fields.category ?? notice.category;
+    const phone = fields.phone === undefined ? notice.phone : fields.phone;
+    if (category === 'emergency_contact' && !phone) {
+      throw Errors.validation([{ field: 'phone', message: 'is required for an emergency contact' }]);
+    }
+    if (fields.category !== undefined) notice.category = fields.category;
+    if (fields.title !== undefined) notice.title = fields.title;
+    if (fields.details !== undefined) notice.body = fields.details;
+    if (fields.startsOn !== undefined) notice.startsOn = fields.startsOn;
+    if (fields.location !== undefined) notice.location = fields.location;
+    if (fields.phone !== undefined) notice.phone = fields.phone;
+    if (fields.audience !== undefined) notice.audience = fields.audience;
+    if (fields.isPinned !== undefined) notice.isPinned = fields.isPinned;
+    notice.updatedAt = nowIso();
+    return { body: { notice: noticeDto(actor, notice) } };
+  },
+  remove({ actor }: Context, noticeId: string): Result {
+    const notice = findManagedNotice(actor, noticeId);
+    state.notices = state.notices.filter((n) => n.id !== notice.id);
+    return { status: 204 };
+  },
+};
+
+// Staff reviews ─────────────────────────────
+
+function staffReviewDto(review: MockStaffReview) {
+  const ratings = {
+    teaching: review.teaching,
+    engagement: review.engagement,
+    punctuality: review.punctuality,
+    teamwork: review.teamwork,
+    communication: review.communication,
+  };
+  const values = Object.values(ratings);
+  return {
+    id: review.id,
+    staff: person(userById(review.staffId)),
+    month: review.month,
+    ratings,
+    average: Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10,
+    comment: review.comment,
+    reviewedBy: { fullName: person(userById(review.reviewerId)).fullName },
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+  };
+}
+
+function checkMonth(month: string, name = 'month'): void {
+  if (!MONTH_PATTERN.test(month)) throw Errors.validation([{ field: name, message: 'must be YYYY-MM' }]);
+}
+
+const staffReviewHandlers = {
+  list({ actor, query }: Context): Result {
+    if (query.month) checkMonth(query.month);
+    let staffId = query.staffId;
+    if (actor.role === 'teacher') {
+      if (staffId && staffId !== actor.id) throw Errors.forbidden('Teachers can only read their own reviews.');
+      staffId = actor.id;
+    }
+    const reviews = state.staffReviews
+      .filter((r) => r.schoolId === actor.schoolId)
+      .filter((r) => !staffId || r.staffId === staffId)
+      .filter((r) => !query.month || r.month === query.month)
+      .sort((a, b) => b.month.localeCompare(a.month) || byName(person(userById(a.staffId)), person(userById(b.staffId))))
+      .map(staffReviewDto);
+    return { body: paginate(reviews, query, 'reviews') };
+  },
+  save({ actor, body }: Context, staffId: string, month: string): Result {
+    checkMonth(month);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, [...RATING_FIELDS, 'comment'], issues);
+    for (const name of RATING_FIELDS) {
+      const value = body[name];
+      if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 5) field(issues, name, 'must be a whole number from 1 to 5');
+    }
+    const comment = text(body, 'comment', issues, { max: 1000, isOptional: true });
+    assertValid(issues);
+    if (month > businessMonth()) throw Errors.validation([{ field: 'month', message: 'must not be in the future' }]);
+    const staff = userById(staffId);
+    if (!staff || staff.role !== 'teacher' || staff.schoolId !== actor.schoolId) throw Errors.notFound('Teacher');
+    const existing = state.staffReviews.find((r) => r.staffId === staffId && r.month === month);
+    const ratings = Object.fromEntries(RATING_FIELDS.map((name) => [name, body[name] as number])) as Pick<MockStaffReview, (typeof RATING_FIELDS)[number]>;
+    const review: MockStaffReview = {
+      id: existing?.id ?? nextId('rev'),
+      schoolId: actor.schoolId ?? '',
+      staffId,
+      reviewerId: actor.id,
+      month,
+      ...ratings,
+      comment: comment ?? null,
+      createdAt: existing?.createdAt ?? nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.staffReviews = [...state.staffReviews.filter((r) => r !== existing), review];
+    return { body: { review: staffReviewDto(review) } };
+  },
+  remove({ actor }: Context, staffId: string, month: string): Result {
+    checkMonth(month);
+    const existing = state.staffReviews.find((r) => r.staffId === staffId && r.month === month && r.schoolId === actor.schoolId);
+    if (!existing) throw Errors.notFound('Staff review');
+    state.staffReviews = state.staffReviews.filter((r) => r !== existing);
+    return { status: 204 };
+  },
+};
+
+// Honours ─────────────────────────────
+
+function canSeeHonour(actor: MockUser, honour: MockHonour): boolean {
+  if (actor.role === 'platform_admin') return true;
+  if (honour.schoolId !== actor.schoolId) return false;
+  switch (actor.role) {
+    case 'school_admin':
+    case 'teacher':
+      return true;
+    case 'parent':
+      return honour.kind === 'staff_of_month' || parentOf(honour.honoreeId) === actor.id;
+    case 'student':
+      return honour.kind === 'staff_of_month' || honour.honoreeId === actor.id;
+    default:
+      return false;
+  }
+}
+
+function honourDto(honour: MockHonour) {
+  const honoree = userById(honour.honoreeId);
+  const classId = honoree ? classOfStudent(honoree.id) : undefined;
+  return {
+    id: honour.id,
+    kind: honour.kind,
+    month: honour.month,
+    honoree: {
+      id: honour.honoreeId,
+      fullName: honoree?.fullName ?? 'Unknown',
+      role: honour.kind === 'staff_of_month' ? ('teacher' as const) : ('student' as const),
+      className: classId ? (state.classes.find((c) => c.id === classId)?.name ?? null) : null,
+    },
+    citation: honour.citation,
+    awardedBy: { fullName: person(userById(honour.awardedById)).fullName },
+    createdAt: honour.createdAt,
+  };
+}
+
+const honourHandlers = {
+  list({ actor, query }: Context): Result {
+    if (query.month) checkMonth(query.month);
+    if (query.schoolId && actor.role !== 'platform_admin') throw Errors.forbidden('Only Platform Admins can filter the wall by school.');
+    const kindOrder = (kind: HonourKind) => HONOUR_KINDS.indexOf(kind);
+    const honours = state.honours
+      .filter((h) => canSeeHonour(actor, h))
+      .filter((h) => !query.month || h.month === query.month)
+      .filter((h) => !query.kind || h.kind === query.kind)
+      .filter((h) => !query.schoolId || h.schoolId === query.schoolId)
+      .sort((a, b) => b.month.localeCompare(a.month) || kindOrder(a.kind) - kindOrder(b.kind) || a.createdAt.localeCompare(b.createdAt))
+      .map(honourDto);
+    return { body: paginate(honours, query, 'honours') };
+  },
+  create({ actor, body }: Context): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['kind', 'month', 'honoreeId', 'citation'], issues);
+    const kind = oneOf(body, 'kind', HONOUR_KINDS, issues);
+    const month = text(body, 'month', issues, { max: 7 });
+    if (month && !MONTH_PATTERN.test(month)) field(issues, 'month', 'must be YYYY-MM');
+    const honoreeId = text(body, 'honoreeId', issues, { max: 64 });
+    const citation = text(body, 'citation', issues, { max: 500 });
+    assertValid(issues);
+    if (month! > businessMonth()) throw Errors.validation([{ field: 'month', message: 'must not be in the future' }]);
+    const role = kind === 'staff_of_month' ? 'teacher' : 'student';
+    const honoree = userById(honoreeId);
+    if (!honoree || honoree.role !== role || honoree.schoolId !== actor.schoolId) {
+      throw Errors.invalidReference('honoreeId', `No ${role} with that ID in your school.`);
+    }
+    if (state.honours.some((h) => h.kind === kind && h.month === month && h.honoreeId === honoreeId)) {
+      throw Errors.conflict('They already have this honour for that month.');
+    }
+    const honour: MockHonour = {
+      id: nextId('hon'),
+      schoolId: actor.schoolId ?? '',
+      kind: kind!,
+      month: month!,
+      honoreeId: honoree.id,
+      citation: citation!,
+      awardedById: actor.id,
+      createdAt: nowIso(),
+    };
+    state.honours.push(honour);
+    return { status: 201, body: { honour: honourDto(honour) } };
+  },
+  remove({ actor }: Context, honourId: string): Result {
+    const honour = state.honours.find((h) => h.id === honourId && h.schoolId === actor.schoolId);
+    if (!honour) throw Errors.notFound('Honour');
+    state.honours = state.honours.filter((h) => h !== honour);
+    return { status: 204 };
+  },
+};
+
+// Imports ─────────────────────────────
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const cellOf = (row: Body, name: string) => (typeof row[name] === 'string' ? (row[name] as string).trim() : '');
+const cellList = (row: Body, name: string) => (Array.isArray(row[name]) ? (row[name] as unknown[]).map((v) => String(v).trim()).filter(Boolean) : []);
+
+function importPeople({ actor, body }: Context): Result {
+  const issues: FieldIssue[] = [];
+  const role = oneOf(body, 'role', ['student', 'teacher', 'parent'] as const, issues);
+  if (!role) throw Errors.validation(issues);
+  rejectUnknown(body, ['role', 'schoolId', 'dryRun', 'rows'], issues);
+  const rows = Array.isArray(body.rows) ? (body.rows as Body[]) : [];
+  if (rows.length < 1 || rows.length > MAX_IMPORT_ROWS) field(issues, 'rows', `must have 1–${MAX_IMPORT_ROWS} rows`);
+  const allowed =
+    role === 'student'
+      ? ['fullName', 'studentId', 'pin', 'className', 'parentEmail']
+      : role === 'teacher'
+        ? ['fullName', 'email', 'password', 'classNames']
+        : ['fullName', 'email', 'password', 'childStudentIds'];
+  for (const key of new Set(rows.flatMap((row) => Object.keys(row).filter((name) => !allowed.includes(name))))) {
+    field(issues, `rows.${key}`, 'is not allowed');
+  }
+  assertValid(issues);
+  const dryRun = body.dryRun !== false;
+
+  let schoolId: string;
+  if (actor.role === 'school_admin') {
+    if (body.schoolId !== undefined && body.schoolId !== actor.schoolId) throw Errors.forbidden('School Admins can only import into their own school.');
+    schoolId = actor.schoolId ?? '';
+  } else {
+    if (typeof body.schoolId !== 'string') throw Errors.validation([{ field: 'schoolId', message: 'is required' }]);
+    if (!state.schools.some((s) => s.id === body.schoolId)) throw Errors.invalidReference('schoolId', 'School not found.');
+    schoolId = body.schoolId;
+  }
+
+  const knownClasses = new Set(state.classes.filter((c) => c.schoolId === schoolId).map((c) => c.name.toLowerCase()));
+  const newClasses = new Map<string, string>();
+  const useClass = (name: string, problems: string[]): string | null => {
+    if (!name) return null;
+    if (name.length > 100) {
+      problems.push(`Class "${name.slice(0, 20)}…" is longer than 100 characters`);
+      return null;
+    }
+    const key = name.toLowerCase();
+    if (!knownClasses.has(key) && !newClasses.has(key)) newClasses.set(key, name);
+    return key;
+  };
+  const checkName = (row: Body, problems: string[]) => {
+    const fullName = cellOf(row, 'fullName');
+    if (!fullName) problems.push('Full name is missing');
+    else if (fullName.length > 100) problems.push('Full name must be 1–100 characters');
+    return fullName;
+  };
+  const seen = new Set<string>();
+  const claimed = new Set<string>();
+  const checked = rows.map((row) => {
+    const problems: string[] = [];
+    const fullName = checkName(row, problems);
+    if (role === 'student') {
+      const studentId = cellOf(row, 'studentId').toUpperCase();
+      if (!studentId) problems.push('Student ID is missing');
+      else if (!/^[A-Za-z0-9-]{3,32}$/.test(studentId)) problems.push('Student ID must be 3–32 letters, digits or hyphens');
+      else if (seen.has(studentId)) problems.push('This student ID is in the file twice');
+      seen.add(studentId);
+      const pin = cellOf(row, 'pin');
+      if (!pin) problems.push('PIN is missing');
+      else if (!/^[0-9]{6}$/.test(pin)) problems.push('PIN must be exactly 6 digits');
+      if (studentId && state.users.some((u) => u.studentLoginId === studentId)) problems.push('This student ID is already in use');
+      const parentEmail = cellOf(row, 'parentEmail').toLowerCase();
+      let parentId: string | null = null;
+      if (parentEmail) {
+        if (!EMAIL_PATTERN.test(parentEmail)) problems.push('Parent email is not valid');
+        else {
+          parentId = state.users.find((u) => u.role === 'parent' && u.isActive && u.schoolId === schoolId && u.email === parentEmail)?.id ?? null;
+          if (!parentId) problems.push(`No parent with the email ${parentEmail} at this school: import parents first, or leave it empty`);
+        }
+      }
+      const classKey = useClass(cellOf(row, 'className'), problems);
+      return { fullName, identifier: studentId, problems, studentId, secret: pin, classKeys: classKey ? [classKey] : [], parentId, childIds: [] as string[] };
+    }
+    const email = cellOf(row, 'email').toLowerCase();
+    if (!email) problems.push('Email address is missing');
+    else if (!EMAIL_PATTERN.test(email)) problems.push('Email address is not valid');
+    else if (seen.has(email)) problems.push('This email address is in the file twice');
+    seen.add(email);
+    const password = typeof row.password === 'string' ? row.password : '';
+    if (!password) problems.push('Password is missing');
+    else if (password.length < 10 || password.length > 128) problems.push('Password must be 10–128 characters');
+    if (email && state.users.some((u) => u.email === email)) problems.push('This email address is already in use');
+    const classKeys = role === 'teacher' ? [...new Set(cellList(row, 'classNames').map((name) => useClass(name, problems)).filter((k): k is string => k !== null))] : [];
+    const childIds: string[] = [];
+    if (role === 'parent') {
+      for (const loginId of [...new Set(cellList(row, 'childStudentIds').map((id) => id.toUpperCase()))]) {
+        const student = state.users.find((u) => u.role === 'student' && u.schoolId === schoolId && u.studentLoginId === loginId);
+        if (!student) problems.push(`No student with the ID ${loginId} at this school`);
+        else if (parentOf(student.id)) problems.push(`${loginId} already has a parent linked`);
+        else if (claimed.has(loginId)) problems.push(`${loginId} is claimed by two parents in the file`);
+        else childIds.push(student.id);
+        claimed.add(loginId);
+      }
+    }
+    return { fullName, identifier: email, problems, studentId: null, secret: password, classKeys, parentId: null, childIds };
+  });
+
+  const isValid = checked.every((row) => row.problems.length === 0);
+  const created = isValid && !dryRun ? checked.length : 0;
+  if (created > 0) {
+    const classIdByKey = new Map(state.classes.filter((c) => c.schoolId === schoolId).map((c) => [c.name.toLowerCase(), c.id]));
+    for (const [key, name] of newClasses) {
+      const group = { id: nextId('cls'), schoolId, name, createdAt: nowIso(), updatedAt: nowIso() };
+      state.classes.push(group);
+      classIdByKey.set(key, group.id);
+    }
+    for (const row of checked) {
+      const user: MockUser = {
+        id: nextId(role === 'student' ? 'stu' : 'usr'),
+        role,
+        fullName: row.fullName,
+        email: role === 'student' ? null : row.identifier,
+        studentLoginId: row.studentId,
+        schoolId,
+        secret: row.secret,
+        isActive: true,
+        createdAt: nowIso(),
+      };
+      state.users.push(user);
+      const classIds = row.classKeys.map((key) => classIdByKey.get(key)).filter((id): id is string => id !== undefined);
+      if (role === 'student') {
+        if (classIds[0]) state.classStudents.push({ classId: classIds[0], studentId: user.id });
+        if (row.parentId) state.parentLinks.push({ studentId: user.id, parentId: row.parentId, createdAt: nowIso() });
+      } else if (role === 'teacher') {
+        for (const classId of classIds) state.classTeachers.push({ classId, teacherId: user.id });
+      } else {
+        for (const studentId of row.childIds) state.parentLinks.push({ studentId, parentId: user.id, createdAt: nowIso() });
+      }
+    }
+  }
+  return {
+    body: {
+      report: {
+        role,
+        dryRun,
+        isValid,
+        created,
+        newClasses: role === 'parent' ? [] : [...newClasses.values()],
+        rows: checked.map((row, index) => ({ row: index + 1, fullName: row.fullName, identifier: row.identifier, problems: row.problems })),
+      },
+    },
+  };
+}
+
+// Removing what has no records ─────────────────────────────
+
+/** Anything that records what happened, pointing at this account (backend: ON DELETE RESTRICT). */
+function hasHistory(userId: string): boolean {
+  return (
+    state.observations.some((o) => o.studentId === userId || o.authorId === userId || o.reviewedById === userId) ||
+    state.assignments.some((a) => a.studentId === userId || a.assignedById === userId) ||
+    state.activities.some((a) => a.createdById === userId) ||
+    state.consents.some((c) => c.studentId === userId) ||
+    state.checkins.some((c) => c.studentId === userId) ||
+    state.supportPlans.some((p) => p.studentId === userId || p.createdById === userId) ||
+    state.attendance.some((a) => a.studentId === userId || a.markedById === userId) ||
+    state.notices.some((n) => n.createdById === userId) ||
+    state.staffReviews.some((r) => r.staffId === userId || r.reviewerId === userId) ||
+    state.honours.some((h) => h.honoreeId === userId || h.awardedById === userId)
+  );
+}
+
+const removalHandlers = {
+  user({ actor }: Context, userId: string): Result {
+    if (userId === actor.id) throw Errors.forbidden('You cannot remove your own account.');
+    const user = managedUser(actor, userId);
+    if (hasHistory(user.id)) {
+      throw hasRecords(
+        'This account has records at school, so it cannot be removed. Switch it off instead: they can no longer sign in, and the records are kept.',
+      );
+    }
+    state.classStudents = state.classStudents.filter((row) => row.studentId !== user.id);
+    state.classTeachers = state.classTeachers.filter((row) => row.teacherId !== user.id);
+    state.parentLinks = state.parentLinks.filter((link) => link.studentId !== user.id && link.parentId !== user.id);
+    state.healthProfiles = state.healthProfiles.filter((p) => p.studentId !== user.id);
+    state.users = state.users.filter((candidate) => candidate.id !== user.id);
+    return { status: 204 };
+  },
+  class({ actor }: Context, classId: string): Result {
+    const group = visibleClass(actor, classId);
+    state.classTeachers = state.classTeachers.filter((row) => row.classId !== group.id);
+    state.classStudents = state.classStudents.filter((row) => row.classId !== group.id);
+    state.classes = state.classes.filter((c) => c.id !== group.id);
+    return { status: 204 };
+  },
+  school(_context: Context, schoolId: string): Result {
+    const school = findSchool(schoolId);
+    if (state.users.some((u) => u.schoolId === school.id) || state.classes.some((c) => c.schoolId === school.id)) {
+      throw hasRecords('This school still has accounts or classes. Remove or move them first.');
+    }
+    state.notices = state.notices.filter((n) => n.schoolId !== school.id);
+    state.schools = state.schools.filter((s) => s.id !== school.id);
+    return { status: 204 };
+  },
+};
+
 type Handler = (context: Context, ...params: string[]) => Result;
 
 interface Route {
@@ -1727,6 +2493,27 @@ const ROUTES: Route[] = [
     roles: ['student', 'parent', 'teacher', 'psychologist'],
     handle: progressHandlers.monthlySummary,
   },
+
+  // Client feedback, 29 Oct 2026.
+  { method: 'DELETE', path: '/users/:id', roles: ADMINS, handle: removalHandlers.user },
+  { method: 'DELETE', path: '/classes/:id', roles: ['school_admin'], handle: removalHandlers.class },
+  { method: 'DELETE', path: '/schools/:id', roles: ['platform_admin'], handle: removalHandlers.school },
+  { method: 'GET', path: '/students/:id/health', roles: ['parent', 'teacher', 'psychologist', 'school_admin'], handle: healthHandlers.view },
+  { method: 'PUT', path: '/students/:id/health', roles: ['parent', 'school_admin'], handle: healthHandlers.save },
+  { method: 'GET', path: '/classes/:id/health', roles: ['teacher', 'school_admin'], handle: healthHandlers.forClass },
+  { method: 'GET', path: '/classes/:id/attendance', roles: ['teacher', 'school_admin'], handle: attendanceHandlers.forClass },
+  { method: 'PUT', path: '/classes/:id/attendance/:day', roles: ['teacher', 'school_admin'], handle: attendanceHandlers.mark },
+  { method: 'GET', path: '/notices', roles: ALL, handle: noticeHandlers.list },
+  { method: 'POST', path: '/notices', roles: ADMINS, handle: noticeHandlers.create },
+  { method: 'PATCH', path: '/notices/:id', roles: ADMINS, handle: noticeHandlers.update },
+  { method: 'DELETE', path: '/notices/:id', roles: ADMINS, handle: noticeHandlers.remove },
+  { method: 'GET', path: '/staff-reviews', roles: ['school_admin', 'teacher'], handle: staffReviewHandlers.list },
+  { method: 'PUT', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.save },
+  { method: 'DELETE', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.remove },
+  { method: 'GET', path: '/honours', roles: ['student', 'parent', 'teacher', 'school_admin', 'platform_admin'], handle: honourHandlers.list },
+  { method: 'POST', path: '/honours', roles: ['school_admin'], handle: honourHandlers.create },
+  { method: 'DELETE', path: '/honours/:id', roles: ['school_admin'], handle: honourHandlers.remove },
+  { method: 'POST', path: '/imports/people', roles: ADMINS, handle: importPeople },
 ];
 
 function match(route: Route, method: HttpMethod, segments: string[]): string[] | null {

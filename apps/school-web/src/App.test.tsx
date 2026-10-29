@@ -173,3 +173,87 @@ describe('School app', () => {
     expect(await screen.findByText(/has not turned on wellbeing check-ins/i)).toBeInTheDocument();
   });
 });
+
+describe('School app: classes, attendance, care needs and school life', () => {
+  beforeEach(() => {
+    resetMockStore();
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('narrows the roster to one class from the drop-down, with each student’s days in and care needs', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+    const table = await screen.findByRole('table', { name: 'Students you teach' });
+    expect(await within(table).findByText('Lila Menon')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Class'), 'cls-4b');
+    await waitFor(() => expect(within(table).queryByText('Lila Menon')).not.toBeInTheDocument());
+    expect(within(table).getByText('Maya Ahluwalia')).toBeInTheDocument();
+    // Days in this month, as "attended/recorded", and the care needs the family recorded.
+    expect((await within(table).findAllByText(/^\d+\/\d+$/)).length).toBeGreaterThan(0);
+    expect(within(table).getByText('Asthma')).toBeInTheDocument();
+    expect(within(table).getByText('ADHD')).toBeInTheDocument();
+  });
+
+  it('takes today’s register for a class, everyone present to start', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Attendance|Take attendance/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Attendance' })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Class'), 'cls-3a');
+    const register = await screen.findByRole('region', { name: /Register for/ });
+    const noor = within(register).getByRole('radiogroup', { name: 'Noor Siddiqui' });
+    await user.click(within(noor).getByRole('radio', { name: 'Absent' }));
+    await user.click(within(register).getByRole('button', { name: /Save (register|changes)/ }));
+
+    expect(await within(register).findByText(/Saved. The register for/)).toBeInTheDocument();
+    expect(within(register).getByText(/Taken by Sunita Rao/)).toBeInTheDocument();
+  });
+
+  it('shows a teacher a student’s care needs and attendance on their profile', async () => {
+    const user = await signInAs('rao@school.test');
+    await user.click(await screen.findByText('Maya Ahluwalia'));
+
+    const care = await screen.findByRole('region', { name: 'Health and care' });
+    expect(await within(care).findByText('Asthma')).toBeInTheDocument();
+    expect(within(care).getByRole('link', { name: '+91 98765 43210' })).toHaveAttribute('href', 'tel:+919876543210');
+    expect(screen.getByText('Special care')).toBeInTheDocument();
+    expect(await screen.findByText(/days in this month/)).toBeInTheDocument();
+  });
+
+  it('gives a teacher the notice board with the wall of fame, staff notices but not families-only ones', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Notice board|Notices/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Notice board' })).toBeInTheDocument();
+    expect(await screen.findByText('First aid and CPR training')).toBeInTheDocument();
+    expect(screen.queryByText('Parent–teacher meeting')).not.toBeInTheDocument();
+    expect(await screen.findByText('Ritu Kapoor')).toBeInTheDocument();
+    expect(screen.getByText('Noor Siddiqui')).toBeInTheDocument();
+  });
+
+  it('keeps a teacher’s reviews private to their account menu', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('button', { name: /Sunita Rao/ })[0]!);
+    await user.click(await screen.findByRole('link', { name: /Your reviews/ }));
+    expect(await screen.findByRole('heading', { name: 'Your reviews' })).toBeInTheDocument();
+    expect(await screen.findByText(/Started the reading-buddies scheme/)).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /Teaching quality: \d of 5/ }).length).toBeGreaterThan(0);
+  });
+
+  it('gives the counsellor the notice board too, without the school’s wall', async () => {
+    const user = await signInAs('mehta@school.test');
+    await screen.findByRole('heading', { name: 'Review queue' });
+    await user.click(screen.getAllByRole('link', { name: /Notice board|Notices/ })[0]!);
+    expect(await screen.findByText('Safeguarding refresher for every staff member')).toBeInTheDocument();
+    expect(screen.queryByText('Wall of fame')).not.toBeInTheDocument();
+  });
+});

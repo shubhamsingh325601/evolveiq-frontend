@@ -87,3 +87,15 @@ export function useReactivateUser() {
     onSuccess: () => invalidatePeople(queryClient),
   });
 }
+
+/**
+ * Removes an account that has no records (a mistake, or someone never used).
+ * One with records answers 409 `HAS_RECORDS`: switch it off instead.
+ */
+export function useRemoveUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => request('DELETE', ENDPOINTS.users.detail(userId)),
+    onSuccess: () => invalidatePeople(queryClient),
+  });
+}

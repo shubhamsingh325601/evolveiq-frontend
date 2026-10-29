@@ -9,7 +9,8 @@ const SECTIONS: { title: string; points: string[] }[] = [
       'What teachers and you write about your child: stars and observations, with their area and date.',
       'The activities your child has been set and the ones they finished.',
       'Wellbeing check-ins (mood, energy, sleep and active time) only if you turn them on below.',
-      'Nothing else: no photos, location, contacts or medical records.',
+      'Health and care needs that you or the school office add on the Health tab: conditions, allergies, medicine, what to do and who to call.',
+      'Nothing else: no photos, location or medical files.',
     ],
   },
   {
@@ -18,6 +19,7 @@ const SECTIONS: { title: string; points: string[] }[] = [
       'You see your own children. Your child sees their own stars, activities and report.',
       'Teachers see the students in their classes. The school counsellor can see any student.',
       'Wellbeing check-ins stay with your family unless you choose to share them with the school.',
+      'Health and care needs are for the school to look after your child: your child’s teachers, the school counsellor and the school office see them.',
       'A concern a teacher or counsellor writes stays with the school team. Parents and children see good news, activities and gentle next steps only.',
     ],
   },

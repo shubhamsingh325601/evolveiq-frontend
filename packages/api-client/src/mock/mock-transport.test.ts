@@ -517,3 +517,179 @@ describe('mock backend: notifications', () => {
     expect((await call('GET', ENDPOINTS.notifications.list, { token: await tokenFor('clara@school.test') })).status).toBe(403);
   });
 });
+
+describe('mock backend: health and care needs', () => {
+  beforeEach(() => resetMockStore());
+
+  it('the parent and the school read and write it, staff read it, and families reach only their own', async () => {
+    const priya = await tokenFor('priya@family.test');
+    const maya = await call('GET', ENDPOINTS.students.health('stu-maya'), { token: priya });
+    expect(maya.status).toBe(200);
+    expect(maya.body.health).toMatchObject({ conditions: ['asthma', 'on_medication'], emergencyContact: { relation: 'Mother' } });
+
+    const saved = await call('PUT', ENDPOINTS.students.health('stu-maya'), { token: priya, body: { conditions: ['asthma'] } });
+    expect(saved.body.health).toMatchObject({ conditions: ['asthma'], allergies: null, emergencyContact: null, updatedBy: { role: 'parent' } });
+
+    const rao = await tokenFor('rao@school.test');
+    expect((await call('GET', ENDPOINTS.students.health('stu-maya'), { token: rao })).status).toBe(200);
+    expect((await call('PUT', ENDPOINTS.students.health('stu-maya'), { token: rao, body: { conditions: [] } })).status).toBe(403);
+    const lila = await call('GET', ENDPOINTS.students.health('stu-lila'), { token: rao });
+    expect(lila.body.health).toMatchObject({ conditions: [], updatedAt: null });
+
+    const neil = await tokenFor('neil@family.test');
+    expect((await call('GET', ENDPOINTS.students.health('stu-maya'), { token: neil })).status).toBe(404);
+    const student = (await signIn({ studentId: 'RV-1001' })).accessToken;
+    expect((await call('GET', ENDPOINTS.students.health('stu-maya'), { token: student })).status).toBe(403);
+    expect((await call('PUT', ENDPOINTS.students.health('stu-maya'), { token: priya, body: { conditions: ['asthma', 'asthma'] } })).status).toBe(400);
+  });
+
+  it('lists the recorded profiles of a class for its teacher and the school admin', async () => {
+    const rao = await tokenFor('rao@school.test');
+    const fourB = await call('GET', ENDPOINTS.classes.health('cls-4b'), { token: rao });
+    expect(fourB.body.profiles.map((p: { studentId: string }) => p.studentId)).toEqual(['stu-arjun', 'stu-devan', 'stu-maya']);
+    expect((await call('GET', ENDPOINTS.classes.health('cls-5c'), { token: rao })).status).toBe(404);
+    expect((await call('GET', ENDPOINTS.classes.health('cls-5c'), { token: await tokenFor('clara@school.test') })).status).toBe(200);
+  });
+});
+
+describe('mock backend: attendance', () => {
+  beforeEach(() => resetMockStore());
+
+  it('starts with a month of registers, and a teacher takes or corrects the day', async () => {
+    const rao = await tokenFor('rao@school.test');
+    const month = await call('GET', ENDPOINTS.classes.attendance('cls-4b'), { token: rao });
+    expect(month.status).toBe(200);
+    expect(month.body.attendance.students.map((s: { id: string }) => s.id)).toEqual(['stu-arjun', 'stu-devan', 'stu-maya']);
+
+    const today = month.body.attendance.to as string;
+    const marked = await call('PUT', ENDPOINTS.classes.attendanceDay('cls-4b', today), {
+      token: rao,
+      body: { records: [{ studentId: 'stu-maya', status: 'absent' }] },
+    });
+    expect(marked.status).toBe(200);
+    expect(marked.body.attendance.students.find((s: { id: string }) => s.id === 'stu-maya')).toMatchObject({ absent: 1, records: { [today]: 'absent' } });
+    expect(marked.body.attendance.days).toEqual([{ day: today, markedBy: { fullName: 'Sunita Rao' }, markedAt: expect.any(String) }]);
+  });
+
+  it('keeps to the class, the past 30 days and staff', async () => {
+    const rao = await tokenFor('rao@school.test');
+    const ritu = await tokenFor('ritu@school.test');
+    const today = (await call('GET', ENDPOINTS.classes.attendance('cls-4b'), { token: rao })).body.attendance.to as string;
+    const mark = (token: string, classId: string, day: string, studentId: string) =>
+      call('PUT', ENDPOINTS.classes.attendanceDay(classId, day), { token, body: { records: [{ studentId, status: 'present' }] } });
+    expect((await mark(ritu, 'cls-4b', today, 'stu-maya')).status).toBe(404);
+    expect((await mark(rao, 'cls-4b', today, 'stu-tara')).status).toBe(422);
+    const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    expect((await mark(rao, 'cls-4b', tomorrow, 'stu-maya')).status).toBe(400);
+    expect((await call('GET', ENDPOINTS.classes.attendance('cls-4b'), { token: await tokenFor('priya@family.test') })).status).toBe(403);
+  });
+});
+
+describe('mock backend: the notice board', () => {
+  beforeEach(() => resetMockStore());
+
+  const titles = async (token: string) =>
+    ((await call('GET', ENDPOINTS.notices.list, { token })).body.notices as { title: string }[]).map((n) => n.title);
+
+  it('shows each person their audience, platform notices included', async () => {
+    const parent = await titles(await tokenFor('priya@family.test'));
+    expect(parent).toEqual(expect.arrayContaining(['Annual Sports Day', 'Parent–teacher meeting', 'Childline']));
+    expect(parent).not.toContain('First aid and CPR training');
+    const teacher = await titles(await tokenFor('rao@school.test'));
+    expect(teacher).toEqual(expect.arrayContaining(['First aid and CPR training', 'Safeguarding refresher for every staff member']));
+    expect(teacher).not.toContain('Parent–teacher meeting');
+    expect(await titles(await tokenFor('omar@halden.test'))).not.toContain('Annual Sports Day');
+    expect(parent[0]).toBe('Annual Sports Day');
+  });
+
+  it('lets the school admin post, edit and take down their own notices only', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const created = await call('POST', ENDPOINTS.notices.list, { token: clara, body: { category: 'activity', title: 'Chess club' } });
+    expect(created.status).toBe(201);
+    expect(created.body.notice).toMatchObject({ schoolId: 'sch-ridgeview', audience: 'everyone', canManage: true });
+    const id = created.body.notice.id as string;
+    expect((await call('PATCH', ENDPOINTS.notices.detail(id), { token: clara, body: { isPinned: true } })).body.notice.isPinned).toBe(true);
+    expect((await call('PATCH', ENDPOINTS.notices.detail('ntc-112'), { token: clara, body: { title: 'Mine' } })).status).toBe(404);
+    expect((await call('POST', ENDPOINTS.notices.list, { token: clara, body: { category: 'emergency_contact', title: 'Nurse' } })).status).toBe(400);
+    expect((await call('POST', ENDPOINTS.notices.list, { token: await tokenFor('rao@school.test'), body: { category: 'event', title: 'x' } })).status).toBe(403);
+    expect((await call('DELETE', ENDPOINTS.notices.detail(id), { token: clara })).status).toBe(204);
+  });
+});
+
+describe('mock backend: staff reviews and the celebration wall', () => {
+  beforeEach(() => resetMockStore());
+
+  it('the school admin rates teachers; a teacher reads only their own', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const month = businessMonth();
+    const saved = await call('PUT', ENDPOINTS.staffReviews.detail('usr-rao', month), {
+      token: clara,
+      body: { teaching: 5, engagement: 5, punctuality: 5, teamwork: 4, communication: 4 },
+    });
+    expect(saved.body.review).toMatchObject({ month, average: 4.6, comment: null });
+    const own = await call('GET', ENDPOINTS.staffReviews.list, { token: await tokenFor('rao@school.test') });
+    expect(own.body.reviews.every((r: { staff: { id: string } }) => r.staff.id === 'usr-rao')).toBe(true);
+    expect((await call('GET', ENDPOINTS.staffReviews.list, { token: await tokenFor('priya@family.test') })).status).toBe(403);
+    const full = { teaching: 5, engagement: 5, punctuality: 5, teamwork: 5, communication: 5 };
+    expect((await call('PUT', ENDPOINTS.staffReviews.detail('usr-omar', month), { token: clara, body: full })).status).toBe(404);
+  });
+
+  it('families see the Staff of the Month and only the honours of their own children', async () => {
+    const kinds = async (token: string) =>
+      ((await call('GET', ENDPOINTS.honours.list, { token })).body.honours as { kind: string; honoree: { id: string } }[]).map(
+        (h) => `${h.kind}:${h.honoree.id}`,
+      );
+    const priya = await kinds(await tokenFor('priya@family.test'));
+    expect(priya).toEqual(expect.arrayContaining(['staff_of_month:usr-kapoor', 'student_of_month:stu-arjun']));
+    expect(priya).not.toContain('student_of_month:stu-noor');
+    expect(await kinds(await tokenFor('rao@school.test'))).toContain('student_of_month:stu-noor');
+
+    const clara = await tokenFor('clara@school.test');
+    const month = businessMonth();
+    const named = await call('POST', ENDPOINTS.honours.list, {
+      token: clara,
+      body: { kind: 'student_of_month', month, honoreeId: 'stu-maya', citation: 'For her tangram focus.' },
+    });
+    expect(named.status).toBe(201);
+    expect(named.body.honour.honoree).toMatchObject({ role: 'student', className: '4B' });
+    const again = { kind: 'student_of_month', month, honoreeId: 'stu-maya', citation: 'Again' };
+    expect((await call('POST', ENDPOINTS.honours.list, { token: clara, body: again })).status).toBe(409);
+    const wrongRole = { kind: 'staff_of_month', month, honoreeId: 'stu-maya', citation: 'x' };
+    expect((await call('POST', ENDPOINTS.honours.list, { token: clara, body: wrongRole })).status).toBe(422);
+  });
+});
+
+describe('mock backend: imports and removals', () => {
+  beforeEach(() => resetMockStore());
+
+  it('checks every row, and creates everything only when every row is fine', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const rows = [
+      { fullName: 'Asha Rao', studentId: 'rv-2001', pin: '123456', className: '4b', parentEmail: 'neil@family.test' },
+      { fullName: 'Ben Thomas', studentId: 'RV-2002', pin: '654321', className: 'Year 6' },
+    ];
+    const withBadRow = [...rows, { fullName: 'X', studentId: 'RV-1001', pin: '1' }];
+    const bad = await call('POST', ENDPOINTS.imports.people, { token: clara, body: { role: 'student', dryRun: false, rows: withBadRow } });
+    expect(bad.body.report).toMatchObject({ isValid: false, created: 0 });
+    expect(bad.body.report.rows[2].problems).toEqual(['PIN must be exactly 6 digits', 'This student ID is already in use']);
+
+    const good = await call('POST', ENDPOINTS.imports.people, { token: clara, body: { role: 'student', dryRun: false, rows } });
+    expect(good.body.report).toMatchObject({ isValid: true, created: 2, newClasses: ['Year 6'] });
+    expect((await call('POST', ENDPOINTS.auth.login, { body: { studentId: 'RV-2001', pin: '123456' } })).status).toBe(200);
+  });
+
+  it('removes only what has no records', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const created = await call('POST', ENDPOINTS.auth.register, {
+      token: clara,
+      body: { role: 'teacher', fullName: 'New Teacher', email: 'new@school.test', password: DEMO_PASSWORD },
+    });
+    expect((await call('DELETE', ENDPOINTS.users.detail(created.body.user.id), { token: clara })).status).toBe(204);
+    const kept = await call('DELETE', ENDPOINTS.users.detail('usr-rao'), { token: clara });
+    expect(kept.status).toBe(409);
+    expect(kept.body.error.code).toBe('HAS_RECORDS');
+    expect((await call('DELETE', ENDPOINTS.classes.detail('cls-3a'), { token: clara })).status).toBe(204);
+    const tunde = await tokenFor('tunde@evolveiq.test');
+    expect((await call('DELETE', ENDPOINTS.schools.detail('sch-halden'), { token: tunde })).status).toBe(409);
+  });
+});

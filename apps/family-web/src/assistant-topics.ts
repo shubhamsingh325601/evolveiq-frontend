@@ -152,7 +152,7 @@ export function parentGreeting(parentFirstName: string, children: Person[]): str
 }
 
 export const PARENT_FALLBACK =
-  "I'm a simple guide and only know a few things: how your children are doing, stars, the Holistic Index, raising a concern, Explore and privacy. Try one of the questions below.";
+  "I'm a simple guide and only know a few things: how your children are doing, stars, the Holistic Index, raising a concern, health, Explore and privacy. Try one of the questions below.";
 
 export function parentTopics(facts: ParentGuideFacts): AssistantTopic[] {
   const current = facts.children[0];
@@ -210,6 +210,13 @@ export function parentTopics(facts: ParentGuideFacts): AssistantTopic[] {
       keywords: ['explore', 'ideas', 'career', 'future', 'interests', 'hobbies', 'try'],
       answer: `Explore suggests things to try with ${currentName}, starting from what has been noticed about them rather than from a test. They are ideas, not predictions.`,
       link: { label: 'Open Explore', to: current ? `/parent/explore/${current.id}` : '/parent/explore' },
+    },
+    {
+      id: 'health',
+      question: 'How do I tell the school about a health need?',
+      keywords: ['health', 'medical', 'allergy', 'allergies', 'asthma', 'diabetes', 'diabetic', 'medicine', 'medication', 'adhd', 'dyslexia', 'condition', 'care'],
+      answer: `Open Health and add what the school should know about ${currentName}: a condition such as asthma, diabetes, ADHD or dyslexia, allergies, medicine, what to do, and who to call. ${possessive(currentName)} teachers, the counsellor and the school office see it, so they can take care of ${currentName} at school.`,
+      link: { label: 'Open Health', to: current ? `/parent/health/${current.id}` : '/parent/health' },
     },
     {
       id: 'privacy',

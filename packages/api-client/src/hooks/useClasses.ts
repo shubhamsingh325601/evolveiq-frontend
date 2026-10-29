@@ -181,3 +181,14 @@ export function useSetStudentClass() {
     },
   });
 }
+
+/** School admins only. Its students stay at the school, in no class, with every record. */
+export function useDeleteClass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (classId: string) => request('DELETE', ENDPOINTS.classes.detail(classId)),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+    },
+  });
+}

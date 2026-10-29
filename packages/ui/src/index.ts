@@ -34,6 +34,8 @@ export type { QuoteProps } from './Quote';
 export { RadarChart } from './RadarChart';
 export type { RadarChartAxis, RadarChartProps } from './RadarChart';
 export { RadioCardGroup } from './RadioCardGroup';
+export { RatingStars } from './RatingStars';
+export type { RatingStarsProps } from './RatingStars';
 export type { RadioCardGroupProps, RadioCardOption } from './RadioCardGroup';
 export { RingsChart } from './RingsChart';
 export type { RingsChartProps, RingsChartSeries } from './RingsChart';

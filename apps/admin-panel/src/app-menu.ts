@@ -1,8 +1,12 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { Backpack, Contact, HeartHandshake, LayoutGrid, Plug, Presentation, School } from '@evolveiq/ui';
+import { Award, Backpack, Contact, HeartHandshake, LayoutGrid, Megaphone, Plug, Presentation, School, Trophy, Upload } from '@evolveiq/ui';
 
-/** The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`. */
+/**
+ * The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`
+ * (which keeps four tabs on a phone and puts the rest behind "More"). Import, the notice
+ * board, staff reviews and the wall of fame came with the client's feedback of 29 Oct 2026.
+ */
 export function menuForRole(role: Role): SidebarMenuSection[] {
   if (role === 'school_admin') {
     return [
@@ -13,6 +17,15 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
           { label: 'Teachers', to: '/school/teachers', icon: Presentation },
           { label: 'Classes', to: '/school/classes', icon: LayoutGrid },
           { label: 'Parents', to: '/school/parents', icon: HeartHandshake },
+          { label: 'Import data', shortLabel: 'Import', to: '/school/import', icon: Upload },
+        ],
+      },
+      {
+        title: 'School life',
+        items: [
+          { label: 'Notice board', shortLabel: 'Notices', to: '/school/notices', icon: Megaphone },
+          { label: 'Staff reviews', shortLabel: 'Reviews', to: '/school/staff-reviews', icon: Award },
+          { label: 'Wall of fame', shortLabel: 'Wall', to: '/school/wall', icon: Trophy },
         ],
       },
       {
@@ -30,6 +43,8 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
         items: [
           { label: 'Schools', to: '/platform/schools', icon: School },
           { label: 'People', to: '/platform/users', icon: Contact },
+          { label: 'Import data', shortLabel: 'Import', to: '/platform/import', icon: Upload },
+          { label: 'Notice board', shortLabel: 'Notices', to: '/platform/notices', icon: Megaphone },
         ],
       },
     ];

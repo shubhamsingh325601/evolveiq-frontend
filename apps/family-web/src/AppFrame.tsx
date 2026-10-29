@@ -3,13 +3,16 @@ import { Outlet, useMatch } from 'react-router-dom';
 import {
   useChildren,
   useChildrenAssignments,
+  useHonours,
   useMyAssignments,
+  useNotices,
   useStars,
   useStarsForStudents,
   useStudentLevel,
 } from '@evolveiq/api-client';
 import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
-import { AppLayout, type AccountMenuSection } from '@evolveiq/domain';
+import { AppLayout, schoolLifeNotifications, type AccountMenuSection } from '@evolveiq/domain';
+import { Megaphone, ShieldCheck } from '@evolveiq/ui';
 import { menuForRole } from './app-menu';
 import { ChildrenSidebarCard } from './components/ChildrenSidebarCard';
 import { LevelSidebarCard } from './components/LevelSidebarCard';
@@ -31,9 +34,12 @@ export function AppFrame() {
   const missions = useMyAssignments({ isEnabled: isStudent });
   const level = useStudentLevel({ isEnabled: isStudent });
   const myStars = useStars(user?.id, { isEnabled: isStudent });
+  const notices = useNotices({}, { isEnabled: Boolean(user) });
+  const honours = useHonours({}, { isEnabled: Boolean(user) });
   const childOnDashboard = useMatch('/parent/children/:childId/*')?.params.childId;
   const childOnExplore = useMatch('/parent/explore/:childId')?.params.childId;
-  const openChildId = childOnDashboard ?? childOnExplore;
+  const childOnHealth = useMatch('/parent/health/:childId')?.params.childId;
+  const openChildId = childOnDashboard ?? childOnExplore ?? childOnHealth;
   // Remembered across pages without a child in their path, so Explore and the guide start on them.
   const [lastChildId, setLastChildId] = useState<string>();
   useEffect(() => {
@@ -48,8 +54,20 @@ export function AppFrame() {
     <LevelSidebarCard level={level.data} starCount={myStars.data?.length ?? 0} />
   ) : null;
 
+  const noticesPath = isParent ? '/parent/notices' : '/student/notices';
+  // Privacy left the parent's tab bar for Health (client feedback, 29 Oct 2026); it lives here now.
+  const schoolSection: AccountMenuSection = {
+    title: 'School',
+    items: [
+      { id: 'notices', label: 'Notice board', detail: 'Events, updates and emergency numbers', to: noticesPath, icon: Megaphone },
+      ...(isParent
+        ? [{ id: 'privacy', label: 'Privacy & safety', detail: 'What is kept, who sees it, your choices', to: '/parent/privacy', icon: ShieldCheck }]
+        : []),
+    ],
+  };
+
   // A parent switches between their children, never between roles.
-  const accountSections: AccountMenuSection[] =
+  const childSections: AccountMenuSection[] =
     isParent && childList.length > 0
       ? [
           {
@@ -68,6 +86,7 @@ export function AppFrame() {
           },
         ]
       : [];
+  const accountSections = [...childSections, schoolSection];
 
   return (
     <AppLayout
@@ -79,14 +98,24 @@ export function AppFrame() {
       contextCard={contextCard}
       accountSections={accountSections}
       notificationsKey={user.id}
-      notifications={familyNotifications({
-        user,
-        missions: missions.data ?? [],
-        myStars: myStars.data ?? [],
-        children: childList,
-        assignmentsByChild,
-        starsByChild,
-      })}
+      notifications={[
+        ...familyNotifications({
+          user,
+          missions: missions.data ?? [],
+          myStars: myStars.data ?? [],
+          children: childList,
+          assignmentsByChild,
+          starsByChild,
+        }),
+        ...schoolLifeNotifications({
+          notices: notices.data ?? [],
+          honours: honours.data ?? [],
+          viewerId: user.id,
+          noticesPath,
+          honourPath: (honour) =>
+            honour.kind === 'student_of_month' ? (isParent ? `/parent/children/${honour.honoree.id}` : '/student/today') : noticesPath,
+        }),
+      ]}
     >
       <Outlet context={{ lastChildId: openChildId ?? lastChildId } satisfies FamilyFrameContext} />
     </AppLayout>

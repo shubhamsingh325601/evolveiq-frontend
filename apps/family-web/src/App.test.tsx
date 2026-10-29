@@ -279,12 +279,12 @@ describe('Family app', () => {
     expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();
   });
 
-  it('keeps wellbeing check-ins off until a parent allows them, then records one', async () => {
+  it('keeps wellbeing check-ins off until a parent allows them, then records one on the Health tab', async () => {
     const user = await signInAsParent();
     await screen.findByRole('heading', { name: 'Parent Dashboard' });
 
     // Off by default, and the page says how to turn it on.
-    await user.click(await screen.findByRole('link', { name: /Wellbeing check-in/i }));
+    await user.click(await screen.findByRole('link', { name: /Health and care/i }));
     expect(await screen.findByText('Check-ins are off')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /Choose in Privacy/i }));
@@ -293,9 +293,8 @@ describe('Family app', () => {
     await user.click(tracking);
     await waitFor(() => expect(screen.getAllByLabelText('Record daily wellbeing check-ins')[0]).toBeChecked());
 
-    // Back on the child's page, the check-in form is there and saves.
-    await user.click(screen.getAllByRole('link', { name: 'Home' })[0]!);
-    await user.click(await screen.findByRole('link', { name: /Wellbeing check-in/i }));
+    // Back on the Health tab, the check-in form is there and saves.
+    await user.click(screen.getAllByRole('link', { name: 'Health' })[0]!);
     expect(await screen.findByRole('form', { name: 'Wellbeing check-in' })).toBeInTheDocument();
     const form = screen.getByRole('form', { name: 'Wellbeing check-in' });
     await user.click(within(form).getAllByRole('radio')[3]!); // mood: Good
@@ -316,5 +315,59 @@ describe('Family app', () => {
     await user.click(screen.getAllByRole('link', { name: /Explore/ })[0]!);
     expect(await screen.findByRole('heading', { name: 'Explore' })).toBeInTheDocument();
     expect(await screen.findByText(/Ideas to explore, not predictions/i)).toBeInTheDocument();
+  });
+
+  it('gives a parent Health in place of Privacy in the tabs, with Privacy in the account menu', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    const tabs = screen.getAllByRole('navigation', { name: 'Main' });
+    for (const nav of tabs) {
+      expect(within(nav).getByRole('link', { name: 'Health' })).toHaveAttribute('href', '/parent/health');
+      expect(within(nav).queryByRole('link', { name: /Privacy/ })).not.toBeInTheDocument();
+    }
+
+    await user.click(screen.getAllByRole('button', { name: /Priya Ahluwalia/ })[0]!);
+    expect(await screen.findByRole('link', { name: /Privacy & safety/ })).toHaveAttribute('href', '/parent/privacy');
+    expect(screen.getByRole('link', { name: /Notice board.*emergency numbers/ })).toHaveAttribute('href', '/parent/notices');
+  });
+
+  it('lets a parent tell the school about a health need, which reads back as the school will see it', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    await user.click(screen.getAllByRole('link', { name: 'Health' })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Arjun’s health' })).toBeInTheDocument();
+    expect(await screen.findByText('Severe allergy')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '+91 98765 43210' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const form = screen.getByRole('form', { name: 'Arjun’s health and care' });
+    await user.click(within(form).getByRole('checkbox', { name: 'Asthma' }));
+    await user.click(within(form).getByRole('button', { name: 'Save for the school' }));
+
+    expect(await screen.findByText(/Saved. Arjun’s school can see it now./)).toBeInTheDocument();
+    const conditions = screen.getByRole('list', { name: 'Conditions' });
+    expect(within(conditions).getByText('Asthma')).toBeInTheDocument();
+    expect(within(conditions).getByText('Severe allergy')).toBeInTheDocument();
+  });
+
+  it('celebrates a child named Student of the Month on their parent’s dashboard, and shows the school’s news', async () => {
+    const user = await signInAsParent();
+    expect(await screen.findByRole('heading', { name: /Arjun is Student of the Month/ })).toBeInTheDocument();
+    const news = await screen.findByRole('region', { name: 'From school' });
+    expect(await within(news).findByText('Annual Sports Day')).toBeInTheDocument();
+    expect(within(news).getByText(/Staff of the Month/)).toBeInTheDocument();
+
+    await user.click(within(news).getByRole('link', { name: /Notice board/ }));
+    expect(await screen.findByRole('heading', { name: 'Notice board' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Call Childline, 1098' })).toHaveAttribute('href', 'tel:1098');
+    // Another family's child is never on this family's wall.
+    expect(screen.queryByText('Noor Siddiqui')).not.toBeInTheDocument();
+  });
+
+  it('tells a student they are Student of the Month on their own home', async () => {
+    await signInAsStudent('RV-1002');
+    expect(await screen.findByRole('heading', { name: /You are Student of the Month/ })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   useCreateSchool,
+  useDeleteSchool,
   useRenameSchool,
   useSchools,
   useUserCounts,
@@ -11,6 +13,7 @@ import { RecordsTable, formatDay, type RecordsTableColumn } from '@evolveiq/doma
 import {
   Backpack,
   Button,
+  buttonClasses,
   Contact,
   ErrorState,
   PageHeader,
@@ -18,15 +21,24 @@ import {
   Presentation,
   School as SchoolIcon,
   StatTile,
+  Trash2,
+  Upload,
 } from '@evolveiq/ui';
 import { saveErrorMessage } from '../../components/account-fields';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { RecordEditor, type RecordValues } from '../../components/RecordEditor';
 
-/** Every school on EvolvIQ. A school is a name for now; its people are on the People screen. */
+/**
+ * Every school on EvolvIQ. A school is a name for now; its people are on the
+ * People screen, added one at a time or imported from a spreadsheet. A school
+ * opened by mistake can be removed while it is still empty (client feedback,
+ * 29 Oct 2026).
+ */
 export function ManageSchoolsScreen() {
   const schools = useSchools();
   const createSchool = useCreateSchool();
   const renameSchool = useRenameSchool();
+  const deleteSchool = useDeleteSchool();
   const list = schools.data ?? [];
 
   // Enrolment per school, counted by the backend: one tiny request per figure.
@@ -46,6 +58,8 @@ export function ManageSchoolsScreen() {
 
   const [editing, setEditing] = useState<School | 'new' | null>(null);
   const [error, setError] = useState<string>();
+  const [removing, setRemoving] = useState<School | null>(null);
+  const [removeError, setRemoveError] = useState<string>();
 
   if (schools.isError) return <ErrorState onRetry={() => void schools.refetch()} />;
 
@@ -58,6 +72,20 @@ export function ManageSchoolsScreen() {
       setEditing(null);
     } catch (caught) {
       setError(saveErrorMessage(caught, 'We could not save that school. Try again.'));
+    }
+  };
+
+  const closeRemove = () => {
+    setRemoving(null);
+    setRemoveError(undefined);
+  };
+  const confirmRemove = async () => {
+    if (!removing) return;
+    try {
+      await deleteSchool.mutateAsync(removing.id);
+      closeRemove();
+    } catch (caught) {
+      setRemoveError(saveErrorMessage(caught, `We could not remove ${removing.name}. Try again.`));
     }
   };
 
@@ -140,6 +168,17 @@ export function ManageSchoolsScreen() {
         searchPlaceholder="Search schools"
         isLoading={schools.isLoading}
         onRowClick={(school) => setEditing(school)}
+        rowActions={(school) => (
+          <span className="inline-flex gap-1">
+            <Link to={`/platform/import?school=${school.id}`} className={buttonClasses({ variant: 'quiet', size: 'sm' })} aria-label={`Import data into ${school.name}`}>
+              <Upload />
+              Import
+            </Link>
+            <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${school.name}`} onClick={() => setRemoving(school)}>
+              Remove
+            </Button>
+          </span>
+        )}
         emptyTitle="No schools yet"
         emptyDescription="Add the first school, then create its admin on the People screen."
         emptyAction={
@@ -162,6 +201,17 @@ export function ManageSchoolsScreen() {
         {...(editing && editing !== 'new' ? { initialValues: { name: editing.name } } : {})}
         onSave={save}
         {...(error ? { error } : {})}
+      />
+
+      <ConfirmDialog
+        isOpen={removing !== null}
+        title={removing ? `Remove ${removing.name}?` : 'Remove school'}
+        description="Only a school with no accounts and no classes can be removed: one added by mistake, or never used. Its notices go with it."
+        confirmLabel="Remove school"
+        onConfirm={() => void confirmRemove()}
+        onClose={closeRemove}
+        isWorking={deleteSchool.isPending}
+        error={removeError}
       />
     </div>
   );
