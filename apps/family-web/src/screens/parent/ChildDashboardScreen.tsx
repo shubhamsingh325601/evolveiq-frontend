@@ -147,8 +147,14 @@ export function ChildDashboardScreen() {
       {childHonour ? <HonourBanner honour={childHonour} audience="family" /> : null}
 
       {index ? (
-        <HolisticIndexCard studentName={child.fullName} index={index} />
+        <ReportOverviewCard
+          strengths={index.strengths}
+          yearsTracked={yearsTracked(index)}
+          to={`/parent/children/${child.id}/report`}
+        />
       ) : null}
+
+      {index ? <HolisticIndexCard studentName={child.fullName} index={index} /> : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
         <StatTile
@@ -177,16 +183,7 @@ export function ChildDashboardScreen() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {index ? (
-          <ReportOverviewCard
-            strengths={index.strengths}
-            yearsTracked={yearsTracked(index)}
-            to={`/parent/children/${child.id}/report`}
-          />
-        ) : null}
-        <StarsOverTime stars={childStars} name={firstName} audience="family" />
-      </div>
+      <StarsOverTime stars={childStars} name={firstName} audience="family" />
 
       {index ? (
         <div className="flex flex-wrap gap-3">
