@@ -19,7 +19,6 @@ export function ReportScreen() {
     <HolisticReport
       studentName={child.fullName}
       index={holistic.data}
-      showTrajectory={false}
       back={{ to: `/parent/children/${child.id}`, label: `${possessive(firstNameOf(child.fullName))} dashboard` }}
     />
   );

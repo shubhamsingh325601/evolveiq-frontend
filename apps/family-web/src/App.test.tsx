@@ -218,11 +218,11 @@ describe('Family app', () => {
     await signInAsParent();
 
     const score = await screen.findByRole('heading', { name: 'Arjun’s score' });
-    const trajectory = await screen.findByRole('heading', { name: 'Trajectory' });
     const month = await screen.findByText(/Arjun Ahluwalia has earned \d+ stars? this month\./);
     const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(follows(score, trajectory)).toBe(true);
-    expect(follows(trajectory, screen.getByText('Activities still open'))).toBe(true);
+    // The trajectory lives in the Holistic Report, not on Home.
+    expect(screen.queryByRole('heading', { name: 'Trajectory' })).not.toBeInTheDocument();
+    expect(follows(score, screen.getByText('Activities still open'))).toBe(true);
     expect(follows(screen.getByText('Activities still open'), month)).toBe(true);
     expect(screen.getByRole('heading', { name: 'Holistic Report Card' })).toBeInTheDocument();
   });
@@ -267,8 +267,8 @@ describe('Family app', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();
     expect(screen.queryByText(/concern|significant|clinical/i)).not.toBeInTheDocument();
-    // The parent's report has no trajectory chart; the student's keeps it.
-    expect(screen.queryByRole('heading', { name: /Trajectory/ })).not.toBeInTheDocument();
+    // The trajectory chart now lives in the report.
+    expect(await screen.findByRole('heading', { name: /Trajectory/ })).toBeInTheDocument();
   });
 
   it('gives a parent Explore, Health, Connect and Profile tabs, and a link to every observation from Home', async () => {

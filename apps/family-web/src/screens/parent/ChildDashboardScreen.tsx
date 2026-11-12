@@ -24,7 +24,6 @@ import {
   GrowthAreaList,
   GrowthMoments,
   HolisticIndexCard,
-  HolisticTrendCard,
   HonourBanner,
   ObservationEntry,
   possessive,
@@ -148,10 +147,7 @@ export function ChildDashboardScreen() {
       {childHonour ? <HonourBanner honour={childHonour} audience="family" /> : null}
 
       {index ? (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <HolisticIndexCard studentName={child.fullName} index={index} />
-          <HolisticTrendCard studentName={child.fullName} index={index} />
-        </div>
+        <HolisticIndexCard studentName={child.fullName} index={index} />
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
