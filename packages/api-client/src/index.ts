@@ -26,6 +26,7 @@ export * from './hooks/useActivities';
 export * from './hooks/useAssignments';
 export * from './hooks/useClasses';
 export * from './hooks/useGrowthAreas';
+export * from './hooks/useMessages';
 export * from './hooks/useMonthlySummary';
 export * from './hooks/useObservations';
 export * from './hooks/useParentLinks';

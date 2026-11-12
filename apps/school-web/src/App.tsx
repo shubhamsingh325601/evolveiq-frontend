@@ -9,6 +9,10 @@ import { AssignActivityScreen } from './screens/teacher/AssignActivityScreen';
 import { AttendanceScreen } from './screens/teacher/AttendanceScreen';
 import { ReviewsScreen } from './screens/teacher/ReviewsScreen';
 import { NoticesScreen } from './screens/NoticesScreen';
+import { NepReportsScreen } from './screens/teacher/NepReportsScreen';
+import { StudentReportScreen } from './screens/teacher/StudentReportScreen';
+import { MessagesScreen } from './screens/MessagesScreen';
+import { ClassOverviewScreen } from './screens/teacher/ClassOverviewScreen';
 import { ReviewQueueScreen } from './screens/psychologist/ReviewQueueScreen';
 import { ObservationDetailScreen } from './screens/psychologist/ObservationDetailScreen';
 import { ActivityLibraryScreen } from './screens/psychologist/ActivityLibraryScreen';
@@ -30,12 +34,16 @@ export function App() {
           <Route path="/teacher/assign" element={<AssignActivityScreen />} />
           <Route path="/teacher/attendance" element={<AttendanceScreen />} />
           <Route path="/teacher/reviews" element={<ReviewsScreen />} />
+          <Route path="/teacher/class" element={<ClassOverviewScreen />} />
+          <Route path="/teacher/reports" element={<NepReportsScreen />} />
+          <Route path="/teacher/reports/:studentId" element={<StudentReportScreen />} />
         </Route>
       </Route>
 
       <Route element={<RoleGuard allow={['teacher', 'psychologist']} />}>
         <Route element={<AppFrame />}>
           <Route path="/notices" element={<NoticesScreen />} />
+          <Route path="/messages" element={<MessagesScreen />} />
         </Route>
       </Route>
 

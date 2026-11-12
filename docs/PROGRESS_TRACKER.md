@@ -64,6 +64,10 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Parent: growth areas + monthly summary | Done | | Plain language, no clinical scores; this month live, earlier months as the backend stored them |
 | Parent: Health tab in place of Privacy | Done | | Client feedback 29 Oct 2026; not yet committed. The child's health and care needs (written by the parent, read by the school) and the daily check-in, with a switcher between children; Privacy & safety and the notice board in the account menu; the old wellbeing address redirects; the guide answers health questions; 3 app tests |
 | Parent and student: notice board and celebrations | Done | | Client feedback 29 Oct 2026; not yet committed. "From school" on both homes (Staff of the Month, the next dates, the emergency numbers); a congratulations banner for a child named Student of the Month, on their home and their parent's dashboard; never another family's child; 2 app tests |
+| Parent: Health, Explore, Connect and Profile tabs | Done | | 11 Nov 2026; not yet committed. Health = wellbeing check-in, Explore = Future Explorer (both with a child switcher), Profile, Connect directory. Connect's Call/Message are off until the backend has contacts and messaging |
+| Parent: Connect and messages | Done | | 12 Nov 2026; not yet committed. Real contacts per child, write to one, thread view. Backend: `/students/:id/contacts`, `/students/:id/messages`. Call stays off (no numbers shared) |
+| Parent: SOS and safety | Done | | 11 Nov 2026; not yet committed. `/parent/safety`: one-tap `tel:` links to 112, 1098 (Childline), 108 and 100, from a red SOS button on the dashboard, the rail and Profile. No backend needed; the school is not notified |
+| Parent: Trajectory removed from the report; Observations linked from Home | Done | | 11 Nov 2026; not yet committed. `HolisticReport` takes `showTrajectory` (parent passes false) |
 
 ## School Web App
 | Item | Status | Owner | Notes |
@@ -81,6 +85,9 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Teacher: attendance | Done | | Client feedback 29 Oct 2026; not yet committed. A register per class and day (present, late, absent; everyone present to start; today or 30 days back); days in this month on the roster ("18/26 days") and the profile, with the days away; "In today" tile; 2 app tests |
 | Teacher: special care | Done | | Client feedback 29 Oct 2026; not yet committed. Care-needs flags on the roster and the register, the whole card on the profile, a "Special care" tile; 1 app test |
 | Teacher and counsellor: notice board; teacher's own reviews | Done | | Client feedback 29 Oct 2026; not yet committed. `/notices` with the wall of fame for teachers (a counsellor works across schools: board only); "Your reviews" in the teacher's account menu, private; 3 app tests |
+| Teacher and counsellor: Messages | Done | | 12 Nov 2026; not yet committed. `/messages` inbox with unread badge in the menu, reply in a thread a parent started. Backend: `/messages` |
+| Teacher: Class overview | Done | | 11 Nov 2026; not yet committed. `/teacher/class`: per class, student / star / awaiting-review / growth-area tiles and the students to look at first, built from data the app already loads |
+| Teacher: NEP reports | Done | | 11 Nov 2026; not yet committed. `/teacher/reports` lists students with their EHI; each opens the shared Holistic Report Card |
 
 ## Admin Panel
 | Item | Status | Owner | Notes |

@@ -92,6 +92,11 @@ export const ENDPOINTS = {
     list: '/notifications',
     seen: '/notifications/seen',
   },
+  /** Staff inbox (GET), and a thread with a child's parent (GET, POST reply). */
+  messages: {
+    inbox: '/messages',
+    thread: (studentId: string) => `/messages/${id(studentId)}`,
+  },
   students: {
     assignments: (studentId: string) => `/students/${id(studentId)}/assignments`,
     growthAreas: (studentId: string) => `/students/${id(studentId)}/growth-areas`,
@@ -102,6 +107,9 @@ export const ENDPOINTS = {
     growthMoments: (studentId: string) => `/students/${id(studentId)}/growth-moments`,
     consents: (studentId: string) => `/students/${id(studentId)}/consents`,
     consent: (studentId: string, purpose: string) => `/students/${id(studentId)}/consents/${id(purpose)}`,
+    /** Parents only: the school people they may write to, and a thread with one of them. */
+    contacts: (studentId: string) => `/students/${id(studentId)}/contacts`,
+    messages: (studentId: string) => `/students/${id(studentId)}/messages`,
     wellnessCheckins: (studentId: string) => `/students/${id(studentId)}/wellness-checkins`,
     /** Staff only: a school support plan for a student. */
     supportPlans: (studentId: string) => `/students/${id(studentId)}/support-plans`,

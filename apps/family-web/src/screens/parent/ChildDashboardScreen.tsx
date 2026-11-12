@@ -53,6 +53,7 @@ import {
   RuledListItem,
   Search,
   SectionTitle,
+  Siren,
   Sprout,
   Star,
   StatTile,
@@ -128,11 +129,20 @@ export function ChildDashboardScreen() {
     <div className="flex flex-col gap-8">
       <ChildSwitcher students={children.data ?? [child]} currentChildId={child.id} />
 
-      <header>
-        <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">Parent Dashboard</h1>
-        <p className="mt-2 text-sm font-medium text-ink-muted sm:text-base">
-          Review {possessive(firstName)} progress and pending tasks.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">Parent Dashboard</h1>
+          <p className="mt-2 text-sm font-medium text-ink-muted sm:text-base">
+            Review {possessive(firstName)} progress and pending tasks.
+          </p>
+        </div>
+        <Link
+          to="/parent/safety"
+          className="flex h-11 shrink-0 items-center gap-2 rounded-full bg-coral-700 px-4 text-sm font-black text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-700"
+        >
+          <Siren className="size-4" />
+          SOS
+        </Link>
       </header>
 
       {childHonour ? <HonourBanner honour={childHonour} audience="family" /> : null}
@@ -289,10 +299,16 @@ export function ChildDashboardScreen() {
           icon={NotebookPen}
           iconClassName="text-lilac-500"
           action={
-            <Link to={newObservationPath} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
-              <Plus />
-              Add an observation
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/parent/observations" className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+                All observations
+                <ChevronRight />
+              </Link>
+              <Link to={newObservationPath} className={buttonClasses({ size: 'sm', variant: 'secondary' })}>
+                <Plus />
+                Add an observation
+              </Link>
+            </div>
           }
         >
           What you have noticed

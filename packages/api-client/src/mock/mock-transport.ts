@@ -11,6 +11,7 @@ import type {
   BloodGroup,
   Consent,
   ConsentPurpose,
+  ContactRole,
   DevelopmentArea,
   FieldIssue,
   HealthCondition,
@@ -25,6 +26,7 @@ import type {
   LearningBehaviourArea,
   Pagination,
   Role,
+  SchoolContact,
   SupportCategory,
   SupportPlan,
   SupportStatus,
@@ -40,6 +42,7 @@ import {
   type MockHealthProfile,
   type MockHonour,
   type MockNotice,
+  type MockMessage,
   type MockObservation,
   type MockStaffReview,
   type MockState,
@@ -1438,6 +1441,122 @@ function supportPlanDto(plan: MockSupportPlan): SupportPlan {
   };
 }
 
+// ───────────────────────────── Messages: parents and the school ─────────────────────────────
+
+const MESSAGE_MAX = 1000;
+const contactOf = (user: MockUser): SchoolContact => ({ id: user.id, fullName: user.fullName, role: user.role as ContactRole });
+
+/** Active staff a family may write to: the child's class teachers, the school's admins, the counsellors. */
+function contactsOf(student: MockUser): MockUser[] {
+  return state.users
+    .filter(
+      (u) =>
+        u.isActive &&
+        ((u.role === 'teacher' && teachesStudent(u.id, student.id)) ||
+          u.role === 'psychologist' ||
+          (u.role === 'school_admin' && student.schoolId !== null && u.schoolId === student.schoolId)),
+    )
+    .sort((a, b) => a.role.localeCompare(b.role) || a.fullName.localeCompare(b.fullName));
+}
+
+const threadOf = (studentId: string, staffId: string): MockMessage[] =>
+  state.messages
+    .filter((m) => m.studentId === studentId && m.staffId === staffId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+const messageDto = (m: MockMessage) => ({ id: m.id, body: m.body, fromParent: m.senderId !== m.staffId, at: m.createdAt });
+
+function markRead(studentId: string, staffId: string, readerId: string): void {
+  const at = nowIso();
+  for (const m of state.messages) {
+    if (m.studentId === studentId && m.staffId === staffId && m.readAt === null && m.senderId !== readerId) m.readAt = at;
+  }
+}
+
+function messageText(body: Body, issues: FieldIssue[]): string {
+  const value = typeof body.body === 'string' ? body.body.trim() : '';
+  if (value === '') field(issues, 'body', 'is required');
+  else if (value.length > MESSAGE_MAX) field(issues, 'body', `must be at most ${MESSAGE_MAX} characters`);
+  return value;
+}
+
+function addMessage(studentId: string, staffId: string, senderId: string, body: string): MockMessage {
+  const message: MockMessage = { id: nextId('msg'), studentId, staffId, senderId, body, createdAt: nowIso(), readAt: null };
+  state.messages.push(message);
+  return message;
+}
+
+const messageHandlers = {
+  contacts({ actor }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    return { body: { contacts: contactsOf(student).map(contactOf) } };
+  },
+  familyThread({ actor, query }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const contact = contactsOf(student).find((u) => u.id === query.contactId);
+    if (!contact) throw Errors.notFound('Contact');
+    markRead(student.id, contact.id, actor.id);
+    return {
+      body: {
+        studentId: student.id,
+        studentName: student.fullName,
+        contact: contactOf(contact),
+        messages: threadOf(student.id, contact.id).map(messageDto),
+      },
+    };
+  },
+  send({ actor, body }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['contactId', 'body'], issues);
+    if (typeof body.contactId !== 'string') field(issues, 'contactId', 'is required');
+    const text = messageText(body, issues);
+    assertValid(issues);
+    const contact = contactsOf(student).find((u) => u.id === body.contactId);
+    if (!contact) throw Errors.invalidReference('contactId', 'That person is not one of this child’s school contacts.');
+    return { status: 201, body: { message: messageDto(addMessage(student.id, contact.id, actor.id, text)) } };
+  },
+  inbox({ actor }: Context): Result {
+    const mine = state.messages.filter((m) => m.staffId === actor.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const byStudent = new Map<
+      string,
+      { studentId: string; studentName: string; lastMessage: ReturnType<typeof messageDto>; unreadCount: number }
+    >();
+    for (const m of mine) {
+      const unread = m.senderId !== m.staffId && m.readAt === null ? 1 : 0;
+      const item = byStudent.get(m.studentId);
+      if (item) item.unreadCount += unread;
+      else
+        byStudent.set(m.studentId, {
+          studentId: m.studentId,
+          studentName: userById(m.studentId)?.fullName ?? 'Student',
+          lastMessage: messageDto(m),
+          unreadCount: unread,
+        });
+    }
+    const threads = [...byStudent.values()];
+    return { body: { threads, unreadCount: threads.reduce((sum, t) => sum + t.unreadCount, 0) } };
+  },
+  staffThread({ actor }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const messages = threadOf(student.id, actor.id);
+    if (messages.length === 0) throw Errors.notFound('Thread');
+    markRead(student.id, actor.id, actor.id);
+    return {
+      body: { studentId: student.id, studentName: student.fullName, contact: contactOf(actor), messages: messages.map(messageDto) },
+    };
+  },
+  reply({ actor, body }: Context, studentId: string): Result {
+    const student = progressStudent(actor, studentId);
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['body'], issues);
+    const text = messageText(body, issues);
+    assertValid(issues);
+    if (threadOf(student.id, actor.id).length === 0) throw Errors.notFound('Thread'); // staff reply; they do not start threads
+    return { status: 201, body: { message: messageDto(addMessage(student.id, actor.id, actor.id, text)) } };
+  },
+};
+
 const firstNameOf = (fullName: string): string => fullName.trim().split(/\s+/)[0] ?? fullName;
 
 const wellbeingHandlers = {
@@ -2484,6 +2603,12 @@ const ROUTES: Route[] = [
   { method: 'GET', path: '/students/:id/support-plans', roles: ['teacher', 'psychologist'], handle: supportHandlers.list },
   { method: 'POST', path: '/students/:id/support-plans', roles: ['teacher', 'psychologist'], handle: supportHandlers.create },
   { method: 'PATCH', path: '/support-plans/:id', roles: ['teacher', 'psychologist'], handle: supportHandlers.update },
+  { method: 'GET', path: '/students/:id/contacts', roles: ['parent'], handle: messageHandlers.contacts },
+  { method: 'GET', path: '/students/:id/messages', roles: ['parent'], handle: messageHandlers.familyThread },
+  { method: 'POST', path: '/students/:id/messages', roles: ['parent'], handle: messageHandlers.send },
+  { method: 'GET', path: '/messages', roles: ['teacher', 'psychologist', 'school_admin'], handle: messageHandlers.inbox },
+  { method: 'GET', path: '/messages/:id', roles: ['teacher', 'psychologist', 'school_admin'], handle: messageHandlers.staffThread },
+  { method: 'POST', path: '/messages/:id', roles: ['teacher', 'psychologist', 'school_admin'], handle: messageHandlers.reply },
   { method: 'GET', path: '/notifications', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: notificationHandlers.list },
   { method: 'POST', path: '/notifications/seen', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: notificationHandlers.seen },
   { method: 'GET', path: '/students/:id/stars', roles: ['student', 'parent', 'teacher', 'psychologist'], handle: progressHandlers.stars },

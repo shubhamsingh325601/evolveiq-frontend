@@ -45,6 +45,26 @@ describe('AppBottomNav', () => {
     );
   });
 
+  it('leaves rail-only items out of the tab bar', () => {
+    render(
+      <MemoryRouter>
+        <AppBottomNav
+          sections={[
+            {
+              items: [
+                { label: 'Home', to: '/home' },
+                { label: 'Observations', to: '/observations', isRailOnly: true },
+              ],
+            },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+
+    const links = within(screen.getByRole('navigation')).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/home']);
+  });
+
   it('shows the waiting count on its tab', () => {
     render(
       <MemoryRouter>

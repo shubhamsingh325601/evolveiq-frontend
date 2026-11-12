@@ -16,6 +16,9 @@ import { ReportScreen as ParentReportScreen } from './screens/parent/ReportScree
 import { ExploreScreen as ParentExploreScreen } from './screens/parent/ExploreScreen';
 import { ExploreLandingScreen } from './screens/parent/ExploreLandingScreen';
 import { AskScreen as ParentAskScreen } from './screens/parent/AskScreen';
+import { ConnectScreen } from './screens/parent/ConnectScreen';
+import { ProfileScreen } from './screens/parent/ProfileScreen';
+import { SafetyScreen } from './screens/parent/SafetyScreen';
 import { SiblingsScreen } from './screens/parent/SiblingsScreen';
 import { PrivacyScreen } from './screens/parent/PrivacyScreen';
 import { ObservationsScreen } from './screens/parent/ObservationsScreen';
@@ -64,6 +67,9 @@ export function App() {
           <Route path="/parent/explore" element={<ExploreLandingScreen />} />
           <Route path="/parent/explore/:childId" element={<ParentExploreScreen />} />
           <Route path="/parent/ask" element={<ParentAskScreen />} />
+          <Route path="/parent/connect" element={<ConnectScreen />} />
+          <Route path="/parent/profile" element={<ProfileScreen />} />
+          <Route path="/parent/safety" element={<SafetyScreen />} />
           <Route path="/parent/siblings" element={<SiblingsScreen />} />
           <Route path="/parent/privacy" element={<PrivacyScreen />} />
           <Route path="/parent/observations" element={<ObservationsScreen />} />

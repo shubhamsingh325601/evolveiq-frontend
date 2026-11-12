@@ -82,6 +82,28 @@ teacher view was accepted as it is.
   whole wall; a family sees the Staff of the Month and their own child's
   honours only — a student still never sees another student's data — and a
   child named is congratulated on their own home and their parent's dashboard.
+**Change, 11 Nov 2026 (client's Gemini prototypes, via the team):**
+- Parent: the Trajectory chart comes off the parent's Holistic Report (the
+  student's and the teacher's reports keep it).
+- Parent: the tab bar becomes Home, Explore, New observation, Health, Connect,
+  Profile. Observations is linked from Home ("All observations") and stays in
+  the desktop rail. Health is the daily wellbeing check-in; Explore is the
+  Future Explorer; Profile holds the account, the children, and Privacy.
+- Parent: **Connect** is a directory of school roles (class teacher, counsellor,
+  coach, parent group, admin desk). Call and Message are switched off until the
+  backend has contacts and messaging; this is not a chat.
+- Teacher: **NEP reports** lists the teacher's students with their EHI and opens
+  each student's Holistic Report Card.
+- Parent: **SOS and safety** is a page of national helplines (112, Childline
+  1098, ambulance 108, police 100) with one-tap calling. It does not alert the
+  school. This replaces "SOS / safety centre" in the out-of-scope list below.
+- Parent and staff: **Messages** (12 Nov 2026). Connect now lists the child's real
+  contacts (class teacher, counsellor, school admin) and a parent can write to one;
+  staff see parents' notes under Messages and reply. Short notes only: staff cannot
+  start a thread, and there are no groups or attachments. Call stays off: the
+  backend shares no phone numbers.
+- Teacher: **Class overview** shows each class's counts and the students to look
+  at first.
 
 ## Apps to build
 1. **Family Web App** — Parent, Student
@@ -196,6 +218,12 @@ teacher view was accepted as it is.
   scripted)
 - A working CRM integration or school-system sync (only its coming-soon page
   is in scope; spreadsheet import is in since 29 Oct 2026)
+  school-alerting SOS, health and medical records, Explore (admissions, fests,
+  maps), alumni network, splash / intro tour / consent flow, settings and
+  language switch, AI career-path predictions
+- More than 5 growth areas per student
+- Permission editor, audit log UI
+- Open chat (groups, attachments, staff-started threads); short parent-to-school notes are in scope, see Messages
 - Guardian hierarchies, multi-school students
 - Drag-and-drop activity builder
 - Billing/payments UI

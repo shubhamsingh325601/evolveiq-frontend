@@ -214,6 +214,16 @@ export interface MockHonour {
   createdAt: string;
 }
 
+export interface MockMessage {
+  id: string;
+  studentId: string;
+  staffId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
 export interface MockState {
   users: MockUser[];
   schools: MockSchool[];
@@ -233,6 +243,8 @@ export interface MockState {
   consents: MockConsent[];
   checkins: MockCheckin[];
   supportPlans: MockSupportPlan[];
+  /** Parent and staff notes; a thread is (student, staff). */
+  messages: MockMessage[];
   /** When each user last marked their notifications seen. */
   notificationSeen: Record<string, string>;
   healthProfiles: MockHealthProfile[];
@@ -981,6 +993,7 @@ export function buildSeed(now: Date = new Date()): MockState {
     consents: [],
     checkins: [],
     supportPlans: [],
+    messages: [],
     notificationSeen: {},
     healthProfiles,
     attendance,

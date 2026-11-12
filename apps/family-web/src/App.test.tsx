@@ -267,6 +267,39 @@ describe('Family app', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();
     expect(screen.queryByText(/concern|significant|clinical/i)).not.toBeInTheDocument();
+    // The parent's report has no trajectory chart; the student's keeps it.
+    expect(screen.queryByRole('heading', { name: /Trajectory/ })).not.toBeInTheDocument();
+  });
+
+  it('gives a parent Explore, Health, Connect and Profile tabs, and a link to every observation from Home', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+
+    await user.click(screen.getAllByRole('link', { name: 'All observations' })[0]!);
+    expect(await screen.findByText(/nervous before the school assembly/)).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('link', { name: 'Health' })[0]!);
+    expect(await screen.findByRole('heading', { name: /’s health$/ })).toBeInTheDocument();
+    expect(await screen.findByText(/Check-ins are off/)).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('link', { name: 'Explore' })[0]!);
+    expect(await screen.findByRole('heading', { name: /^Explore with / })).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('link', { name: 'Connect' })[0]!);
+    expect(await screen.findByText('School counsellor')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Message Sunita Rao' }));
+    await user.type(await screen.findByLabelText(/Your message to Sunita Rao/), 'Is Maya settling in well?');
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    expect(await screen.findByText('Is Maya settling in well?')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('link', { name: 'Profile' })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Privacy & safety/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Sign out' }).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('link', { name: /SOS and helplines/ }));
+    expect(await screen.findByRole('heading', { name: 'SOS and safety' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Childline on 1098/ })).toHaveAttribute('href', 'tel:1098');
   });
 
   it('opens a student their own report from their progress page', async () => {

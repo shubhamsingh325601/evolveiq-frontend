@@ -4,6 +4,7 @@ import {
   useClassRoster,
   useHonours,
   useNotices,
+  useMessageInbox,
   useReviewQueue,
   useReviewQueueCounts,
   useSchool,
@@ -36,6 +37,7 @@ export function AppFrame() {
   const ownObservations = useTeacherObservations({ isEnabled: isTeacher });
   const pending = useReviewQueue(REVIEW_FILTERS.pending, { isEnabled: isPsychologist });
   const pulse = useReviewQueueCounts(PULSE_FILTERS, { isEnabled: isPsychologist });
+  const inbox = useMessageInbox();
   const school = useSchool(isTeacher ? user?.schoolId : undefined);
   const notices = useNotices({}, { isEnabled: Boolean(user) });
   const honours = useHonours({}, { isEnabled: isTeacher });
@@ -82,7 +84,7 @@ export function AppFrame() {
     <AppLayout
       appName="EvolvIQ"
       roleLabel={ROLE_LABELS[user.role]}
-      sections={menuForRole(user.role, pulse.pending ?? 0)}
+      sections={menuForRole(user.role, pulse.pending ?? 0, inbox.data?.unreadCount ?? 0)}
       userName={user.fullName}
       onSignOut={signOut}
       {...(contextLabel ? { contextLabel } : {})}

@@ -151,7 +151,8 @@ function MoreTab({ items }: { items: SidebarMenuItem[] }) {
 export function AppBottomNav({ sections, className }: AppBottomNavProps) {
   const allLinks = sections
     .filter((section) => section.kind !== 'action')
-    .flatMap((section) => section.items);
+    .flatMap((section) => section.items)
+    .filter((item) => !item.isRailOnly);
   const centerLink = allLinks.find((item) => item.isCenter);
   const action =
     centerLink ??

@@ -1,6 +1,17 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { BookOpen, ClipboardCheck, ClipboardList, Inbox, Megaphone, Plus, UsersRound } from '@evolveiq/ui';
+import {
+  BookOpen,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  Inbox,
+  LayoutGrid,
+  Megaphone,
+  MessageCircle,
+  Plus,
+  UsersRound,
+} from '@evolveiq/ui';
 
 const NOTICE_BOARD = { label: 'Notice board', shortLabel: 'Notices', to: '/notices', icon: Megaphone };
 
@@ -8,7 +19,7 @@ const NOTICE_BOARD = { label: 'Notice board', shortLabel: 'Notices', to: '/notic
  * The school app's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`.
  * Attendance and the notice board came with the client's feedback of 29 Oct 2026.
  */
-export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSection[] {
+export function menuForRole(role: Role, pendingReviewCount = 0, unreadMessages = 0): SidebarMenuSection[] {
   if (role === 'teacher') {
     return [
       {
@@ -18,6 +29,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
       {
         title: 'Classroom',
         items: [
+          { label: 'Class overview', shortLabel: 'Class', to: '/teacher/class', icon: LayoutGrid },
           { label: 'My students', shortLabel: 'Students', to: '/teacher/students', icon: UsersRound },
           { label: 'Attendance', to: '/teacher/attendance', icon: ClipboardCheck },
           {
@@ -26,6 +38,13 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
             to: '/teacher/assign',
             icon: ClipboardList,
           },
+          {
+            label: 'NEP reports',
+            shortLabel: 'Reports',
+            to: '/teacher/reports',
+            icon: FileText,
+          },
+          { label: 'Messages', to: '/messages', badge: unreadMessages, icon: MessageCircle },
         ],
       },
       { title: 'School', items: [NOTICE_BOARD] },
@@ -48,6 +67,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0): SidebarMenuSect
             badge: pendingReviewCount,
             icon: Inbox,
           },
+          { label: 'Messages', to: '/messages', badge: unreadMessages, icon: MessageCircle },
         ],
       },
       {

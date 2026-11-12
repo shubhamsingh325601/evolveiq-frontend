@@ -1,7 +1,19 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
 import { FEATURES } from '@evolveiq/api-client';
-import { BotMessageSquare, Compass, Heart, HeartPulse, House, NotebookPen, Plus, Sprout } from '@evolveiq/ui';
+import {
+  BotMessageSquare,
+  Compass,
+  Heart,
+  HeartPulse,
+  House,
+  MessageCircle,
+  NotebookPen,
+  Plus,
+  Siren,
+  Sprout,
+  UserCheck,
+} from '@evolveiq/ui';
 
 /**
  * The family app's menu, by role. `AppSidebar` and `AppBottomNav` are shared
@@ -33,6 +45,9 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
   }
 
   if (role === 'parent') {
+    // The phone tab bar holds five tabs around the raised action, so
+    // Observations (linked from Home), Siblings and Privacy live in the rail
+    // and behind Home and Profile.
     return [
       {
         title: 'Family',
@@ -43,10 +58,14 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
             to: '/parent/observations',
             isEndMatch: true,
             icon: NotebookPen,
+            isRailOnly: true,
           },
           // Explore starts from a child's strengths, so it needs the Holistic Index.
           ...(FEATURES.holisticIndex ? [{ label: 'Explore', to: '/parent/explore', icon: Compass }] : []),
           { label: 'Health', to: '/parent/health', icon: HeartPulse },
+          { label: 'Connect', to: '/parent/connect', icon: MessageCircle },
+          { label: 'Profile', to: '/parent/profile', icon: UserCheck },
+          { label: 'SOS', to: '/parent/safety', icon: Siren, isRailOnly: true },
         ],
       },
       {

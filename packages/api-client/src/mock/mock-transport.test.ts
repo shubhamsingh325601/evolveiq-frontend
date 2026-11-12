@@ -693,3 +693,55 @@ describe('mock backend: imports and removals', () => {
     expect((await call('DELETE', ENDPOINTS.schools.detail('sch-halden'), { token: tunde })).status).toBe(409);
   });
 });
+
+describe('mock backend: parent and school messages', () => {
+  beforeEach(() => resetMockStore());
+
+  it('lists the class teacher, the school admin and the counsellor, by name and role only', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const response = await call('GET', ENDPOINTS.students.contacts('stu-maya'), { token: parent });
+    expect(response.status).toBe(200);
+    expect(response.body.contacts.map((c: { id: string }) => c.id)).toContain('usr-rao');
+    expect(Object.keys(response.body.contacts[0]).sort()).toEqual(['fullName', 'id', 'role']);
+  });
+
+  it('keeps contacts to parents of that child', async () => {
+    expect((await call('GET', ENDPOINTS.students.contacts('stu-maya'), { token: await tokenFor('rao@school.test') })).status).toBe(403);
+    expect((await call('GET', ENDPOINTS.students.contacts('stu-maya'), { token: await tokenFor('neil@family.test') })).status).toBe(404);
+  });
+
+  it('lets a parent write to the class teacher, who replies; threads stay with the two of them', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const teacher = await tokenFor('rao@school.test');
+
+    const sent = await call('POST', ENDPOINTS.students.messages('stu-maya'), { token: parent, body: { contactId: 'usr-rao', body: '  Is Maya settling in?  ' } });
+    expect(sent.status).toBe(201);
+    expect(sent.body.message).toMatchObject({ body: 'Is Maya settling in?', fromParent: true });
+
+    const inbox = await call('GET', ENDPOINTS.messages.inbox, { token: teacher });
+    expect(inbox.body).toMatchObject({ unreadCount: 1, threads: [{ studentId: 'stu-maya', unreadCount: 1 }] });
+    expect((await call('GET', ENDPOINTS.messages.thread('stu-maya'), { token: teacher })).status).toBe(200);
+    expect((await call('GET', ENDPOINTS.messages.inbox, { token: teacher })).body.unreadCount).toBe(0);
+
+    const reply = await call('POST', ENDPOINTS.messages.thread('stu-maya'), { token: teacher, body: { body: 'Very well, thank you.' } });
+    expect(reply.body.message.fromParent).toBe(false);
+
+    const thread = await call('GET', ENDPOINTS.students.messages('stu-maya'), { token: parent, query: { contactId: 'usr-rao' } });
+    expect(thread.body.messages.map((m: { fromParent: boolean }) => m.fromParent)).toEqual([true, false]);
+
+    // Another staff member sees nothing of it.
+    const counsellor = await tokenFor('mehta@school.test');
+    expect((await call('GET', ENDPOINTS.messages.inbox, { token: counsellor })).body.threads).toEqual([]);
+    expect((await call('GET', ENDPOINTS.messages.thread('stu-maya'), { token: counsellor })).status).toBe(404);
+  });
+
+  it('refuses a non-contact, an empty or long note, a student, and staff starting a thread', async () => {
+    const parent = await tokenFor('priya@family.test');
+    const write = (body: unknown, token = parent) => call('POST', ENDPOINTS.students.messages('stu-maya'), { token, body });
+    expect((await write({ contactId: 'usr-kapoor', body: 'Hi' })).status).toBe(422);
+    expect((await write({ contactId: 'usr-rao', body: '   ' })).status).toBe(400);
+    expect((await write({ contactId: 'usr-rao', body: 'x'.repeat(1001) })).status).toBe(400);
+    expect((await write({ contactId: 'usr-rao', body: 'Hi' }, (await signIn({ studentId: 'rv-1001' })).accessToken)).status).toBe(403);
+    expect((await call('POST', ENDPOINTS.messages.thread('stu-maya'), { token: await tokenFor('rao@school.test'), body: { body: 'Hello' } })).status).toBe(404);
+  });
+});

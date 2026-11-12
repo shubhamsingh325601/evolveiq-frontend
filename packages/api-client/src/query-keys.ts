@@ -87,6 +87,13 @@ export const queryKeys = {
     all: ['wellness'] as const,
     student: (studentId: string, days: number) => ['wellness', studentId, days] as const,
   },
+  messages: {
+    all: ['messages'] as const,
+    contacts: (studentId: string) => ['messages', 'contacts', studentId] as const,
+    family: (studentId: string, contactId: string) => ['messages', 'family', studentId, contactId] as const,
+    inbox: ['messages', 'inbox'] as const,
+    staff: (studentId: string) => ['messages', 'staff', studentId] as const,
+  },
   supportPlans: {
     student: (studentId: string) => ['support-plans', studentId] as const,
   },

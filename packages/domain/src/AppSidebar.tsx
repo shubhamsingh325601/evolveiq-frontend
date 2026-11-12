@@ -40,6 +40,11 @@ export interface SidebarMenuItem {
    */
   isCenter?: boolean;
   icon?: IconComponent;
+  /**
+   * Leave this item out of the phone tab bar, which only has room for about
+   * five. It stays in the desktop rail, and the app links to it elsewhere.
+   */
+  isRailOnly?: boolean;
 }
 
 export interface SidebarMenuSection {

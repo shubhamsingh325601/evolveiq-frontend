@@ -859,3 +859,42 @@ export interface ImportReport {
   newClasses: string[];
   rows: { row: number; fullName: string; identifier: string; problems: string[] }[];
 }
+// ───────────────────────────── Messages: parents and the school (Connect) ─────────────────────────────
+
+/** Who a parent may write to for one child. Names and roles only: no phone or email is shared. */
+export type ContactRole = 'teacher' | 'psychologist' | 'school_admin';
+
+export interface SchoolContact {
+  id: string;
+  fullName: string;
+  role: ContactRole;
+}
+
+export interface ThreadMessage {
+  id: string;
+  body: string;
+  /** true when the parent wrote it, false when school staff did. */
+  fromParent: boolean;
+  at: string;
+}
+
+/** A conversation about one child with one member of staff, oldest message first. */
+export interface MessageThread {
+  studentId: string;
+  studentName: string;
+  contact: SchoolContact;
+  messages: ThreadMessage[];
+}
+
+export interface InboxThread {
+  studentId: string;
+  studentName: string;
+  lastMessage: ThreadMessage;
+  unreadCount: number;
+}
+
+export interface MessageInbox {
+  threads: InboxThread[];
+  unreadCount: number;
+}
+

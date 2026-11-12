@@ -25,6 +25,11 @@ export interface HolisticReportProps {
   index: HolisticIndex;
   /** Where the header's back link goes, and what it says. */
   back: { to: string; label: string };
+  /**
+   * Show the year-by-year and month-by-month trajectory. The parent's report
+   * leaves it out; the student's and the teacher's keep it.
+   */
+  showTrajectory?: boolean;
 }
 
 const CHIP = 'rounded-lg border px-2 py-1 text-[0.625rem] font-bold uppercase tracking-wider';
@@ -38,7 +43,7 @@ const FOCUS_RING =
  * component for the parent's and the student's report, so the two can never
  * disagree. The year-by-year list doubles as the trajectory chart's table view.
  */
-export function HolisticReport({ studentName, index, back }: HolisticReportProps) {
+export function HolisticReport({ studentName, index, back, showTrajectory = true }: HolisticReportProps) {
   const firstName = firstNameOf(studentName);
   const years = yearsTracked(index);
   const [hasCopiedLink, setHasCopiedLink] = useState(false);
@@ -117,7 +122,9 @@ export function HolisticReport({ studentName, index, back }: HolisticReportProps
       <div className="relative z-10 -mt-12 flex flex-col gap-8 sm:-mt-14">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Solid, not glass: these two sit over the header's gradient. */}
-          <HolisticTrendCard className="bg-white shadow-raised" studentName={studentName} index={index} />
+          {showTrajectory ? (
+            <HolisticTrendCard className="bg-white shadow-raised" studentName={studentName} index={index} />
+          ) : null}
 
           <SkillProfileCard
             className="bg-white shadow-raised"

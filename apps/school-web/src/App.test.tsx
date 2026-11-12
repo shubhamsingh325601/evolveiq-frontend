@@ -47,6 +47,38 @@ describe('School app', () => {
     expect(screen.queryByText('Tara Bhatt')).not.toBeInTheDocument();
   });
 
+  it('lists a teacher’s students under NEP reports and opens one student’s report', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /NEP reports/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'NEP reports' })).toBeInTheDocument();
+    expect(await screen.findByText('Maya Ahluwalia')).toBeInTheDocument();
+
+    await user.click((await screen.findAllByRole('link', { name: /View report/ }))[0]!);
+    expect(await screen.findByText(/Skill profile/i)).toBeInTheDocument();
+  });
+
+  it('shows a teacher each class with its numbers and who to look at first', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Class overview/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Class overview' })).toBeInTheDocument();
+    const panel = (await screen.findAllByRole('region', { name: /^Class / }))[0]!;
+    expect(within(panel).getByText('Awaiting review')).toBeInTheDocument();
+    expect(within(panel).getByText('Look at first')).toBeInTheDocument();
+  });
+
+  it('shows a teacher their messages from parents, empty until a parent writes', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Messages/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Messages' })).toBeInTheDocument();
+    expect(await screen.findByText('No messages yet')).toBeInTheDocument();
+  });
+
   it('gives a star for something good: on the student’s profile at once, never awaiting review', async () => {
     const user = await signInAs('rao@school.test');
     await screen.findByRole('heading', { name: 'My students' });
