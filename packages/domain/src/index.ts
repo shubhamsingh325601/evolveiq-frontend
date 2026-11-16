@@ -96,6 +96,8 @@ export { HonourWall } from './HonourWall';
 export type { HonourWallProps } from './HonourWall';
 export { NoticeBoard } from './NoticeBoard';
 export type { NoticeBoardProps } from './NoticeBoard';
+export { UpcomingEventsCard } from './UpcomingEventsCard';
+export type { UpcomingEventsCardProps } from './UpcomingEventsCard';
 export * from './school-life';
 export { schoolLifeNotifications } from './school-life-notifications';
 export type { SchoolLifeNotificationSources } from './school-life-notifications';

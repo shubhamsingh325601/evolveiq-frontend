@@ -4,6 +4,7 @@ import type {
   BloodGroup,
   HealthCondition,
   HonourKind,
+  Notice,
   NoticeAudience,
   NoticeCategory,
   Role,
@@ -104,4 +105,17 @@ export function formatDayShort(day: string): string {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
     new Date(`${day}T00:00:00Z`),
   );
+}
+
+/**
+ * Notices in `categories`, dated today or later, soonest first (pinned ones
+ * first within that). The one place this filter/sort lives — `NoticeBoard`,
+ * `SchoolNewsCard` and `UpcomingEventsCard` all call it instead of each
+ * keeping their own copy.
+ */
+export function upcomingNotices(notices: Notice[], categories: NoticeCategory[], today: string): Notice[] {
+  const wanted = new Set(categories);
+  return notices
+    .filter((notice) => wanted.has(notice.category) && notice.startsOn !== null && notice.startsOn >= today)
+    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || (a.startsOn ?? '').localeCompare(b.startsOn ?? ''));
 }

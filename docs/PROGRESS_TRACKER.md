@@ -68,6 +68,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Parent: Connect and messages | Done | | 12 Nov 2026; not yet committed. Real contacts per child, write to one, thread view. Backend: `/students/:id/contacts`, `/students/:id/messages`. Call stays off (no numbers shared) |
 | Parent: SOS and safety | Done | | 11 Nov 2026; not yet committed. `/parent/safety`: one-tap `tel:` links to 112, 1098 (Childline), 108 and 100, from a red SOS button on the dashboard, the rail and Profile. No backend needed; the school is not notified |
 | Parent: Trajectory removed from the report; Observations linked from Home | Done | | 11 Nov 2026; not yet committed. `HolisticReport` takes `showTrajectory` (parent passes false) |
+| Parent and student: dedicated Upcoming events card | Done | | 16 Nov 2026; not yet committed. Client feedback: a section for events only (not mixed with activities/trainings like "Coming up"); `UpcomingEventsCard` in `packages/domain`, reuses the notice board's data; on both home screens above "From school" |
 
 ## School Web App
 | Item | Status | Owner | Notes |
