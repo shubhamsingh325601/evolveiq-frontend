@@ -1,3 +1,5 @@
+export { AchievementBadges } from './AchievementBadges';
+export type { AchievementBadgesProps } from './AchievementBadges';
 export { AccountMenu } from './AccountMenu';
 export type { AccountMenuItem, AccountMenuProps, AccountMenuSection } from './AccountMenu';
 export { AccountSwitchProvider } from './AccountSwitchProvider';

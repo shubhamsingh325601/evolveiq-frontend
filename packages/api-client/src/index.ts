@@ -17,6 +17,8 @@ export {
   longestRun,
 } from './business-time';
 export { LEVEL_TITLES, levelForCompletedCount, XP_PER_ACTIVITY } from './student-level';
+export { achievementBadges } from './achievement-badges';
+export type { AchievementBadgeDefinition, AchievementBadgeInputs } from './achievement-badges';
 export { refreshRequest, signInRequest, signOutRequest } from './session';
 export type { Credentials, SignInResult, TokenPair } from './session';
 export { DEMO_PASSWORD, DEMO_PIN, resetMockStore } from './mock/mock-transport';
