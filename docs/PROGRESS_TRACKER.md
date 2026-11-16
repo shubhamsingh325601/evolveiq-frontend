@@ -42,6 +42,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | `AppBottomNav` "More" | Done | | Client feedback 29 Oct 2026; not yet committed. Five targets on a phone; a role with more places keeps four tabs and puts the rest behind "More" (the school admin); 1 test |
 | EHI charts: `RingsChart`, `TrendChart`, `RadarChart` | Done | | Hand-drawn SVG in `packages/ui`; palette validated; covered through `HolisticIndexCard` (3 tests) and `HolisticReport` (6 tests); `HolisticTrendCard` (trajectory) shared by the report and the family homes |
 | EHI API contract | Done | | Served by the backend's progress module (`/students/:studentId/holistic-index`, backend `5b694d2`); `FEATURES.holisticIndex` on since 24 Oct 2026 |
+| `AchievementBadges` | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototypes, not yet confirmed with the client. Frontend-only, like the level ladder: milestones worked out from streak days, finished activities and star count (no new backend data); distinct from a Star, which always carries someone's words; 4 tests |
 
 ## Family Web App
 | Item | Status | Owner | Notes |

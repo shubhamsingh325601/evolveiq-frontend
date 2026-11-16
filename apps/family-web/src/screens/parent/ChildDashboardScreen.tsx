@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import {
+  achievementBadges,
   addMonths,
   businessDate,
   businessMonth,
@@ -19,6 +20,7 @@ import {
   useStreak,
 } from '@evolveiq/api-client';
 import {
+  AchievementBadges,
   firstNameOf,
   formatMonth,
   GrowthAreaList,
@@ -123,6 +125,11 @@ export function ChildDashboardScreen() {
   const childHonour = (honours.data ?? [])
     .filter((honour) => honour.honoree.id === child.id && recentMonths.includes(honour.month))
     .sort((a, b) => b.month.localeCompare(a.month))[0];
+  const badges = achievementBadges({
+    streakDays: streak.data?.days ?? 0,
+    starCount: childStars.length,
+    completedCount: done.length,
+  });
 
   return (
     <div className="flex flex-col gap-8">
@@ -153,6 +160,8 @@ export function ChildDashboardScreen() {
           to={`/parent/children/${child.id}/report`}
         />
       ) : null}
+
+      <AchievementBadges badges={badges} />
 
       {index ? <HolisticIndexCard studentName={child.fullName} index={index} /> : null}
 

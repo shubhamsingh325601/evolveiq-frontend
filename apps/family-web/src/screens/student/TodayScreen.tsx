@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
+  achievementBadges,
   addMonths,
   businessMonth,
   FEATURES,
@@ -15,6 +16,7 @@ import {
 } from '@evolveiq/api-client';
 import { useAuth } from '@evolveiq/auth';
 import {
+  AchievementBadges,
   ACTIVITY_TYPE_LABELS,
   firstNameOf,
   GrowthAreaList,
@@ -86,6 +88,11 @@ export function TodayScreen() {
   const myHonour = (honours.data ?? [])
     .filter((honour) => honour.honoree.id === user?.id && recentMonths.includes(honour.month))
     .sort((a, b) => b.month.localeCompare(a.month))[0];
+  const badges = achievementBadges({
+    streakDays: streak.data?.days ?? 0,
+    starCount: stars.data?.length ?? 0,
+    completedCount: level.data?.completedCount ?? 0,
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,6 +114,8 @@ export function TodayScreen() {
       {myHonour ? <HonourBanner honour={myHonour} audience="self" /> : null}
 
       {level.data ? <LevelProgress level={level.data} /> : null}
+
+      <AchievementBadges badges={badges} />
 
       {index && user ? (
         <div className="grid gap-6 lg:grid-cols-2">
