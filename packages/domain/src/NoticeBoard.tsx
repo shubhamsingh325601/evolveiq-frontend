@@ -22,7 +22,7 @@ import {
   type IconComponent,
 } from '@evolveiq/ui';
 import { formatDay } from './format-date';
-import { formatDayShort, NOTICE_AUDIENCE_LABELS, NOTICE_CATEGORY_LABELS } from './school-life';
+import { formatDayShort, NOTICE_AUDIENCE_LABELS, NOTICE_CATEGORY_LABELS, upcomingNotices } from './school-life';
 
 export interface NoticeBoardProps {
   notices: Notice[];
@@ -182,9 +182,7 @@ export function NoticeBoard({ notices, isLoading = false, onEdit, onRemove, show
   }
 
   const contacts = notices.filter((n) => n.category === 'emergency_contact');
-  const upcoming = notices
-    .filter((n) => DATED.includes(n.category) && n.startsOn !== null && n.startsOn >= today)
-    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || (a.startsOn ?? '').localeCompare(b.startsOn ?? ''));
+  const upcoming = upcomingNotices(notices, DATED, today);
   const updates = notices.filter((n) => n.category !== 'emergency_contact' && !upcoming.includes(n));
 
   return (

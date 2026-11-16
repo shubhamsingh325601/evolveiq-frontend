@@ -24,6 +24,7 @@ import {
   ReportOverviewCard,
   SkillProfileCard,
   StarBoard,
+  UpcomingEventsCard,
   yearsTracked,
 } from '@evolveiq/domain';
 import {
@@ -154,6 +155,7 @@ export function TodayScreen() {
             <ReportOverviewCard strengths={index.strengths} yearsTracked={yearsTracked(index)} to="/student/report" />
           ) : null}
           <StarBoard stars={stars.data ?? []} audience="student" isLoading={stars.isLoading} limit={2} />
+          <UpcomingEventsCard notices={notices.data ?? []} to="/student/notices" />
           <SchoolNewsCard notices={notices.data ?? []} honours={honours.data ?? []} to="/student/notices" />
 
           <section>

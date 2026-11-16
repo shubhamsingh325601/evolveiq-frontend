@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { Link } from 'react-router-dom';
-import { businessDate, type Honour, type Notice } from '@evolveiq/api-client';
-import { formatDayShort, formatMonth, NOTICE_CATEGORY_LABELS } from '@evolveiq/domain';
+import { businessDate, type Honour, type Notice, type NoticeCategory } from '@evolveiq/api-client';
+import { formatDayShort, formatMonth, NOTICE_CATEGORY_LABELS, upcomingNotices } from '@evolveiq/domain';
 import { Avatar, buttonClasses, CalendarDays, Card, ChevronRight, cn, Megaphone, Siren, Trophy } from '@evolveiq/ui';
 
 export interface SchoolNewsCardProps {
@@ -12,7 +12,7 @@ export interface SchoolNewsCardProps {
   className?: string;
 }
 
-const DATED = new Set(['event', 'activity', 'training']);
+const DATED: NoticeCategory[] = ['event', 'activity', 'training'];
 
 /**
  * What the school is saying, on a family home: the Staff of the Month, the next
@@ -22,10 +22,7 @@ const DATED = new Set(['event', 'activity', 'training']);
 export function SchoolNewsCard({ notices, honours, to, className }: SchoolNewsCardProps) {
   const headingId = useId();
   const today = businessDate();
-  const upcoming = notices
-    .filter((n) => DATED.has(n.category) && n.startsOn !== null && n.startsOn >= today)
-    .sort((a, b) => (a.startsOn ?? '').localeCompare(b.startsOn ?? ''))
-    .slice(0, 3);
+  const upcoming = upcomingNotices(notices, DATED, today).slice(0, 3);
   const emergencyCount = notices.filter((n) => n.category === 'emergency_contact').length;
   const staffOfMonth = honours.filter((h) => h.kind === 'staff_of_month').sort((a, b) => b.month.localeCompare(a.month))[0];
 

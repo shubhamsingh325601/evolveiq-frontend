@@ -32,6 +32,7 @@ import {
   StarBoard,
   StarsOverTime,
   StreakIndicator,
+  UpcomingEventsCard,
   yearsTracked,
 } from '@evolveiq/domain';
 import {
@@ -267,6 +268,7 @@ export function ChildDashboardScreen() {
             />
           </div>
 
+          <UpcomingEventsCard notices={notices.data ?? []} to="/parent/notices" />
           <SchoolNewsCard notices={notices.data ?? []} honours={honours.data ?? []} to="/parent/notices" />
 
           <section>
