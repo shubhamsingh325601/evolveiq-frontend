@@ -616,6 +616,61 @@ describe('mock backend: the notice board', () => {
   });
 });
 
+describe('mock backend: the IT Help Desk', () => {
+  beforeEach(() => resetMockStore());
+
+  const subjects = async (token: string, query?: Call['query']) =>
+    ((await call('GET', ENDPOINTS.supportTickets.list, { token, query })).body.tickets as { subject: string }[]).map((t) => t.subject);
+
+  it('shows a teacher only their own, a school admin their whole school, a platform admin every school', async () => {
+    const rao = await subjects(await tokenFor('rao@school.test'));
+    expect(rao).toEqual(['Projector in 4B won’t turn on']);
+
+    const clara = await subjects(await tokenFor('clara@school.test'));
+    expect(clara).toEqual(expect.arrayContaining(['Projector in 4B won’t turn on', 'Can’t log in to the attendance register', 'Staff room Wi-Fi keeps dropping']));
+    expect(clara).not.toContain('Printer in the 6A corridor is out of toner');
+
+    const tunde = await subjects(await tokenFor('tunde@evolveiq.test'));
+    expect(tunde).toEqual(expect.arrayContaining(['Printer in the 6A corridor is out of toner', 'Staff room Wi-Fi keeps dropping']));
+    expect(await subjects(await tokenFor('tunde@evolveiq.test'), { schoolId: 'sch-halden' })).toEqual(['Printer in the 6A corridor is out of toner']);
+  });
+
+  it('keeps psychologists and students out entirely', async () => {
+    expect((await call('GET', ENDPOINTS.supportTickets.list, { token: await tokenFor('mehta@school.test') })).status).toBe(403);
+    expect((await call('POST', ENDPOINTS.supportTickets.list, { token: await tokenFor('mehta@school.test'), body: { subject: 'x' } })).status).toBe(403);
+  });
+
+  it('only lets a platform admin filter by school', async () => {
+    expect((await call('GET', ENDPOINTS.supportTickets.list, { token: await tokenFor('clara@school.test'), query: { schoolId: 'sch-halden' } })).status).toBe(403);
+  });
+
+  it('raises a ticket for the caller’s own school, starting open', async () => {
+    const rao = await tokenFor('rao@school.test');
+    const created = await call('POST', ENDPOINTS.supportTickets.list, { token: rao, body: { subject: 'Smartboard pen missing' } });
+    expect(created.status).toBe(201);
+    expect(created.body.ticket).toMatchObject({ schoolId: 'sch-ridgeview', status: 'open', canManage: false, raisedBy: { fullName: 'Sunita Rao' } });
+  });
+
+  it('lets a school admin (their own school) and a platform admin (any) change status; a ticket outside scope is 404', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const ticket = (await call('GET', ENDPOINTS.supportTickets.list, { token: clara })).body.tickets.find(
+      (t: { id: string; subject: string }) => t.subject === 'Projector in 4B won’t turn on',
+    );
+    expect((await call('PATCH', ENDPOINTS.supportTickets.detail(ticket.id), { token: clara, body: { status: 'in_progress' } })).body.ticket.status).toBe(
+      'in_progress',
+    );
+    expect((await call('PATCH', ENDPOINTS.supportTickets.detail('tkt-printer'), { token: clara, body: { status: 'resolved' } })).status).toBe(404);
+    expect(
+      (await call('PATCH', ENDPOINTS.supportTickets.detail('tkt-printer'), { token: await tokenFor('tunde@evolveiq.test'), body: { status: 'resolved' } }))
+        .body.ticket.status,
+    ).toBe('resolved');
+    // Teachers and non-admins may not change status at all.
+    expect((await call('PATCH', ENDPOINTS.supportTickets.detail(ticket.id), { token: await tokenFor('rao@school.test'), body: { status: 'resolved' } })).status).toBe(
+      403,
+    );
+  });
+});
+
 describe('mock backend: staff reviews and the celebration wall', () => {
   beforeEach(() => resetMockStore());
 

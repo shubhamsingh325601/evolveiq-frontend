@@ -47,6 +47,11 @@ export const ENDPOINTS = {
     list: '/notices',
     detail: (noticeId: string) => `/notices/${id(noticeId)}`,
   },
+  /** The IT Help Desk. PATCH on the detail path changes status only. */
+  supportTickets: {
+    list: '/support-tickets',
+    detail: (ticketId: string) => `/support-tickets/${id(ticketId)}`,
+  },
   staffReviews: {
     list: '/staff-reviews',
     detail: (staffId: string, month: string) => `/staff-reviews/${id(staffId)}/${id(month)}`,

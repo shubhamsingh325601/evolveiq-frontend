@@ -21,6 +21,7 @@ import type {
   Role,
   SupportCategory,
   SupportStatus,
+  SupportTicketStatus,
 } from '../types';
 
 /**
@@ -185,6 +186,19 @@ export interface MockNotice {
   updatedAt: string;
 }
 
+/** The IT Help Desk — a gap found against the client's UI prototype (16 Nov 2026), not yet a
+ * confirmed client request; built so the project is ready to demo. */
+export interface MockSupportTicket {
+  id: string;
+  schoolId: string;
+  subject: string;
+  body: string | null;
+  status: SupportTicketStatus;
+  raisedById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MockStaffReview {
   id: string;
   schoolId: string;
@@ -252,6 +266,7 @@ export interface MockState {
   notices: MockNotice[];
   staffReviews: MockStaffReview[];
   honours: MockHonour[];
+  supportTickets: MockSupportTicket[];
 }
 
 /**
@@ -978,6 +993,31 @@ export function buildSeed(now: Date = new Date()): MockState {
       'For telling the class about the museum trip with a clear beginning, middle and end, and answering every question.'),
   ];
 
+  const ticket = (
+    id: string,
+    schoolId: string,
+    raisedById: string,
+    subject: string,
+    body: string | null,
+    status: SupportTicketStatus,
+    createdDaysAgo: number,
+  ): MockSupportTicket => ({
+    id,
+    schoolId,
+    subject,
+    body,
+    status,
+    raisedById,
+    createdAt: daysAgo(createdDaysAgo, 11),
+    updatedAt: daysAgo(createdDaysAgo, 11),
+  });
+  const supportTickets: MockSupportTicket[] = [
+    ticket('tkt-projector', RIDGEVIEW, 'usr-rao', 'Projector in 4B won’t turn on', 'Tried the remote and the wall switch. The bulb light does not come on at all.', 'open', 1),
+    ticket('tkt-login', RIDGEVIEW, 'usr-kapoor', 'Can’t log in to the attendance register', 'It says my password is wrong, but I haven’t changed it.', 'in_progress', 4),
+    ticket('tkt-wifi', RIDGEVIEW, 'usr-clara', 'Staff room Wi-Fi keeps dropping', null, 'resolved', 9),
+    ticket('tkt-printer', HALDEN, 'usr-omar', 'Printer in the 6A corridor is out of toner', 'Needs a new black cartridge; the tray is empty too.', 'open', 2),
+  ];
+
   return {
     users,
     schools,
@@ -1000,5 +1040,6 @@ export function buildSeed(now: Date = new Date()): MockState {
     notices,
     staffReviews,
     honours,
+    supportTickets,
   };
 }

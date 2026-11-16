@@ -5,6 +5,7 @@ import { SignInScreen } from './screens/SignInScreen';
 import { StudentsScreen } from './screens/teacher/StudentsScreen';
 import { StudentProfileScreen } from './screens/teacher/StudentProfileScreen';
 import { NewObservationScreen } from './screens/teacher/NewObservationScreen';
+import { RaiseTicketScreen } from './screens/teacher/RaiseTicketScreen';
 import { AssignActivityScreen } from './screens/teacher/AssignActivityScreen';
 import { AttendanceScreen } from './screens/teacher/AttendanceScreen';
 import { ReviewsScreen } from './screens/teacher/ReviewsScreen';
@@ -37,6 +38,7 @@ export function App() {
           <Route path="/teacher/class" element={<ClassOverviewScreen />} />
           <Route path="/teacher/reports" element={<NepReportsScreen />} />
           <Route path="/teacher/reports/:studentId" element={<StudentReportScreen />} />
+          <Route path="/teacher/help-desk" element={<RaiseTicketScreen />} />
         </Route>
       </Route>
 

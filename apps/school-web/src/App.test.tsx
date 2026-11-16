@@ -288,4 +288,23 @@ describe('School app: classes, attendance, care needs and school life', () => {
     expect(await screen.findByText('Safeguarding refresher for every staff member')).toBeInTheDocument();
     expect(screen.queryByText('Wall of fame')).not.toBeInTheDocument();
   });
+
+  it('lets a teacher raise an IT Help Desk ticket', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Raise a ticket|IT help/ })[0]!);
+    await screen.findByRole('heading', { name: 'Raise a ticket' });
+    await user.type(screen.getByLabelText("What's the problem"), 'Smartboard pen missing');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByText(/Sent: .Smartboard pen missing./)).toBeInTheDocument();
+  });
+
+  it('keeps a counsellor off the Help Desk: they have no school', async () => {
+    await signInAs('mehta@school.test');
+    await screen.findByRole('heading', { name: 'Review queue' });
+
+    expect(screen.queryByRole('link', { name: /Raise a ticket|IT help/ })).not.toBeInTheDocument();
+  });
 });

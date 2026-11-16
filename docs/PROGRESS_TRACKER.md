@@ -42,6 +42,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | `AppBottomNav` "More" | Done | | Client feedback 29 Oct 2026; not yet committed. Five targets on a phone; a role with more places keeps four tabs and puts the rest behind "More" (the school admin); 1 test |
 | EHI charts: `RingsChart`, `TrendChart`, `RadarChart` | Done | | Hand-drawn SVG in `packages/ui`; palette validated; covered through `HolisticIndexCard` (3 tests) and `HolisticReport` (6 tests); `HolisticTrendCard` (trajectory) shared by the report and the family homes |
 | EHI API contract | Done | | Served by the backend's progress module (`/students/:studentId/holistic-index`, backend `5b694d2`); `FEATURES.holisticIndex` on since 24 Oct 2026 |
+| `SupportTicketForm` (IT Help Desk) | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. Subject and optional detail, shared by a teacher raising their own and a school admin raising theirs; backend `783504e`; 2 tests |
 
 ## Family Web App
 | Item | Status | Owner | Notes |
@@ -88,6 +89,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Teacher and counsellor: Messages | Done | | 12 Nov 2026; not yet committed. `/messages` inbox with unread badge in the menu, reply in a thread a parent started. Backend: `/messages` |
 | Teacher: Class overview | Done | | 11 Nov 2026; not yet committed. `/teacher/class`: per class, student / star / awaiting-review / growth-area tiles and the students to look at first, built from data the app already loads |
 | Teacher: NEP reports | Done | | 11 Nov 2026; not yet committed. `/teacher/reports` lists students with their EHI; each opens the shared Holistic Report Card |
+| Teacher: IT Help Desk ("Raise a ticket") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. `/teacher/help-desk`: subject and optional detail, shared `SupportTicketForm`; no list, a teacher sees only what they raised |
 
 ## Admin Panel
 | Item | Status | Owner | Notes |
@@ -101,6 +103,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Staff reviews | Done | | Client feedback 29 Oct 2026; not yet committed. Five ratings 1–5 and a comment per teacher per month; the best rated suggested for Staff of the Month; private to the admin and the teacher; 1 app test |
 | Wall of fame (manage) | Done | | Client feedback 29 Oct 2026; not yet committed. Name a Staff of the Month and Students of the Month with why; take one down; 1 app test |
 | Health and care needs, by the school office | Done | | Client feedback 29 Oct 2026; not yet committed. A "Care needs" column and dialog on the students list; 1 app test |
+| IT Help Desk ("Help desk") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. School Admin (own school) and Platform Admin (every school, named) see tickets raised by teachers and school admins; status open/in_progress/resolved changed inline; a school admin also raises their own via "New ticket"; 3 app tests |
 
 ## Quality
 | Item | Status | Owner | Notes |

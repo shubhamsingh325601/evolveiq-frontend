@@ -274,6 +274,46 @@ describe('Admin panel: import, remove, notices, reviews and the wall', () => {
     expect(await screen.findByText('4.2')).toBeInTheDocument();
   });
 
+  it('lets a school admin see their school’s Help Desk tickets and change a status', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByRole('heading', { name: 'Students' });
+    await user.click(screen.getAllByRole('link', { name: /Help desk/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Help desk' })).toBeInTheDocument();
+
+    expect(await screen.findByText('Projector in 4B won’t turn on')).toBeInTheDocument();
+    // Halden Grove's ticket belongs to another school.
+    expect(screen.queryByText('Printer in the 6A corridor is out of toner')).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Projector in 4B won’t turn on/), 'in_progress');
+    await waitFor(() => expect(screen.getByLabelText(/Projector in 4B won’t turn on/)).toHaveValue('in_progress'));
+  });
+
+  it('lets a school admin raise their own Help Desk ticket', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByRole('heading', { name: 'Students' });
+    await user.click(screen.getAllByRole('link', { name: /Help desk/ })[0]!);
+    await screen.findByRole('heading', { name: 'Help desk' });
+
+    await user.click(screen.getByRole('button', { name: 'New ticket' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Raise a ticket' });
+    await user.type(within(dialog).getByLabelText("What's the problem"), 'Gate lock is jammed');
+    await user.click(within(dialog).getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByText('Gate lock is jammed')).toBeInTheDocument();
+  });
+
+  it('shows a platform admin every school’s Help Desk tickets, with the school named', async () => {
+    const user = await signInAs('tunde@evolveiq.test');
+    await screen.findByRole('heading', { name: 'Schools' });
+    await user.click(screen.getAllByRole('link', { name: /Help desk/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Help desk' })).toBeInTheDocument();
+
+    expect(await screen.findByText('Printer in the 6A corridor is out of toner')).toBeInTheDocument();
+    expect(screen.getByText('Projector in 4B won’t turn on')).toBeInTheDocument();
+    expect(screen.getByText('Halden Grove School')).toBeInTheDocument();
+  });
+
   it('names a Student of the Month on the wall', async () => {
     const user = await signInAs('clara@school.test');
     await screen.findByRole('heading', { name: 'Students' });
