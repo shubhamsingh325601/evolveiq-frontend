@@ -12,6 +12,7 @@ import { HealthProfileForm } from './HealthProfileForm';
 import { HonourBanner } from './HonourBanner';
 import { HonourWall } from './HonourWall';
 import { NoticeBoard } from './NoticeBoard';
+import { SupportTicketForm } from './SupportTicketForm';
 
 const PROFILE: HealthProfile = {
   studentId: 'stu-maya',
@@ -126,6 +127,36 @@ describe('the notice board', () => {
     expect(screen.getAllByRole('button', { name: /^Edit / })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Edit Sports Day' }));
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'soon' }));
+  });
+});
+
+describe('raising an IT Help Desk ticket', () => {
+  it('asks what the problem is before sending', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<SupportTicketForm onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Say what the problem is')).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: "What's the problem" }), 'Projector in 4B won’t turn on');
+    await user.type(screen.getByRole('textbox', { name: /More detail/ }), 'Tried the remote and the wall switch.');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(onSubmit).toHaveBeenCalledWith({
+      subject: 'Projector in 4B won’t turn on',
+      body: 'Tried the remote and the wall switch.',
+    });
+  });
+
+  it('leaves body out when it is left blank', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<SupportTicketForm onSubmit={onSubmit} />);
+
+    await user.type(screen.getByRole('textbox', { name: /What's the problem/ }), 'Staff room Wi-Fi keeps dropping');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(onSubmit).toHaveBeenCalledWith({ subject: 'Staff room Wi-Fi keeps dropping' });
   });
 });
 

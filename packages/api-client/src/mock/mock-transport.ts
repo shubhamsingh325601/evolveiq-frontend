@@ -30,6 +30,7 @@ import type {
   SupportCategory,
   SupportPlan,
   SupportStatus,
+  SupportTicketStatus,
   WellnessCheckin,
 } from '../types';
 import {
@@ -47,6 +48,7 @@ import {
   type MockStaffReview,
   type MockState,
   type MockSupportPlan,
+  type MockSupportTicket,
   type MockUser,
 } from './fixtures';
 
@@ -2159,6 +2161,98 @@ const noticeHandlers = {
   },
 };
 
+// Support tickets (IT Help Desk) ─────────────────────────────
+//
+// A gap found against the client's UI prototype (16 Nov 2026), not yet a confirmed client
+// request; built so the project is ready to demo. Psychologists have no school and a ticket
+// always belongs to one, so the role is left out here, as it is on the backend.
+
+const SUPPORT_TICKET_STATUSES: SupportTicketStatus[] = ['open', 'in_progress', 'resolved'];
+
+function canManageTicket(actor: MockUser, ticket: MockSupportTicket): boolean {
+  if (actor.role === 'platform_admin') return true;
+  return actor.role === 'school_admin' && actor.schoolId !== null && ticket.schoolId === actor.schoolId;
+}
+
+function ticketScope(actor: MockUser, ticket: MockSupportTicket): boolean {
+  switch (actor.role) {
+    case 'platform_admin':
+      return true;
+    case 'school_admin':
+      return actor.schoolId !== null && ticket.schoolId === actor.schoolId;
+    case 'teacher':
+      return ticket.raisedById === actor.id;
+    default:
+      return false;
+  }
+}
+
+function supportTicketDto(actor: MockUser, ticket: MockSupportTicket) {
+  return {
+    id: ticket.id,
+    schoolId: ticket.schoolId,
+    schoolName: state.schools.find((s) => s.id === ticket.schoolId)?.name ?? '',
+    subject: ticket.subject,
+    body: ticket.body,
+    status: ticket.status,
+    raisedBy: { fullName: person(userById(ticket.raisedById)).fullName },
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+    canManage: canManageTicket(actor, ticket),
+  };
+}
+
+function findManagedTicket(actor: MockUser, ticketId: string): MockSupportTicket {
+  const ticket = state.supportTickets.find((t) => t.id === ticketId);
+  if (!ticket || !canManageTicket(actor, ticket)) throw Errors.notFound('Support ticket');
+  return ticket;
+}
+
+const supportTicketHandlers = {
+  list({ actor, query }: Context): Result {
+    if (query.schoolId && actor.role !== 'platform_admin') {
+      throw Errors.forbidden('Only Platform Admins can filter support tickets by school.');
+    }
+    const tickets = state.supportTickets
+      .filter((t) => ticketScope(actor, t))
+      .filter((t) => !query.schoolId || t.schoolId === query.schoolId)
+      .sort(newestFirst)
+      .map((t) => supportTicketDto(actor, t));
+    return { body: paginate(tickets, query, 'tickets') };
+  },
+  create({ actor, body }: Context): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['subject', 'body'], issues);
+    const subject = text(body, 'subject', issues, { max: 120 });
+    const details = optionalText(body, 'body', issues, 2000);
+    assertValid(issues);
+    // The route layer admits only Teachers and School Admins here, who always have a school.
+    if (actor.schoolId === null) throw Errors.forbidden();
+    const ticket: MockSupportTicket = {
+      id: nextId('tkt'),
+      schoolId: actor.schoolId,
+      subject: subject ?? '',
+      body: details ?? null,
+      status: 'open',
+      raisedById: actor.id,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.supportTickets.unshift(ticket);
+    return { status: 201, body: { ticket: supportTicketDto(actor, ticket) } };
+  },
+  updateStatus({ actor, body }: Context, ticketId: string): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['status'], issues);
+    const status = oneOf(body, 'status', SUPPORT_TICKET_STATUSES, issues);
+    assertValid(issues);
+    const ticket = findManagedTicket(actor, ticketId);
+    ticket.status = status!;
+    ticket.updatedAt = nowIso();
+    return { body: { ticket: supportTicketDto(actor, ticket) } };
+  },
+};
+
 // Staff reviews ─────────────────────────────
 
 function staffReviewDto(review: MockStaffReview) {
@@ -2496,7 +2590,8 @@ function hasHistory(userId: string): boolean {
     state.attendance.some((a) => a.studentId === userId || a.markedById === userId) ||
     state.notices.some((n) => n.createdById === userId) ||
     state.staffReviews.some((r) => r.staffId === userId || r.reviewerId === userId) ||
-    state.honours.some((h) => h.honoreeId === userId || h.awardedById === userId)
+    state.honours.some((h) => h.honoreeId === userId || h.awardedById === userId) ||
+    state.supportTickets.some((t) => t.raisedById === userId)
   );
 }
 
@@ -2529,6 +2624,7 @@ const removalHandlers = {
       throw hasRecords('This school still has accounts or classes. Remove or move them first.');
     }
     state.notices = state.notices.filter((n) => n.schoolId !== school.id);
+    state.supportTickets = state.supportTickets.filter((t) => t.schoolId !== school.id);
     state.schools = state.schools.filter((s) => s.id !== school.id);
     return { status: 204 };
   },
@@ -2632,6 +2728,9 @@ const ROUTES: Route[] = [
   { method: 'POST', path: '/notices', roles: ADMINS, handle: noticeHandlers.create },
   { method: 'PATCH', path: '/notices/:id', roles: ADMINS, handle: noticeHandlers.update },
   { method: 'DELETE', path: '/notices/:id', roles: ADMINS, handle: noticeHandlers.remove },
+  { method: 'GET', path: '/support-tickets', roles: ['teacher', 'school_admin', 'platform_admin'], handle: supportTicketHandlers.list },
+  { method: 'POST', path: '/support-tickets', roles: ['teacher', 'school_admin'], handle: supportTicketHandlers.create },
+  { method: 'PATCH', path: '/support-tickets/:id', roles: ADMINS, handle: supportTicketHandlers.updateStatus },
   { method: 'GET', path: '/staff-reviews', roles: ['school_admin', 'teacher'], handle: staffReviewHandlers.list },
   { method: 'PUT', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.save },
   { method: 'DELETE', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.remove },

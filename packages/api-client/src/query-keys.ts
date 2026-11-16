@@ -6,6 +6,11 @@ export interface NoticeFilters {
   schoolId?: string;
 }
 
+export interface SupportTicketFilters {
+  /** Platform admins only: one school's tickets. */
+  schoolId?: string;
+}
+
 export interface StaffReviewFilters {
   /** "YYYY-MM". */
   month?: string;
@@ -112,6 +117,10 @@ export const queryKeys = {
   notices: {
     all: ['notices'] as const,
     list: (filters: NoticeFilters = {}) => ['notices', 'list', filters] as const,
+  },
+  supportTickets: {
+    all: ['support-tickets'] as const,
+    list: (filters: SupportTicketFilters = {}) => ['support-tickets', 'list', filters] as const,
   },
   staffReviews: {
     all: ['staff-reviews'] as const,

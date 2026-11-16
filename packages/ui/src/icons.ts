@@ -55,6 +55,7 @@ export {
   Inbox,
   KeyRound,
   LayoutGrid,
+  LifeBuoy,
   Lightbulb,
   ListChecks,
   Lock,

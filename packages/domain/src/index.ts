@@ -77,6 +77,8 @@ export { MAX_PATHWAYS, pathwaysFor } from './future-explorer';
 export type { Pathway } from './future-explorer';
 export { SupportPlans } from './SupportPlans';
 export type { SupportPlansProps } from './SupportPlans';
+export { SupportTicketForm } from './SupportTicketForm';
+export type { SupportTicketFormProps } from './SupportTicketForm';
 export { WellbeingCheckinForm } from './WellbeingCheckinForm';
 export type { WellbeingCheckinFormProps } from './WellbeingCheckinForm';
 export { daysWithCheckins, WellbeingTrend } from './WellbeingTrend';

@@ -9,6 +9,7 @@ import type {
   NoticeCategory,
   Role,
   StaffRatings,
+  SupportTicketStatus,
 } from '@evolveiq/api-client';
 
 /**
@@ -99,6 +100,19 @@ export const HONOUR_KIND_LABELS: Record<HonourKind, string> = {
   staff_of_month: 'Staff of the Month',
   student_of_month: 'Student of the Month',
 };
+
+/**
+ * The IT Help Desk — a gap found against the client's UI prototype (16 Nov
+ * 2026), not yet a confirmed client request; built so the project is ready
+ * to demo.
+ */
+export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+};
+
+export const SUPPORT_TICKET_STATUSES: SupportTicketStatus[] = ['open', 'in_progress', 'resolved'];
 
 /** "Sat 14 Nov" for "2026-11-14". */
 export function formatDayShort(day: string): string {

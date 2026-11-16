@@ -769,6 +769,34 @@ export interface NoticeChanges {
   isPinned?: boolean;
 }
 
+/**
+ * The IT Help Desk — a gap found against the client's UI prototype (16 Nov
+ * 2026), not yet a confirmed client request; built so the project is ready
+ * to demo. See docs/SCOPE_OF_WORK.md.
+ */
+export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved';
+
+/** A ticket always belongs to one school — Teacher and School Admin raise them; Psychologists
+ * have no school, so they are left out. */
+export interface SupportTicket {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  subject: string;
+  body: string | null;
+  status: SupportTicketStatus;
+  raisedBy: { fullName: string };
+  createdAt: string;
+  updatedAt: string;
+  /** Whether the signed-in admin may change its status. */
+  canManage: boolean;
+}
+
+export interface NewSupportTicket {
+  subject: string;
+  body?: string;
+}
+
 /** The five things a school admin rates each teacher on, 1–5, once a month. */
 export interface StaffRatings {
   teaching: number;
