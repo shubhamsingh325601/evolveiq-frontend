@@ -9,6 +9,8 @@ import type {
   AppNotification,
   AttendanceStatus,
   BloodGroup,
+  CompetitionLevel,
+  CompetitionStatus,
   Consent,
   ConsentPurpose,
   ContactRole,
@@ -39,8 +41,10 @@ import {
   type MockActivity,
   type MockAssignment,
   type MockAttendance,
+  type MockCompetition,
   type MockHealthProfile,
   type MockHonour,
+  type MockNomination,
   type MockNotice,
   type MockMessage,
   type MockObservation,
@@ -1806,6 +1810,8 @@ const ATTENDANCE_BACKFILL_DAYS = 30;
 const ATTENDANCE_MAX_RANGE_DAYS = 62;
 const NOTICE_CATEGORIES: NoticeCategory[] = ['event', 'activity', 'training', 'policy', 'emergency_contact', 'general'];
 const NOTICE_AUDIENCES: NoticeAudience[] = ['everyone', 'staff', 'families'];
+const COMPETITION_LEVELS: CompetitionLevel[] = ['national', 'state', 'inter_school', 'intra_school'];
+const COMPETITION_STATUSES: CompetitionStatus[] = ['planning', 'registration_open', 'shortlisting', 'confirmed', 'finalized'];
 const HONOUR_KINDS: HonourKind[] = ['staff_of_month', 'student_of_month'];
 const RATING_FIELDS = ['teaching', 'engagement', 'punctuality', 'teamwork', 'communication'] as const;
 const MAX_IMPORT_ROWS = 500;
@@ -2159,6 +2165,173 @@ const noticeHandlers = {
   },
 };
 
+// Events & Competitions ─────────────────────────────
+// A gap found against the client's UI prototype (16 Nov 2026), not yet a
+// confirmed client request; built so the project is ready to demo. A
+// competition always belongs to exactly one school, unlike Notice.
+
+function canManageCompetition(actor: MockUser, competition: Pick<MockCompetition, 'schoolId'>): boolean {
+  if (actor.role === 'platform_admin') return true;
+  return actor.role === 'school_admin' && actor.schoolId !== null && competition.schoolId === actor.schoolId;
+}
+
+/** Teachers, Psychologists and School Admins: their own school only. A Psychologist has no
+ * school of their own, so this is deliberately empty for them — the same fail-closed idiom as
+ * `canReachStudent`'s school_admin-without-one case and `competitionScope` in the real backend's
+ * `competitions.service.ts` (they are not part of any one school's competition planning). */
+function canReadCompetition(actor: MockUser, competition: Pick<MockCompetition, 'schoolId'>): boolean {
+  if (actor.role === 'platform_admin') return true;
+  return actor.schoolId !== null && competition.schoolId === actor.schoolId;
+}
+
+function nominationDto(nomination: MockNomination) {
+  return {
+    studentId: nomination.studentId,
+    studentName: person(userById(nomination.studentId)).fullName,
+    nominatedBy: { fullName: person(userById(nomination.nominatedById)).fullName },
+  };
+}
+
+function competitionDto(competition: MockCompetition) {
+  return {
+    id: competition.id,
+    schoolId: competition.schoolId,
+    title: competition.title,
+    level: competition.level,
+    status: competition.status,
+    scheduledOn: competition.scheduledOn,
+    nominations: competition.nominations.map(nominationDto),
+    createdBy: { fullName: person(userById(competition.createdById)).fullName },
+    createdAt: competition.createdAt,
+    updatedAt: competition.updatedAt,
+  };
+}
+
+function readCompetitionFields(body: Body, issues: FieldIssue[], isCreate: boolean) {
+  const title = text(body, 'title', issues, { max: 120, isOptional: !isCreate });
+  const level = oneOf(body, 'level', COMPETITION_LEVELS, issues, !isCreate);
+  const status = oneOf(body, 'status', COMPETITION_STATUSES, issues, true);
+  let scheduledOn: string | null | undefined;
+  if (body.scheduledOn === null) scheduledOn = null;
+  else if (body.scheduledOn !== undefined) {
+    if (typeof body.scheduledOn !== 'string' || !DAY_PATTERN.test(body.scheduledOn)) field(issues, 'scheduledOn', 'must be YYYY-MM-DD');
+    else scheduledOn = body.scheduledOn;
+  }
+  return { title, level, status, scheduledOn };
+}
+
+/** A competition the actor may manage; anything else (including one they can only read) is 404. */
+function findManagedCompetition(actor: MockUser, competitionId: string): MockCompetition {
+  const competition = state.competitions.find((c) => c.id === competitionId);
+  if (!competition || !canManageCompetition(actor, competition)) throw Errors.notFound('Competition');
+  return competition;
+}
+
+const competitionHandlers = {
+  list({ actor, query }: Context): Result {
+    if (query.schoolId && actor.role !== 'platform_admin') {
+      throw Errors.forbidden('Only Platform Admins can filter competitions by school.');
+    }
+    const competitions = state.competitions
+      .filter((c) => canReadCompetition(actor, c))
+      .filter((c) => !query.schoolId || c.schoolId === query.schoolId)
+      .sort(newestFirst)
+      .map(competitionDto);
+    return { body: paginate(competitions, query, 'competitions') };
+  },
+  create({ actor, body }: Context): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['title', 'level', 'scheduledOn', 'schoolId'], issues);
+    const fields = readCompetitionFields(body, issues, true);
+    assertValid(issues);
+    let schoolId: string;
+    if (actor.role === 'school_admin') {
+      if (actor.schoolId === null) throw Errors.forbidden();
+      if (body.schoolId !== undefined && body.schoolId !== actor.schoolId) {
+        throw Errors.forbidden('School Admins can only create competitions for their own school.');
+      }
+      schoolId = actor.schoolId;
+    } else if (actor.role === 'platform_admin') {
+      if (body.schoolId === undefined) throw Errors.validation([{ field: 'schoolId', message: 'is required' }]);
+      if (!state.schools.some((s) => s.id === body.schoolId)) throw Errors.invalidReference('schoolId', 'School not found.');
+      schoolId = String(body.schoolId);
+    } else {
+      throw Errors.forbidden();
+    }
+    const competition: MockCompetition = {
+      id: nextId('cmp'),
+      schoolId,
+      title: fields.title ?? '',
+      level: fields.level!,
+      status: 'planning',
+      scheduledOn: fields.scheduledOn ?? null,
+      nominations: [],
+      createdById: actor.id,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.competitions.unshift(competition);
+    return { status: 201, body: { competition: competitionDto(competition) } };
+  },
+  update({ actor, body }: Context, competitionId: string): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['title', 'level', 'status', 'scheduledOn'], issues);
+    if (Object.keys(body).length === 0) field(issues, 'body', 'send at least one field to change');
+    const fields = readCompetitionFields(body, issues, false);
+    assertValid(issues);
+    const competition = findManagedCompetition(actor, competitionId);
+    if (fields.title !== undefined) competition.title = fields.title;
+    if (fields.level !== undefined) competition.level = fields.level;
+    if (fields.status !== undefined) competition.status = fields.status;
+    if (fields.scheduledOn !== undefined) competition.scheduledOn = fields.scheduledOn;
+    competition.updatedAt = nowIso();
+    return { body: { competition: competitionDto(competition) } };
+  },
+  remove({ actor }: Context, competitionId: string): Result {
+    const competition = findManagedCompetition(actor, competitionId);
+    state.competitions = state.competitions.filter((c) => c.id !== competition.id);
+    return { status: 204 };
+  },
+  nominate({ actor, body }: Context, competitionId: string): Result {
+    if (actor.role !== 'teacher') throw Errors.forbidden();
+    const competition = state.competitions.find((c) => c.id === competitionId);
+    if (!competition || actor.schoolId === null || competition.schoolId !== actor.schoolId) {
+      throw Errors.notFound('Competition');
+    }
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['studentId'], issues);
+    const studentId = text(body, 'studentId', issues, { max: 100 });
+    assertValid(issues);
+    const student = studentInScope(actor, studentId!);
+    if (!student) throw Errors.invalidReference('studentId', 'That student is not one of yours to nominate.');
+    if (competition.nominations.some((n) => n.studentId === student.id)) {
+      throw Errors.conflict('This student has already been nominated for this competition.');
+    }
+    const record: MockNomination = { studentId: student.id, nominatedById: actor.id, createdAt: nowIso() };
+    competition.nominations.push(record);
+    competition.updatedAt = nowIso();
+    return { status: 201, body: { nomination: nominationDto(record) } };
+  },
+  removeNomination({ actor }: Context, competitionId: string, studentId: string): Result {
+    let competition: MockCompetition;
+    if (actor.role === 'teacher') {
+      const found = state.competitions.find((c) => c.id === competitionId);
+      if (!found || actor.schoolId === null || found.schoolId !== actor.schoolId) throw Errors.notFound('Competition');
+      competition = found;
+    } else {
+      competition = findManagedCompetition(actor, competitionId);
+    }
+    const nomination = competition.nominations.find((n) => n.studentId === studentId);
+    if (!nomination) throw Errors.notFound('Nomination');
+    if (actor.role === 'teacher' && nomination.nominatedById !== actor.id) {
+      throw Errors.forbidden('Teachers can only remove nominations they made.');
+    }
+    competition.nominations = competition.nominations.filter((n) => n.studentId !== studentId);
+    competition.updatedAt = nowIso();
+    return { status: 204 };
+  },
+};
+
 // Staff reviews ─────────────────────────────
 
 function staffReviewDto(review: MockStaffReview) {
@@ -2495,6 +2668,9 @@ function hasHistory(userId: string): boolean {
     state.supportPlans.some((p) => p.studentId === userId || p.createdById === userId) ||
     state.attendance.some((a) => a.studentId === userId || a.markedById === userId) ||
     state.notices.some((n) => n.createdById === userId) ||
+    state.competitions.some(
+      (c) => c.createdById === userId || c.nominations.some((n) => n.nominatedById === userId || n.studentId === userId),
+    ) ||
     state.staffReviews.some((r) => r.staffId === userId || r.reviewerId === userId) ||
     state.honours.some((h) => h.honoreeId === userId || h.awardedById === userId)
   );
@@ -2529,6 +2705,7 @@ const removalHandlers = {
       throw hasRecords('This school still has accounts or classes. Remove or move them first.');
     }
     state.notices = state.notices.filter((n) => n.schoolId !== school.id);
+    state.competitions = state.competitions.filter((c) => c.schoolId !== school.id);
     state.schools = state.schools.filter((s) => s.id !== school.id);
     return { status: 204 };
   },
@@ -2632,6 +2809,17 @@ const ROUTES: Route[] = [
   { method: 'POST', path: '/notices', roles: ADMINS, handle: noticeHandlers.create },
   { method: 'PATCH', path: '/notices/:id', roles: ADMINS, handle: noticeHandlers.update },
   { method: 'DELETE', path: '/notices/:id', roles: ADMINS, handle: noticeHandlers.remove },
+  { method: 'GET', path: '/competitions', roles: ['teacher', 'psychologist', 'school_admin', 'platform_admin'], handle: competitionHandlers.list },
+  { method: 'POST', path: '/competitions', roles: ADMINS, handle: competitionHandlers.create },
+  { method: 'PATCH', path: '/competitions/:id', roles: ADMINS, handle: competitionHandlers.update },
+  { method: 'DELETE', path: '/competitions/:id', roles: ADMINS, handle: competitionHandlers.remove },
+  { method: 'POST', path: '/competitions/:id/nominations', roles: ['teacher'], handle: competitionHandlers.nominate },
+  {
+    method: 'DELETE',
+    path: '/competitions/:id/nominations/:id',
+    roles: ['teacher', 'school_admin', 'platform_admin'],
+    handle: competitionHandlers.removeNomination,
+  },
   { method: 'GET', path: '/staff-reviews', roles: ['school_admin', 'teacher'], handle: staffReviewHandlers.list },
   { method: 'PUT', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.save },
   { method: 'DELETE', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.remove },

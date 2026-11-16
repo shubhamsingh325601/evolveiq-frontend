@@ -288,4 +288,28 @@ describe('School app: classes, attendance, care needs and school life', () => {
     expect(await screen.findByText('Safeguarding refresher for every staff member')).toBeInTheDocument();
     expect(screen.queryByText('Wall of fame')).not.toBeInTheDocument();
   });
+
+  it('lets a teacher nominate one of their own students, then remove their own nomination', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Competitions/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Competitions' })).toBeInTheDocument();
+    expect(await screen.findByText('State Science Olympiad')).toBeInTheDocument();
+    // Halden's competition is out of Rao's school.
+    expect(screen.queryByText('National Maths Challenge')).not.toBeInTheDocument();
+
+    const row = screen.getByRole('row', { name: /House elocution contest/ });
+    await user.click(within(row).getByRole('button', { name: 'Nominate' }));
+    await waitFor(() => expect(within(row).getByRole('button', { name: /Arjun Ahluwalia/ })).toBeInTheDocument());
+
+    await user.click(within(row).getByRole('button', { name: /Remove Arjun Ahluwalia/ }));
+    await waitFor(() => expect(within(row).queryByRole('button', { name: /Arjun Ahluwalia/ })).not.toBeInTheDocument());
+  });
+
+  it('has no Competitions nav entry for the counsellor, whose competitions list would be empty', async () => {
+    await signInAs('mehta@school.test');
+    await screen.findByRole('heading', { name: 'Review queue' });
+    expect(screen.queryByRole('link', { name: /Competitions/ })).not.toBeInTheDocument();
+  });
 });

@@ -47,6 +47,13 @@ export const ENDPOINTS = {
     list: '/notices',
     detail: (noticeId: string) => `/notices/${id(noticeId)}`,
   },
+  competitions: {
+    list: '/competitions',
+    detail: (competitionId: string) => `/competitions/${id(competitionId)}`,
+    nominations: (competitionId: string) => `/competitions/${id(competitionId)}/nominations`,
+    nomination: (competitionId: string, studentId: string) =>
+      `/competitions/${id(competitionId)}/nominations/${id(studentId)}`,
+  },
   staffReviews: {
     list: '/staff-reviews',
     detail: (staffId: string, month: string) => `/staff-reviews/${id(staffId)}/${id(month)}`,

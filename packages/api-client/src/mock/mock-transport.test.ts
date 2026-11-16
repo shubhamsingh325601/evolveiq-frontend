@@ -616,6 +616,94 @@ describe('mock backend: the notice board', () => {
   });
 });
 
+describe('mock backend: Events & Competitions', () => {
+  beforeEach(() => resetMockStore());
+
+  const titles = async (token: string) =>
+    ((await call('GET', ENDPOINTS.competitions.list, { token })).body.competitions as { title: string }[]).map((c) => c.title);
+
+  it('scopes the list to one school, every school for the platform admin, and nothing for the counsellor', async () => {
+    const ridgeview = await titles(await tokenFor('rao@school.test'));
+    expect(ridgeview).toEqual(expect.arrayContaining(['State Science Olympiad', 'Inter-school chess championship']));
+    expect(ridgeview).not.toContain('National Maths Challenge');
+    expect(await titles(await tokenFor('clara@school.test'))).toEqual(ridgeview);
+    expect(await titles(await tokenFor('omar@halden.test'))).toEqual(['National Maths Challenge']);
+    // A Psychologist (the counsellor on screen) has no school of their own: fail-closed, not every school.
+    expect(await titles(await tokenFor('mehta@school.test'))).toEqual([]);
+    const platform = await titles(await tokenFor('tunde@evolveiq.test'));
+    expect(platform).toEqual(expect.arrayContaining(['National Maths Challenge', 'State Science Olympiad']));
+    expect((await call('GET', ENDPOINTS.competitions.list, { token: await tokenFor('rao@school.test'), query: { schoolId: 'sch-halden' } })).status).toBe(403);
+  });
+
+  it('lets a school admin enter their own school only, and a platform admin a named real school', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const created = await call('POST', ENDPOINTS.competitions.list, { token: clara, body: { title: 'Chess club', level: 'intra_school' } });
+    expect(created.status).toBe(201);
+    expect(created.body.competition).toMatchObject({ schoolId: 'sch-ridgeview', status: 'planning', nominations: [] });
+    expect(
+      (await call('POST', ENDPOINTS.competitions.list, { token: clara, body: { title: 'x', level: 'national', schoolId: 'sch-halden' } })).status,
+    ).toBe(403);
+
+    const tunde = await tokenFor('tunde@evolveiq.test');
+    expect((await call('POST', ENDPOINTS.competitions.list, { token: tunde, body: { title: 'x', level: 'national' } })).status).toBe(400);
+    expect(
+      (await call('POST', ENDPOINTS.competitions.list, { token: tunde, body: { title: 'x', level: 'national', schoolId: 'sch-nowhere' } })).status,
+    ).toBe(422);
+    const platformCreated = await call('POST', ENDPOINTS.competitions.list, {
+      token: tunde,
+      body: { title: 'National quiz', level: 'national', schoolId: 'sch-halden' },
+    });
+    expect(platformCreated.status).toBe(201);
+    expect(platformCreated.body.competition.schoolId).toBe('sch-halden');
+  });
+
+  it('edits and withdraws only what the admin may manage; a different school is 404', async () => {
+    const clara = await tokenFor('clara@school.test');
+    expect(
+      (await call('PATCH', ENDPOINTS.competitions.detail('cmp-science-olympiad'), { token: clara, body: { status: 'confirmed' } })).body.competition
+        .status,
+    ).toBe('confirmed');
+    expect((await call('PATCH', ENDPOINTS.competitions.detail('cmp-national-maths'), { token: clara, body: { status: 'confirmed' } })).status).toBe(
+      404,
+    );
+    expect((await call('DELETE', ENDPOINTS.competitions.detail('cmp-national-maths'), { token: clara })).status).toBe(404);
+    expect((await call('DELETE', ENDPOINTS.competitions.detail('cmp-elocution'), { token: clara })).status).toBe(204);
+  });
+
+  it('lets a teacher nominate only their own student, once, into their own school’s competition', async () => {
+    const rao = await tokenFor('rao@school.test');
+    const nominated = await call('POST', ENDPOINTS.competitions.nominations('cmp-elocution'), { token: rao, body: { studentId: 'stu-devan' } });
+    expect(nominated.status).toBe(201);
+    expect(nominated.body.nomination).toMatchObject({ studentId: 'stu-devan', nominatedBy: { fullName: 'Sunita Rao' } });
+
+    expect((await call('POST', ENDPOINTS.competitions.nominations('cmp-elocution'), { token: rao, body: { studentId: 'stu-devan' } })).status).toBe(
+      409,
+    );
+    // Zoe is Halden's student, not one of Rao's.
+    expect((await call('POST', ENDPOINTS.competitions.nominations('cmp-elocution'), { token: rao, body: { studentId: 'stu-zoe' } })).status).toBe(
+      422,
+    );
+    // cmp-national-maths belongs to Halden, outside Rao's school.
+    expect(
+      (await call('POST', ENDPOINTS.competitions.nominations('cmp-national-maths'), { token: rao, body: { studentId: 'stu-maya' } })).status,
+    ).toBe(404);
+  });
+
+  it('removes a nomination: the nominating teacher, or the school/platform admin; a different teacher is forbidden', async () => {
+    const rao = await tokenFor('rao@school.test');
+    // cmp-science-olympiad: stu-maya nominated by Rao, stu-ibrahim nominated by Kapoor (seed data).
+    expect((await call('DELETE', ENDPOINTS.competitions.nomination('cmp-science-olympiad', 'stu-ibrahim'), { token: rao })).status).toBe(403);
+    expect((await call('DELETE', ENDPOINTS.competitions.nomination('cmp-science-olympiad', 'stu-maya'), { token: rao })).status).toBe(204);
+
+    const clara = await tokenFor('clara@school.test');
+    expect((await call('DELETE', ENDPOINTS.competitions.nomination('cmp-science-olympiad', 'stu-ibrahim'), { token: clara })).status).toBe(204);
+    expect((await call('DELETE', ENDPOINTS.competitions.nomination('cmp-national-maths', 'stu-zoe'), { token: clara })).status).toBe(404);
+
+    const tunde = await tokenFor('tunde@evolveiq.test');
+    expect((await call('DELETE', ENDPOINTS.competitions.nomination('cmp-national-maths', 'stu-zoe'), { token: tunde })).status).toBe(204);
+  });
+});
+
 describe('mock backend: staff reviews and the celebration wall', () => {
   beforeEach(() => resetMockStore());
 

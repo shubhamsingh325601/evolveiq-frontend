@@ -1,11 +1,13 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { Award, Backpack, Contact, HeartHandshake, LayoutGrid, Megaphone, Plug, Presentation, School, Trophy, Upload } from '@evolveiq/ui';
+import { Award, Backpack, Contact, HeartHandshake, LayoutGrid, Medal, Megaphone, Plug, Presentation, School, Trophy, Upload } from '@evolveiq/ui';
 
 /**
  * The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`
  * (which keeps four tabs on a phone and puts the rest behind "More"). Import, the notice
  * board, staff reviews and the wall of fame came with the client's feedback of 29 Oct 2026.
+ * Competitions — a gap found against the client's UI prototype (16 Nov 2026), not yet a
+ * confirmed client request; built so the project is ready to demo.
  */
 export function menuForRole(role: Role): SidebarMenuSection[] {
   if (role === 'school_admin') {
@@ -24,6 +26,7 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
         title: 'School life',
         items: [
           { label: 'Notice board', shortLabel: 'Notices', to: '/school/notices', icon: Megaphone },
+          { label: 'Competitions', to: '/school/competitions', icon: Medal },
           { label: 'Staff reviews', shortLabel: 'Reviews', to: '/school/staff-reviews', icon: Award },
           { label: 'Wall of fame', shortLabel: 'Wall', to: '/school/wall', icon: Trophy },
         ],
@@ -45,6 +48,7 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
           { label: 'People', to: '/platform/users', icon: Contact },
           { label: 'Import data', shortLabel: 'Import', to: '/platform/import', icon: Upload },
           { label: 'Notice board', shortLabel: 'Notices', to: '/platform/notices', icon: Megaphone },
+          { label: 'Competitions', to: '/platform/competitions', icon: Medal },
         ],
       },
     ];

@@ -13,6 +13,7 @@ import { NepReportsScreen } from './screens/teacher/NepReportsScreen';
 import { StudentReportScreen } from './screens/teacher/StudentReportScreen';
 import { MessagesScreen } from './screens/MessagesScreen';
 import { ClassOverviewScreen } from './screens/teacher/ClassOverviewScreen';
+import { CompetitionsScreen } from './screens/teacher/CompetitionsScreen';
 import { ReviewQueueScreen } from './screens/psychologist/ReviewQueueScreen';
 import { ObservationDetailScreen } from './screens/psychologist/ObservationDetailScreen';
 import { ActivityLibraryScreen } from './screens/psychologist/ActivityLibraryScreen';
@@ -37,6 +38,7 @@ export function App() {
           <Route path="/teacher/class" element={<ClassOverviewScreen />} />
           <Route path="/teacher/reports" element={<NepReportsScreen />} />
           <Route path="/teacher/reports/:studentId" element={<StudentReportScreen />} />
+          <Route path="/teacher/competitions" element={<CompetitionsScreen />} />
         </Route>
       </Route>
 
