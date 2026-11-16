@@ -1,8 +1,14 @@
-import type { ActivityType, HonourKind, NoticeCategory, ReviewQueueFilters, Role } from './types';
+import type { ActivityType, HonourKind, NoticeCategory, ReviewQueueFilters, Role, TrainingRequirement } from './types';
 
 export interface NoticeFilters {
   category?: NoticeCategory;
   /** Platform admins only: one school's notices. */
+  schoolId?: string;
+}
+
+export interface TrainingFilters {
+  requirement?: TrainingRequirement;
+  /** Platform admins only: one school's trainings. */
   schoolId?: string;
 }
 
@@ -112,6 +118,10 @@ export const queryKeys = {
   notices: {
     all: ['notices'] as const,
     list: (filters: NoticeFilters = {}) => ['notices', 'list', filters] as const,
+  },
+  trainings: {
+    all: ['trainings'] as const,
+    list: (filters: TrainingFilters = {}) => ['trainings', 'list', filters] as const,
   },
   staffReviews: {
     all: ['staff-reviews'] as const,

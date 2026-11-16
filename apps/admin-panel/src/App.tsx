@@ -11,6 +11,7 @@ import { ManageSchoolsScreen } from './screens/platform/ManageSchoolsScreen';
 import { ManageUsersScreen } from './screens/platform/ManageUsersScreen';
 import { ImportScreen } from './screens/ImportScreen';
 import { NoticesScreen } from './screens/NoticesScreen';
+import { TrainingHubScreen } from './screens/TrainingHubScreen';
 import { StaffReviewsScreen } from './screens/school/StaffReviewsScreen';
 import { WallScreen } from './screens/school/WallScreen';
 
@@ -31,6 +32,7 @@ export function App() {
           <Route path="/school/integrations" element={<CrmIntegrationScreen />} />
           <Route path="/school/import" element={<ImportScreen />} />
           <Route path="/school/notices" element={<NoticesScreen />} />
+          <Route path="/school/training-hub" element={<TrainingHubScreen />} />
           <Route path="/school/staff-reviews" element={<StaffReviewsScreen />} />
           <Route path="/school/wall" element={<WallScreen />} />
         </Route>
@@ -42,6 +44,7 @@ export function App() {
           <Route path="/platform/users" element={<ManageUsersScreen />} />
           <Route path="/platform/import" element={<ImportScreen />} />
           <Route path="/platform/notices" element={<NoticesScreen />} />
+          <Route path="/platform/training-hub" element={<TrainingHubScreen />} />
         </Route>
       </Route>
 

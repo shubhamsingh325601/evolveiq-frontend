@@ -42,6 +42,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | `AppBottomNav` "More" | Done | | Client feedback 29 Oct 2026; not yet committed. Five targets on a phone; a role with more places keeps four tabs and puts the rest behind "More" (the school admin); 1 test |
 | EHI charts: `RingsChart`, `TrendChart`, `RadarChart` | Done | | Hand-drawn SVG in `packages/ui`; palette validated; covered through `HolisticIndexCard` (3 tests) and `HolisticReport` (6 tests); `HolisticTrendCard` (trajectory) shared by the report and the family homes |
 | EHI API contract | Done | | Served by the backend's progress module (`/students/:studentId/holistic-index`, backend `5b694d2`); `FEATURES.holisticIndex` on since 24 Oct 2026 |
+| Staff Training & Development Hub vocabulary (`TRAINING_REQUIREMENT_LABELS`) | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. `mandatory` / `recommended` / `optional`, mirroring `NOTICE_CATEGORY_LABELS`; backend `34273c3` |
 
 ## Family Web App
 | Item | Status | Owner | Notes |
@@ -88,6 +89,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Teacher and counsellor: Messages | Done | | 12 Nov 2026; not yet committed. `/messages` inbox with unread badge in the menu, reply in a thread a parent started. Backend: `/messages` |
 | Teacher: Class overview | Done | | 11 Nov 2026; not yet committed. `/teacher/class`: per class, student / star / awaiting-review / growth-area tiles and the students to look at first, built from data the app already loads |
 | Teacher: NEP reports | Done | | 11 Nov 2026; not yet committed. `/teacher/reports` lists students with their EHI; each opens the shared Holistic Report Card |
+| Teacher and counsellor: Trainings ("Trainings") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. `/trainings`: the trainings visible to the signed-in person (their school and every-school ones; the counsellor, who works across schools, sees every school's), requirement badge, credits and date; Enrol → Mark complete → Completed, driven by each training's own `myEnrolment`; no school-wide completion rate, the backend has none |
 
 ## Admin Panel
 | Item | Status | Owner | Notes |
@@ -101,6 +103,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Staff reviews | Done | | Client feedback 29 Oct 2026; not yet committed. Five ratings 1–5 and a comment per teacher per month; the best rated suggested for Staff of the Month; private to the admin and the teacher; 1 app test |
 | Wall of fame (manage) | Done | | Client feedback 29 Oct 2026; not yet committed. Name a Staff of the Month and Students of the Month with why; take one down; 1 app test |
 | Health and care needs, by the school office | Done | | Client feedback 29 Oct 2026; not yet committed. A "Care needs" column and dialog on the students list; 1 app test |
+| Training hub ("Training hub") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. School Admin (own school) and Platform Admin (every school, named) offer, change and delete trainings — title, what it covers, when it happens (or self-paced), mandatory/recommended/optional, credits; no school-wide completion rate, the backend has none; 2 app tests |
 
 ## Quality
 | Item | Status | Owner | Notes |

@@ -47,6 +47,12 @@ export const ENDPOINTS = {
     list: '/notices',
     detail: (noticeId: string) => `/notices/${id(noticeId)}`,
   },
+  trainings: {
+    list: '/trainings',
+    detail: (trainingId: string) => `/trainings/${id(trainingId)}`,
+    /** POST: self-enrol. PATCH: mark the caller's own enrolment complete. */
+    enrolment: (trainingId: string) => `/trainings/${id(trainingId)}/enrolment`,
+  },
   staffReviews: {
     list: '/staff-reviews',
     detail: (staffId: string, month: string) => `/staff-reviews/${id(staffId)}/${id(month)}`,

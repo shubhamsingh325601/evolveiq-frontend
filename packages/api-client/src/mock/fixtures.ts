@@ -21,6 +21,7 @@ import type {
   Role,
   SupportCategory,
   SupportStatus,
+  TrainingRequirement,
 } from '../types';
 
 /**
@@ -185,6 +186,29 @@ export interface MockNotice {
   updatedAt: string;
 }
 
+/** The Staff Training & Development Hub — a gap found against the client's UI prototype (16 Nov
+ * 2026), not yet a confirmed client request; built so the project is ready to demo. */
+export interface MockTraining {
+  id: string;
+  /** Null: offered to every school. */
+  schoolId: string | null;
+  title: string;
+  description: string | null;
+  scheduledOn: string | null;
+  requirement: TrainingRequirement;
+  credits: number;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MockTrainingEnrolment {
+  trainingId: string;
+  staffId: string;
+  isComplete: boolean;
+  enrolledAt: string;
+}
+
 export interface MockStaffReview {
   id: string;
   schoolId: string;
@@ -252,6 +276,8 @@ export interface MockState {
   notices: MockNotice[];
   staffReviews: MockStaffReview[];
   honours: MockHonour[];
+  trainings: MockTraining[];
+  trainingEnrolments: MockTrainingEnrolment[];
 }
 
 /**
@@ -928,6 +954,57 @@ export function buildSeed(now: Date = new Date()): MockState {
     }, 6),
   ];
 
+  const training = (
+    id: string,
+    schoolId: string | null,
+    createdById: string,
+    fields: Partial<MockTraining> & Pick<MockTraining, 'title' | 'requirement' | 'credits'>,
+    createdDaysAgo: number,
+  ): MockTraining => ({
+    id,
+    schoolId,
+    description: null,
+    scheduledOn: null,
+    ...fields,
+    createdById,
+    createdAt: daysAgo(createdDaysAgo, 9),
+    updatedAt: daysAgo(createdDaysAgo, 9),
+  });
+  const trainings: MockTraining[] = [
+    training('trn-safeguarding', null, 'usr-tunde', {
+      title: 'Safeguarding refresher',
+      description: 'The yearly refresher every staff member completes: spotting concerns, recording them and who to tell.',
+      scheduledOn: addDays(today, 5),
+      requirement: 'mandatory',
+      credits: 2,
+    }, 7),
+    training('trn-first-aid', RIDGEVIEW, 'usr-clara', {
+      title: 'First aid and CPR training',
+      description: 'A three-hour session with a certified trainer, for every class teacher.',
+      scheduledOn: addDays(today, 6),
+      requirement: 'mandatory',
+      credits: 3,
+    }, 2),
+    training('trn-growth-mindset', RIDGEVIEW, 'usr-clara', {
+      title: 'Growth mindset in the classroom',
+      description: 'Practical ways to praise effort and strategy over ability.',
+      scheduledOn: addDays(today, 18),
+      requirement: 'recommended',
+      credits: 1,
+    }, 4),
+    training('trn-digital-literacy', HALDEN, 'usr-farah', {
+      title: 'Digital literacy for staff',
+      description: 'Self-paced: the school’s shared drive, the attendance app and keeping a child’s data private.',
+      requirement: 'optional',
+      credits: 1,
+    }, 10),
+  ];
+  const trainingEnrolments: MockTrainingEnrolment[] = [
+    { trainingId: 'trn-safeguarding', staffId: 'usr-rao', isComplete: true, enrolledAt: daysAgo(5, 11) },
+    { trainingId: 'trn-first-aid', staffId: 'usr-rao', isComplete: false, enrolledAt: daysAgo(1, 11) },
+    { trainingId: 'trn-first-aid', staffId: 'usr-kapoor', isComplete: true, enrolledAt: daysAgo(2, 11) },
+  ];
+
   const thisMonth = today.slice(0, 7);
   const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
   const review = (
@@ -1000,5 +1077,7 @@ export function buildSeed(now: Date = new Date()): MockState {
     notices,
     staffReviews,
     honours,
+    trainings,
+    trainingEnrolments,
   };
 }

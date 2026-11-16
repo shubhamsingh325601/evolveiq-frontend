@@ -288,4 +288,32 @@ describe('School app: classes, attendance, care needs and school life', () => {
     expect(await screen.findByText('Safeguarding refresher for every staff member')).toBeInTheDocument();
     expect(screen.queryByText('Wall of fame')).not.toBeInTheDocument();
   });
+
+  it('lets a teacher enrol in a training, then mark it complete', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Trainings/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Trainings' })).toBeInTheDocument();
+    expect(await screen.findByText('Growth mindset in the classroom')).toBeInTheDocument();
+    // Halden Grove's training belongs to another school.
+    expect(screen.queryByText('Digital literacy for staff')).not.toBeInTheDocument();
+    // Already enrolled and complete, from the seed data.
+    expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
+
+    const row = screen.getByText('Growth mindset in the classroom').closest('tr') ?? screen.getByText('Growth mindset in the classroom').closest('li');
+    await user.click(within(row!).getByRole('button', { name: 'Enrol' }));
+    await waitFor(() => expect(within(row!).queryByRole('button', { name: 'Enrol' })).not.toBeInTheDocument());
+    await user.click(within(row!).getByRole('button', { name: 'Mark complete' }));
+    await waitFor(() => expect(within(row!).getByText('Completed')).toBeInTheDocument());
+  });
+
+  it('gives the counsellor every school’s trainings too', async () => {
+    const user = await signInAs('mehta@school.test');
+    await screen.findByRole('heading', { name: 'Review queue' });
+    await user.click(screen.getAllByRole('link', { name: /Trainings/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Trainings' })).toBeInTheDocument();
+    expect(await screen.findByText('Digital literacy for staff')).toBeInTheDocument();
+    expect(screen.getByText('First aid and CPR training')).toBeInTheDocument();
+  });
 });

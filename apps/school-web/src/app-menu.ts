@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileText,
+  GraduationCap,
   Inbox,
   LayoutGrid,
   Megaphone,
@@ -14,6 +15,7 @@ import {
 } from '@evolveiq/ui';
 
 const NOTICE_BOARD = { label: 'Notice board', shortLabel: 'Notices', to: '/notices', icon: Megaphone };
+const TRAININGS = { label: 'Trainings', to: '/trainings', icon: GraduationCap };
 
 /**
  * The school app's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`.
@@ -47,7 +49,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0, unreadMessages =
           { label: 'Messages', to: '/messages', badge: unreadMessages, icon: MessageCircle },
         ],
       },
-      { title: 'School', items: [NOTICE_BOARD] },
+      { title: 'School', items: [NOTICE_BOARD, TRAININGS] },
     ];
   }
 
@@ -82,7 +84,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0, unreadMessages =
           },
         ],
       },
-      { title: 'School', items: [NOTICE_BOARD] },
+      { title: 'School', items: [NOTICE_BOARD, TRAININGS] },
     ];
   }
 

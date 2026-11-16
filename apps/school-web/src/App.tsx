@@ -9,6 +9,7 @@ import { AssignActivityScreen } from './screens/teacher/AssignActivityScreen';
 import { AttendanceScreen } from './screens/teacher/AttendanceScreen';
 import { ReviewsScreen } from './screens/teacher/ReviewsScreen';
 import { NoticesScreen } from './screens/NoticesScreen';
+import { TrainingsScreen } from './screens/TrainingsScreen';
 import { NepReportsScreen } from './screens/teacher/NepReportsScreen';
 import { StudentReportScreen } from './screens/teacher/StudentReportScreen';
 import { MessagesScreen } from './screens/MessagesScreen';
@@ -43,6 +44,7 @@ export function App() {
       <Route element={<RoleGuard allow={['teacher', 'psychologist']} />}>
         <Route element={<AppFrame />}>
           <Route path="/notices" element={<NoticesScreen />} />
+          <Route path="/trainings" element={<TrainingsScreen />} />
           <Route path="/messages" element={<MessagesScreen />} />
         </Route>
       </Route>
