@@ -47,6 +47,7 @@ export * from './hooks/useAttendance';
 export * from './hooks/useNotices';
 export * from './hooks/useSupportTickets';
 export * from './hooks/useTrainings';
+export * from './hooks/useCompetitions';
 export * from './hooks/useStaffReviews';
 export * from './hooks/useHonours';
 export * from './hooks/useImports';

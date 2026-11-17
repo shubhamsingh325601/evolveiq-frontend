@@ -4,6 +4,8 @@ import type {
   ActivityContent,
   AttendanceStatus,
   BloodGroup,
+  CompetitionLevel,
+  CompetitionStatus,
   ConsentPurpose,
   DevelopmentArea,
   LearningBehaviourArea,
@@ -223,6 +225,27 @@ export interface MockTrainingEnrolment {
   enrolledAt: string;
 }
 
+/** A student entered into a competition, oldest first. */
+export interface MockNomination {
+  studentId: string;
+  nominatedById: string;
+  createdAt: string;
+}
+
+/** A competition always belongs to exactly one school, unlike Notice. */
+export interface MockCompetition {
+  id: string;
+  schoolId: string;
+  title: string;
+  level: CompetitionLevel;
+  status: CompetitionStatus;
+  scheduledOn: string | null;
+  nominations: MockNomination[];
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MockStaffReview {
   id: string;
   schoolId: string;
@@ -288,6 +311,7 @@ export interface MockState {
   healthProfiles: MockHealthProfile[];
   attendance: MockAttendance[];
   notices: MockNotice[];
+  competitions: MockCompetition[];
   staffReviews: MockStaffReview[];
   honours: MockHonour[];
   supportTickets: MockSupportTicket[];
@@ -985,6 +1009,23 @@ export function buildSeed(now: Date = new Date()): MockState {
     createdAt: daysAgo(createdDaysAgo, 9),
     updatedAt: daysAgo(createdDaysAgo, 9),
   });
+  const competition = (
+    id: string,
+    schoolId: string,
+    createdById: string,
+    fields: Pick<MockCompetition, 'title' | 'level'> & Partial<MockCompetition>,
+    createdDaysAgo: number,
+  ): MockCompetition => ({
+    id,
+    schoolId,
+    status: 'planning',
+    scheduledOn: null,
+    nominations: [],
+    ...fields,
+    createdById,
+    createdAt: daysAgo(createdDaysAgo, 9),
+    updatedAt: daysAgo(createdDaysAgo, 9),
+  });
   const trainings: MockTraining[] = [
     training('trn-safeguarding', null, 'usr-tunde', {
       title: 'Safeguarding refresher',
@@ -1018,6 +1059,59 @@ export function buildSeed(now: Date = new Date()): MockState {
     { trainingId: 'trn-safeguarding', staffId: 'usr-rao', isComplete: true, enrolledAt: daysAgo(5, 11) },
     { trainingId: 'trn-first-aid', staffId: 'usr-rao', isComplete: false, enrolledAt: daysAgo(1, 11) },
     { trainingId: 'trn-first-aid', staffId: 'usr-kapoor', isComplete: true, enrolledAt: daysAgo(2, 11) },
+  ];
+  const nomination = (studentId: string, nominatedById: string, daysSinceNomination: number): MockNomination => ({
+    studentId,
+    nominatedById,
+    createdAt: daysAgo(daysSinceNomination, 11),
+  });
+  const competitions: MockCompetition[] = [
+    competition(
+      'cmp-science-olympiad',
+      RIDGEVIEW,
+      'usr-clara',
+      {
+        title: 'State Science Olympiad',
+        level: 'state',
+        status: 'registration_open',
+        scheduledOn: addDays(today, 25),
+        nominations: [nomination('stu-maya', 'usr-rao', 4), nomination('stu-ibrahim', 'usr-kapoor', 2)],
+      },
+      5,
+    ),
+    competition(
+      'cmp-chess',
+      RIDGEVIEW,
+      'usr-clara',
+      {
+        title: 'Inter-school chess championship',
+        level: 'inter_school',
+        status: 'shortlisting',
+        scheduledOn: addDays(today, 12),
+        nominations: [nomination('stu-arjun', 'usr-rao', 6)],
+      },
+      8,
+    ),
+    competition(
+      'cmp-elocution',
+      RIDGEVIEW,
+      'usr-clara',
+      { title: 'House elocution contest', level: 'intra_school', status: 'planning' },
+      2,
+    ),
+    competition(
+      'cmp-national-maths',
+      HALDEN,
+      'usr-farah',
+      {
+        title: 'National Maths Challenge',
+        level: 'national',
+        status: 'confirmed',
+        scheduledOn: addDays(today, 40),
+        nominations: [nomination('stu-zoe', 'usr-omar', 3)],
+      },
+      10,
+    ),
   ];
 
   const thisMonth = today.slice(0, 7);
@@ -1115,6 +1209,7 @@ export function buildSeed(now: Date = new Date()): MockState {
     healthProfiles,
     attendance,
     notices,
+    competitions,
     staffReviews,
     honours,
     supportTickets,

@@ -9,6 +9,7 @@ import {
   Inbox,
   LayoutGrid,
   LifeBuoy,
+  Medal,
   Megaphone,
   MessageCircle,
   Plus,
@@ -21,6 +22,10 @@ const TRAININGS = { label: 'Trainings', to: '/trainings', icon: GraduationCap };
 /**
  * The school app's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`.
  * Attendance and the notice board came with the client's feedback of 29 Oct 2026.
+ * Competitions — a gap found against the client's UI prototype (16 Nov 2026), not yet a
+ * confirmed client request; built so the project is ready to demo. Teacher only: the
+ * backend has no school of its own for the Psychologist (the counsellor on screen), so
+ * their competitions list is always empty — no nav entry for them here.
  */
 export function menuForRole(role: Role, pendingReviewCount = 0, unreadMessages = 0): SidebarMenuSection[] {
   if (role === 'teacher') {
@@ -49,6 +54,7 @@ export function menuForRole(role: Role, pendingReviewCount = 0, unreadMessages =
           },
           { label: 'Messages', to: '/messages', badge: unreadMessages, icon: MessageCircle },
           { label: 'Raise a ticket', shortLabel: 'IT help', to: '/teacher/help-desk', icon: LifeBuoy },
+          { label: 'Competitions', to: '/teacher/competitions', icon: Medal },
         ],
       },
       { title: 'School', items: [NOTICE_BOARD, TRAININGS] },

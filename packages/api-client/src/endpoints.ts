@@ -58,6 +58,13 @@ export const ENDPOINTS = {
     /** POST: self-enrol. PATCH: mark the caller's own enrolment complete. */
     enrolment: (trainingId: string) => `/trainings/${id(trainingId)}/enrolment`,
   },
+  competitions: {
+    list: '/competitions',
+    detail: (competitionId: string) => `/competitions/${id(competitionId)}`,
+    nominations: (competitionId: string) => `/competitions/${id(competitionId)}/nominations`,
+    nomination: (competitionId: string, studentId: string) =>
+      `/competitions/${id(competitionId)}/nominations/${id(studentId)}`,
+  },
   staffReviews: {
     list: '/staff-reviews',
     detail: (staffId: string, month: string) => `/staff-reviews/${id(staffId)}/${id(month)}`,

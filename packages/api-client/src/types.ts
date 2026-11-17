@@ -980,3 +980,53 @@ export interface MessageInbox {
   unreadCount: number;
 }
 
+// ───────────────────────────── Events & Competitions ─────────────────────────────
+// A gap found against the client's UI prototype (16 Nov 2026), not yet a
+// confirmed client request; built so the project is ready to demo.
+
+export type CompetitionLevel = 'national' | 'state' | 'inter_school' | 'intra_school';
+export type CompetitionStatus = 'planning' | 'registration_open' | 'shortlisting' | 'confirmed' | 'finalized';
+
+/** A student entered into a competition, oldest first. */
+export interface CompetitionNomination {
+  studentId: string;
+  studentName: string;
+  nominatedBy: { fullName: string };
+}
+
+/**
+ * A competition always belongs to exactly one school — unlike Notice, there
+ * is no "every school" option. The backend's shape carries no `schoolName`
+ * or `canManage`; the admin screens work those out themselves (a school
+ * admin manages their own school's, a platform admin any).
+ */
+export interface Competition {
+  id: string;
+  schoolId: string;
+  title: string;
+  level: CompetitionLevel;
+  status: CompetitionStatus;
+  /** "YYYY-MM-DD": when the competition happens. */
+  scheduledOn: string | null;
+  nominations: CompetitionNomination[];
+  createdBy: { fullName: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewCompetition {
+  title: string;
+  level: CompetitionLevel;
+  scheduledOn?: string;
+  /** Platform admins: the school this competition is for — required, no "every school" option. */
+  schoolId?: string;
+}
+
+/** null clears scheduledOn. */
+export interface CompetitionChanges {
+  title?: string;
+  level?: CompetitionLevel;
+  status?: CompetitionStatus;
+  scheduledOn?: string | null;
+}
+

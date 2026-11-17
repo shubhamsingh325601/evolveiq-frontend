@@ -2,6 +2,8 @@ import type {
   AttendanceStatus,
   AttendanceStudent,
   BloodGroup,
+  CompetitionLevel,
+  CompetitionStatus,
   HealthCondition,
   HonourKind,
   Notice,
@@ -127,6 +129,30 @@ export const TRAINING_REQUIREMENT_LABELS: Record<TrainingRequirement, string> = 
 };
 
 export const TRAINING_REQUIREMENTS: TrainingRequirement[] = ['mandatory', 'recommended', 'optional'];
+
+/**
+ * Events & Competitions — a gap found against the client's UI prototype (16
+ * Nov 2026), not yet a confirmed client request; built so the project is
+ * ready to demo.
+ */
+export const COMPETITION_LEVEL_LABELS: Record<CompetitionLevel, string> = {
+  national: 'National',
+  state: 'State',
+  inter_school: 'Inter-school',
+  intra_school: 'Intra-school',
+};
+
+export const COMPETITION_LEVELS = Object.keys(COMPETITION_LEVEL_LABELS) as CompetitionLevel[];
+
+export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
+  planning: 'Planning',
+  registration_open: 'Registration open',
+  shortlisting: 'Shortlisting',
+  confirmed: 'Confirmed',
+  finalized: 'Finalized',
+};
+
+export const COMPETITION_STATUSES = Object.keys(COMPETITION_STATUS_LABELS) as CompetitionStatus[];
 
 /** "Sat 14 Nov" for "2026-11-14". */
 export function formatDayShort(day: string): string {

@@ -368,4 +368,35 @@ describe('Admin panel: import, remove, notices, reviews and the wall', () => {
     expect(screen.getByText('First aid and CPR training')).toBeInTheDocument();
     expect(screen.getByText('Halden Grove School')).toBeInTheDocument();
   });
+
+  it('enters a competition, changes its status, and removes a nomination', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByRole('heading', { name: 'Students' });
+    await user.click(screen.getAllByRole('link', { name: /Competitions/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Competitions' })).toBeInTheDocument();
+    expect(await screen.findByText('State Science Olympiad')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Enter a competition' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Enter a competition' });
+    await user.type(within(dialog).getByLabelText('Title'), 'House elocution finals');
+    await user.selectOptions(within(dialog).getByLabelText('Level'), 'intra_school');
+    await user.click(within(dialog).getByRole('button', { name: 'Enter it' }));
+    expect(await screen.findByText('House elocution finals')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Status of “State Science Olympiad”'), 'confirmed');
+    await waitFor(() => expect((screen.getByLabelText('Status of “State Science Olympiad”') as HTMLSelectElement).value).toBe('confirmed'));
+
+    await user.click(screen.getByRole('button', { name: /View nominations for “State Science Olympiad”/ }));
+    const nominationsDialog = await screen.findByRole('dialog', { name: /Nominations for/ });
+    expect(within(nominationsDialog).getByText('Maya Ahluwalia')).toBeInTheDocument();
+    expect(within(nominationsDialog).getByText('Nominated by Sunita Rao')).toBeInTheDocument();
+    await user.click(within(nominationsDialog).getByRole('button', { name: /Remove Maya Ahluwalia/ }));
+    await waitFor(() => expect(within(nominationsDialog).queryByText('Maya Ahluwalia')).not.toBeInTheDocument());
+    await user.click(within(nominationsDialog).getByRole('button', { name: 'Close' }));
+
+    await user.click(screen.getByRole('button', { name: 'Withdraw House elocution finals' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Withdraw “House elocution finals”?' });
+    await user.click(within(confirm).getByRole('button', { name: 'Withdraw' }));
+    await waitFor(() => expect(screen.queryByText('House elocution finals')).not.toBeInTheDocument());
+  });
 });
