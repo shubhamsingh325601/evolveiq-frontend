@@ -671,6 +671,73 @@ describe('mock backend: the IT Help Desk', () => {
   });
 });
 
+describe('mock backend: the Staff Training & Development Hub', () => {
+  beforeEach(() => resetMockStore());
+
+  const titles = async (token: string, query?: Call['query']) =>
+    ((await call('GET', ENDPOINTS.trainings.list, { token, query })).body.trainings as { title: string }[]).map((t) => t.title);
+
+  it('shows a teacher their school and every-school trainings; a psychologist and a platform admin every school', async () => {
+    const rao = await titles(await tokenFor('rao@school.test'));
+    expect(rao).toEqual(expect.arrayContaining(['Safeguarding refresher', 'First aid and CPR training', 'Growth mindset in the classroom']));
+    expect(rao).not.toContain('Digital literacy for staff');
+
+    const mehta = await titles(await tokenFor('mehta@school.test'));
+    expect(mehta).toEqual(expect.arrayContaining(['Safeguarding refresher', 'First aid and CPR training', 'Digital literacy for staff']));
+
+    const tunde = await titles(await tokenFor('tunde@evolveiq.test'));
+    expect(tunde).toEqual(expect.arrayContaining(['Digital literacy for staff', 'First aid and CPR training']));
+    expect(await titles(await tokenFor('tunde@evolveiq.test'), { schoolId: 'sch-halden' })).toEqual(['Digital literacy for staff']);
+  });
+
+  it('carries the caller’s own enrolment only, never another staff member’s', async () => {
+    const response = await call('GET', ENDPOINTS.trainings.list, { token: await tokenFor('rao@school.test') });
+    const byTitle = new Map((response.body.trainings as { title: string; myEnrolment: { isComplete: boolean } | null }[]).map((t) => [t.title, t.myEnrolment]));
+    expect(byTitle.get('Safeguarding refresher')).toEqual({ isComplete: true });
+    expect(byTitle.get('First aid and CPR training')).toEqual({ isComplete: false });
+    expect(byTitle.get('Growth mindset in the classroom')).toBeNull();
+
+    const kapoor = await call('GET', ENDPOINTS.trainings.list, { token: await tokenFor('ritu@school.test') });
+    const firstAid = (kapoor.body.trainings as { title: string; myEnrolment: { isComplete: boolean } | null }[]).find((t) => t.title === 'First aid and CPR training');
+    expect(firstAid?.myEnrolment).toEqual({ isComplete: true });
+  });
+
+  it('only lets a platform admin filter by school', async () => {
+    expect((await call('GET', ENDPOINTS.trainings.list, { token: await tokenFor('clara@school.test'), query: { schoolId: 'sch-halden' } })).status).toBe(403);
+  });
+
+  it('lets a school admin offer, edit and delete their own school’s trainings only', async () => {
+    const clara = await tokenFor('clara@school.test');
+    const created = await call('POST', ENDPOINTS.trainings.list, {
+      token: clara,
+      body: { title: 'Fire warden refresher', requirement: 'mandatory', credits: 1 },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.training).toMatchObject({ schoolId: 'sch-ridgeview', canManage: true, myEnrolment: null });
+    const id = created.body.training.id as string;
+    expect((await call('PATCH', ENDPOINTS.trainings.detail(id), { token: clara, body: { credits: 2 } })).body.training.credits).toBe(2);
+    expect((await call('PATCH', ENDPOINTS.trainings.detail('trn-safeguarding'), { token: clara, body: { credits: 5 } })).status).toBe(404);
+    expect(
+      (await call('POST', ENDPOINTS.trainings.list, { token: await tokenFor('rao@school.test'), body: { title: 'x', requirement: 'optional', credits: 0 } }))
+        .status,
+    ).toBe(403);
+    expect((await call('DELETE', ENDPOINTS.trainings.detail(id), { token: clara })).status).toBe(204);
+  });
+
+  it('lets a teacher self-enrol once, and mark their own enrolment complete', async () => {
+    const rao = await tokenFor('rao@school.test');
+    const enrolled = await call('POST', ENDPOINTS.trainings.enrolment('trn-growth-mindset'), { token: rao });
+    expect(enrolled.status).toBe(201);
+    expect(enrolled.body.enrolment).toEqual({ isComplete: false });
+    expect((await call('POST', ENDPOINTS.trainings.enrolment('trn-growth-mindset'), { token: rao })).status).toBe(409);
+
+    const completed = await call('PATCH', ENDPOINTS.trainings.enrolment('trn-growth-mindset'), { token: rao });
+    expect(completed.body.enrolment).toEqual({ isComplete: true });
+    expect((await call('PATCH', ENDPOINTS.trainings.enrolment('trn-digital-literacy'), { token: rao })).status).toBe(404);
+    expect((await call('POST', ENDPOINTS.trainings.enrolment('trn-growth-mindset'), { token: await tokenFor('clara@school.test') })).status).toBe(403);
+  });
+});
+
 describe('mock backend: staff reviews and the celebration wall', () => {
   beforeEach(() => resetMockStore());
 

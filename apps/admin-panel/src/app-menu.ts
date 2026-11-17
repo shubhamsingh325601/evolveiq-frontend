@@ -1,6 +1,6 @@
 import type { Role } from '@evolveiq/api-client';
 import type { SidebarMenuSection } from '@evolveiq/domain';
-import { Award, Backpack, Contact, HeartHandshake, LayoutGrid, LifeBuoy, Megaphone, Plug, Presentation, School, Trophy, Upload } from '@evolveiq/ui';
+import { Award, Backpack, Contact, GraduationCap, HeartHandshake, LayoutGrid, LifeBuoy, Megaphone, Plug, Presentation, School, Trophy, Upload } from '@evolveiq/ui';
 
 /**
  * The admin panel's menu, by role. Consumed by the shared `AppSidebar` and `AppBottomNav`
@@ -25,6 +25,7 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
         items: [
           { label: 'Notice board', shortLabel: 'Notices', to: '/school/notices', icon: Megaphone },
           { label: 'Help desk', to: '/school/help-desk', icon: LifeBuoy },
+          { label: 'Training hub', shortLabel: 'Training', to: '/school/training-hub', icon: GraduationCap },
           { label: 'Staff reviews', shortLabel: 'Reviews', to: '/school/staff-reviews', icon: Award },
           { label: 'Wall of fame', shortLabel: 'Wall', to: '/school/wall', icon: Trophy },
         ],
@@ -47,6 +48,7 @@ export function menuForRole(role: Role): SidebarMenuSection[] {
           { label: 'Import data', shortLabel: 'Import', to: '/platform/import', icon: Upload },
           { label: 'Notice board', shortLabel: 'Notices', to: '/platform/notices', icon: Megaphone },
           { label: 'Help desk', to: '/platform/help-desk', icon: LifeBuoy },
+          { label: 'Training hub', shortLabel: 'Training', to: '/platform/training-hub', icon: GraduationCap },
         ],
       },
     ];

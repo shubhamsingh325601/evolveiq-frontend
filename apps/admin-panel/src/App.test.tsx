@@ -329,4 +329,43 @@ describe('Admin panel: import, remove, notices, reviews and the wall', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await screen.findAllByText('For rebuilding the tower with a wider base.')).not.toHaveLength(0);
   });
+
+  it('lets a school admin offer a training, change it, then delete it', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByRole('heading', { name: 'Students' });
+    await user.click(screen.getAllByRole('link', { name: /Training hub|Training/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Training hub' })).toBeInTheDocument();
+    expect(await screen.findByText('First aid and CPR training')).toBeInTheDocument();
+    // A training for Halden Grove belongs to another school.
+    expect(screen.queryByText('Digital literacy for staff')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Offer a training' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Offer a training' });
+    await user.type(within(dialog).getByLabelText('Title'), 'Fire warden refresher');
+    await user.click(within(dialog).getByRole('button', { name: 'Offer it' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByText('Fire warden refresher')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit Fire warden refresher' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Change the training' });
+    await user.selectOptions(within(editDialog).getByLabelText('Requirement'), 'recommended');
+    await user.click(within(editDialog).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findAllByText('Recommended')).not.toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Fire warden refresher' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete training' }));
+    await waitFor(() => expect(screen.queryByText('Fire warden refresher')).not.toBeInTheDocument());
+  });
+
+  it('shows a platform admin every school’s trainings, with the school named', async () => {
+    const user = await signInAs('tunde@evolveiq.test');
+    await screen.findByRole('heading', { name: 'Schools' });
+    await user.click(screen.getAllByRole('link', { name: /Training hub|Training/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Training hub' })).toBeInTheDocument();
+
+    expect(await screen.findByText('Digital literacy for staff')).toBeInTheDocument();
+    expect(screen.getByText('First aid and CPR training')).toBeInTheDocument();
+    expect(screen.getByText('Halden Grove School')).toBeInTheDocument();
+  });
 });

@@ -10,6 +10,7 @@ import type {
   Role,
   StaffRatings,
   SupportTicketStatus,
+  TrainingRequirement,
 } from '@evolveiq/api-client';
 
 /**
@@ -113,6 +114,19 @@ export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> =
 };
 
 export const SUPPORT_TICKET_STATUSES: SupportTicketStatus[] = ['open', 'in_progress', 'resolved'];
+
+/**
+ * The Staff Training & Development Hub — a gap found against the client's UI
+ * prototype (16 Nov 2026), not yet a confirmed client request; built so the
+ * project is ready to demo.
+ */
+export const TRAINING_REQUIREMENT_LABELS: Record<TrainingRequirement, string> = {
+  mandatory: 'Mandatory',
+  recommended: 'Recommended',
+  optional: 'Optional',
+};
+
+export const TRAINING_REQUIREMENTS: TrainingRequirement[] = ['mandatory', 'recommended', 'optional'];
 
 /** "Sat 14 Nov" for "2026-11-14". */
 export function formatDayShort(day: string): string {

@@ -31,6 +31,7 @@ import type {
   SupportPlan,
   SupportStatus,
   SupportTicketStatus,
+  TrainingRequirement,
   WellnessCheckin,
 } from '../types';
 import {
@@ -49,6 +50,8 @@ import {
   type MockState,
   type MockSupportPlan,
   type MockSupportTicket,
+  type MockTraining,
+  type MockTrainingEnrolment,
   type MockUser,
 } from './fixtures';
 
@@ -1809,6 +1812,7 @@ const ATTENDANCE_MAX_RANGE_DAYS = 62;
 const NOTICE_CATEGORIES: NoticeCategory[] = ['event', 'activity', 'training', 'policy', 'emergency_contact', 'general'];
 const NOTICE_AUDIENCES: NoticeAudience[] = ['everyone', 'staff', 'families'];
 const HONOUR_KINDS: HonourKind[] = ['staff_of_month', 'student_of_month'];
+const TRAINING_REQUIREMENTS: TrainingRequirement[] = ['mandatory', 'recommended', 'optional'];
 const RATING_FIELDS = ['teaching', 'engagement', 'punctuality', 'teamwork', 'communication'] as const;
 const MAX_IMPORT_ROWS = 500;
 
@@ -2187,6 +2191,33 @@ function ticketScope(actor: MockUser, ticket: MockSupportTicket): boolean {
   }
 }
 
+// The Staff Training & Development Hub ─────────────────────────────
+//
+// A gap found against the client's UI prototype (16 Nov 2026), not yet a confirmed client
+// request; built so the project is ready to demo. Deliberately a dumb list of two things,
+// trainings and who's enrolled in them — no completion-rate or "X% of staff" number here.
+
+function canManageTraining(actor: MockUser, training: MockTraining): boolean {
+  if (actor.role === 'platform_admin') return true;
+  return actor.role === 'school_admin' && actor.schoolId !== null && training.schoolId === actor.schoolId;
+}
+
+/** Teachers and School Admins: their school's and every school's. Psychologists and Platform
+ * Admins: every school's (they work across schools). */
+function canReadTraining(actor: MockUser, training: MockTraining): boolean {
+  const ownOrEverySchool = training.schoolId === null || training.schoolId === actor.schoolId;
+  switch (actor.role) {
+    case 'platform_admin':
+    case 'psychologist':
+      return true;
+    case 'school_admin':
+    case 'teacher':
+      return ownOrEverySchool;
+    default:
+      return false;
+  }
+}
+
 function supportTicketDto(actor: MockUser, ticket: MockSupportTicket) {
   return {
     id: ticket.id,
@@ -2250,6 +2281,135 @@ const supportTicketHandlers = {
     ticket.status = status!;
     ticket.updatedAt = nowIso();
     return { body: { ticket: supportTicketDto(actor, ticket) } };
+  },
+};
+
+function trainingDto(actor: MockUser, training: MockTraining, myEnrolment: MockTrainingEnrolment | undefined) {
+  return {
+    id: training.id,
+    schoolId: training.schoolId,
+    schoolName: training.schoolId ? (state.schools.find((s) => s.id === training.schoolId)?.name ?? null) : null,
+    title: training.title,
+    description: training.description,
+    scheduledOn: training.scheduledOn,
+    requirement: training.requirement,
+    credits: training.credits,
+    createdBy: { fullName: person(userById(training.createdById)).fullName },
+    createdAt: training.createdAt,
+    updatedAt: training.updatedAt,
+    canManage: canManageTraining(actor, training),
+    myEnrolment: myEnrolment ? { isComplete: myEnrolment.isComplete } : null,
+  };
+}
+
+function readTrainingFields(body: Body, issues: FieldIssue[], isCreate: boolean) {
+  const title = text(body, 'title', issues, { max: 120, isOptional: !isCreate });
+  const details = optionalText(body, 'description', issues, 2000);
+  let scheduledOn: string | null | undefined;
+  if (body.scheduledOn === null) scheduledOn = null;
+  else if (body.scheduledOn !== undefined) {
+    if (typeof body.scheduledOn !== 'string' || !DAY_PATTERN.test(body.scheduledOn)) field(issues, 'scheduledOn', 'must be YYYY-MM-DD');
+    else scheduledOn = body.scheduledOn;
+  }
+  const requirement = oneOf(body, 'requirement', TRAINING_REQUIREMENTS, issues, !isCreate);
+  let credits: number | undefined;
+  if (body.credits !== undefined) {
+    if (typeof body.credits !== 'number' || !Number.isInteger(body.credits) || body.credits < 0 || body.credits > 20) {
+      field(issues, 'credits', 'must be a whole number from 0 to 20');
+    } else {
+      credits = body.credits;
+    }
+  } else if (isCreate) {
+    field(issues, 'credits', 'is required');
+  }
+  return { title, details, scheduledOn, requirement, credits };
+}
+
+function findManagedTraining(actor: MockUser, trainingId: string): MockTraining {
+  const training = state.trainings.find((t) => t.id === trainingId);
+  if (!training || !canManageTraining(actor, training)) throw Errors.notFound('Training');
+  return training;
+}
+
+const trainingHandlers = {
+  list({ actor, query }: Context): Result {
+    if (query.schoolId && actor.role !== 'platform_admin') throw Errors.forbidden('Only Platform Admins can filter trainings by school.');
+    const myEnrolments = new Map(state.trainingEnrolments.filter((e) => e.staffId === actor.id).map((e) => [e.trainingId, e]));
+    const trainings = state.trainings
+      .filter((t) => canReadTraining(actor, t))
+      .filter((t) => !query.requirement || t.requirement === query.requirement)
+      .filter((t) => !query.schoolId || t.schoolId === query.schoolId)
+      .sort(newestFirst)
+      .map((t) => trainingDto(actor, t, myEnrolments.get(t.id)));
+    return { body: paginate(trainings, query, 'trainings') };
+  },
+  create({ actor, body }: Context): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['title', 'description', 'scheduledOn', 'requirement', 'credits', 'schoolId'], issues);
+    const fields = readTrainingFields(body, issues, true);
+    assertValid(issues);
+    let schoolId: string | null;
+    if (actor.role === 'school_admin') {
+      if (body.schoolId !== undefined && body.schoolId !== actor.schoolId) {
+        throw Errors.forbidden('School Admins can only offer trainings for their own school.');
+      }
+      schoolId = actor.schoolId;
+    } else {
+      schoolId = typeof body.schoolId === 'string' ? body.schoolId : null;
+      if (schoolId !== null && !state.schools.some((s) => s.id === schoolId)) throw Errors.invalidReference('schoolId', 'School not found.');
+    }
+    const trainingRecord: MockTraining = {
+      id: nextId('trn'),
+      schoolId,
+      title: fields.title ?? '',
+      description: fields.details ?? null,
+      scheduledOn: fields.scheduledOn ?? null,
+      requirement: fields.requirement!,
+      credits: fields.credits!,
+      createdById: actor.id,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.trainings.unshift(trainingRecord);
+    return { status: 201, body: { training: trainingDto(actor, trainingRecord, undefined) } };
+  },
+  update({ actor, body }: Context, trainingId: string): Result {
+    const issues: FieldIssue[] = [];
+    rejectUnknown(body, ['title', 'description', 'scheduledOn', 'requirement', 'credits'], issues);
+    if (Object.keys(body).length === 0) field(issues, 'body', 'send at least one field to change');
+    const fields = readTrainingFields(body, issues, false);
+    assertValid(issues);
+    const trainingRecord = findManagedTraining(actor, trainingId);
+    if (fields.title !== undefined) trainingRecord.title = fields.title;
+    if (fields.details !== undefined) trainingRecord.description = fields.details;
+    if (fields.scheduledOn !== undefined) trainingRecord.scheduledOn = fields.scheduledOn;
+    if (fields.requirement !== undefined) trainingRecord.requirement = fields.requirement;
+    if (fields.credits !== undefined) trainingRecord.credits = fields.credits;
+    trainingRecord.updatedAt = nowIso();
+    const myEnrolment = state.trainingEnrolments.find((e) => e.trainingId === trainingRecord.id && e.staffId === actor.id);
+    return { body: { training: trainingDto(actor, trainingRecord, myEnrolment) } };
+  },
+  remove({ actor }: Context, trainingId: string): Result {
+    const trainingRecord = findManagedTraining(actor, trainingId);
+    state.trainings = state.trainings.filter((t) => t.id !== trainingRecord.id);
+    state.trainingEnrolments = state.trainingEnrolments.filter((e) => e.trainingId !== trainingRecord.id);
+    return { status: 204 };
+  },
+  enrol({ actor }: Context, trainingId: string): Result {
+    const trainingRecord = state.trainings.find((t) => t.id === trainingId);
+    if (!trainingRecord || !canReadTraining(actor, trainingRecord)) throw Errors.notFound('Training');
+    if (state.trainingEnrolments.some((e) => e.trainingId === trainingId && e.staffId === actor.id)) {
+      throw Errors.conflict('Already enrolled in this training.');
+    }
+    const enrolment: MockTrainingEnrolment = { trainingId, staffId: actor.id, isComplete: false, enrolledAt: nowIso() };
+    state.trainingEnrolments.push(enrolment);
+    return { status: 201, body: { enrolment: { isComplete: enrolment.isComplete } } };
+  },
+  markComplete({ actor }: Context, trainingId: string): Result {
+    const enrolment = state.trainingEnrolments.find((e) => e.trainingId === trainingId && e.staffId === actor.id);
+    if (!enrolment) throw Errors.notFound('Enrolment');
+    enrolment.isComplete = true;
+    return { body: { enrolment: { isComplete: enrolment.isComplete } } };
   },
 };
 
@@ -2591,7 +2751,9 @@ function hasHistory(userId: string): boolean {
     state.notices.some((n) => n.createdById === userId) ||
     state.staffReviews.some((r) => r.staffId === userId || r.reviewerId === userId) ||
     state.honours.some((h) => h.honoreeId === userId || h.awardedById === userId) ||
-    state.supportTickets.some((t) => t.raisedById === userId)
+    state.supportTickets.some((t) => t.raisedById === userId) ||
+    state.trainings.some((t) => t.createdById === userId) ||
+    state.trainingEnrolments.some((e) => e.staffId === userId)
   );
 }
 
@@ -2625,6 +2787,9 @@ const removalHandlers = {
     }
     state.notices = state.notices.filter((n) => n.schoolId !== school.id);
     state.supportTickets = state.supportTickets.filter((t) => t.schoolId !== school.id);
+    const removedTrainingIds = new Set(state.trainings.filter((t) => t.schoolId === school.id).map((t) => t.id));
+    state.trainings = state.trainings.filter((t) => t.schoolId !== school.id);
+    state.trainingEnrolments = state.trainingEnrolments.filter((e) => !removedTrainingIds.has(e.trainingId));
     state.schools = state.schools.filter((s) => s.id !== school.id);
     return { status: 204 };
   },
@@ -2731,6 +2896,12 @@ const ROUTES: Route[] = [
   { method: 'GET', path: '/support-tickets', roles: ['teacher', 'school_admin', 'platform_admin'], handle: supportTicketHandlers.list },
   { method: 'POST', path: '/support-tickets', roles: ['teacher', 'school_admin'], handle: supportTicketHandlers.create },
   { method: 'PATCH', path: '/support-tickets/:id', roles: ADMINS, handle: supportTicketHandlers.updateStatus },
+  { method: 'GET', path: '/trainings', roles: ['teacher', 'psychologist', 'school_admin', 'platform_admin'], handle: trainingHandlers.list },
+  { method: 'POST', path: '/trainings', roles: ADMINS, handle: trainingHandlers.create },
+  { method: 'PATCH', path: '/trainings/:id', roles: ADMINS, handle: trainingHandlers.update },
+  { method: 'DELETE', path: '/trainings/:id', roles: ADMINS, handle: trainingHandlers.remove },
+  { method: 'POST', path: '/trainings/:id/enrolment', roles: ['teacher', 'psychologist'], handle: trainingHandlers.enrol },
+  { method: 'PATCH', path: '/trainings/:id/enrolment', roles: ['teacher', 'psychologist'], handle: trainingHandlers.markComplete },
   { method: 'GET', path: '/staff-reviews', roles: ['school_admin', 'teacher'], handle: staffReviewHandlers.list },
   { method: 'PUT', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.save },
   { method: 'DELETE', path: '/staff-reviews/:id/:month', roles: ['school_admin'], handle: staffReviewHandlers.remove },

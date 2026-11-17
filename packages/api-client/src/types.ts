@@ -797,6 +797,60 @@ export interface NewSupportTicket {
   body?: string;
 }
 
+/**
+ * The Staff Training & Development Hub — a gap found against the client's UI
+ * prototype (16 Nov 2026), not yet a confirmed client request; built so the
+ * project is ready to demo. Deliberately a dumb list of two things, trainings
+ * and who's enrolled in them: no completion-rate or "X% of staff" number
+ * (see backend SCOPE_OF_WORK.md) — that would need an endpoint the backend
+ * does not offer.
+ */
+export type TrainingRequirement = 'mandatory' | 'recommended' | 'optional';
+
+/** The caller's own enrolment in a training. Never another staff member's. */
+export interface TrainingEnrolment {
+  isComplete: boolean;
+}
+
+/** A training on offer. A null school is offered to every school. */
+export interface Training {
+  id: string;
+  schoolId: string | null;
+  schoolName: string | null;
+  title: string;
+  description: string | null;
+  /** "YYYY-MM-DD"; null for self-paced or ongoing training. */
+  scheduledOn: string | null;
+  requirement: TrainingRequirement;
+  credits: number;
+  createdBy: { fullName: string };
+  createdAt: string;
+  updatedAt: string;
+  /** Whether the signed-in admin may edit or delete it. */
+  canManage: boolean;
+  /** The caller's own enrolment, if any. */
+  myEnrolment: TrainingEnrolment | null;
+}
+
+export interface NewTraining {
+  title: string;
+  description?: string;
+  scheduledOn?: string;
+  requirement: TrainingRequirement;
+  credits: number;
+  /** Platform admins: the school, or leave it out for every school. School admins: always their own. */
+  schoolId?: string;
+}
+
+/** null clears an optional field. */
+export interface TrainingChanges {
+  title?: string;
+  description?: string | null;
+  scheduledOn?: string | null;
+  requirement?: TrainingRequirement;
+  credits?: number;
+}
+
 /** The five things a school admin rates each teacher on, 1–5, once a month. */
 export interface StaffRatings {
   teaching: number;

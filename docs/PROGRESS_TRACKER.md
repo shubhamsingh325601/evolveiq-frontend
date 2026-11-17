@@ -44,6 +44,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | EHI API contract | Done | | Served by the backend's progress module (`/students/:studentId/holistic-index`, backend `5b694d2`); `FEATURES.holisticIndex` on since 24 Oct 2026 |
 | `AchievementBadges` | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototypes, not yet confirmed with the client. Frontend-only, like the level ladder: milestones worked out from streak days, finished activities and star count (no new backend data); distinct from a Star, which always carries someone's words; 4 tests |
 | `SupportTicketForm` (IT Help Desk) | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. Subject and optional detail, shared by a teacher raising their own and a school admin raising theirs; backend `783504e`; 2 tests |
+| Staff Training & Development Hub vocabulary (`TRAINING_REQUIREMENT_LABELS`) | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. `mandatory` / `recommended` / `optional`, mirroring `NOTICE_CATEGORY_LABELS`; backend `34273c3` |
 
 ## Family Web App
 | Item | Status | Owner | Notes |
@@ -92,6 +93,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Teacher: Class overview | Done | | 11 Nov 2026; not yet committed. `/teacher/class`: per class, student / star / awaiting-review / growth-area tiles and the students to look at first, built from data the app already loads |
 | Teacher: NEP reports | Done | | 11 Nov 2026; not yet committed. `/teacher/reports` lists students with their EHI; each opens the shared Holistic Report Card |
 | Teacher: IT Help Desk ("Raise a ticket") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. `/teacher/help-desk`: subject and optional detail, shared `SupportTicketForm`; no list, a teacher sees only what they raised |
+| Teacher and counsellor: Trainings ("Trainings") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. `/trainings`: the trainings visible to the signed-in person (their school and every-school ones; the counsellor, who works across schools, sees every school's), requirement badge, credits and date; Enrol → Mark complete → Completed, driven by each training's own `myEnrolment`; no school-wide completion rate, the backend has none |
 
 ## Admin Panel
 | Item | Status | Owner | Notes |
@@ -106,6 +108,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Wall of fame (manage) | Done | | Client feedback 29 Oct 2026; not yet committed. Name a Staff of the Month and Students of the Month with why; take one down; 1 app test |
 | Health and care needs, by the school office | Done | | Client feedback 29 Oct 2026; not yet committed. A "Care needs" column and dialog on the students list; 1 app test |
 | IT Help Desk ("Help desk") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. School Admin (own school) and Platform Admin (every school, named) see tickets raised by teachers and school admins; status open/in_progress/resolved changed inline; a school admin also raises their own via "New ticket"; 3 app tests |
+| Training hub ("Training hub") | Done | | 16 Nov 2026; not yet committed. Gap found against the client's prototype, not yet confirmed scope — see backend SCOPE_OF_WORK.md note. School Admin (own school) and Platform Admin (every school, named) offer, change and delete trainings — title, what it covers, when it happens (or self-paced), mandatory/recommended/optional, credits; no school-wide completion rate, the backend has none; 2 app tests |
 
 ## Quality
 | Item | Status | Owner | Notes |
