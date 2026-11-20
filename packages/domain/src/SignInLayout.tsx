@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import {
   DEMO_PASSWORD,
   DEMO_PIN,
@@ -45,6 +45,13 @@ export interface SignInLayoutProps {
   demoAccounts: DemoAccount[];
   /** The family app signs students in too, with their student ID and PIN. */
   allowsStudents?: boolean;
+  /**
+   * Students only: the student ID and PIN, with no adults' tab. The children's
+   * build of the family app (student.evolviq.in) uses it.
+   */
+  isStudentsOnly?: boolean;
+  /** A line under "No account yet?", such as where the other half of the family signs in. */
+  footnote?: ReactNode;
   /** The adults' tab when students can sign in too. "Parent" in the family app. */
   adultTabLabel?: string;
   /**
@@ -94,16 +101,18 @@ export function SignInLayout({
   showcase,
   demoAccounts,
   allowsStudents = false,
+  isStudentsOnly = false,
+  footnote,
   adultTabLabel = 'Parent',
   isShowingDemoAccounts = showsDemoAccounts,
   onSignIn,
   isSigningIn = false,
   error,
 }: SignInLayoutProps) {
-  const [mode, setMode] = useState<Mode>('adult');
+  const [mode, setMode] = useState<Mode>(isStudentsOnly ? 'student' : 'adult');
   const [identifier, setIdentifier] = useState('');
   const [secret, setSecret] = useState('');
-  const isStudent = allowsStudents && mode === 'student';
+  const isStudent = isStudentsOnly || (allowsStudents && mode === 'student');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -217,7 +226,7 @@ export function SignInLayout({
           <h1 className="text-4xl font-black tracking-tight text-ink">Sign in</h1>
           <p className="mt-2 text-base font-medium text-ink-muted">{audienceLine}</p>
 
-          {allowsStudents ? (
+          {allowsStudents && !isStudentsOnly ? (
             <SegmentedControl
               className="mt-6"
               label="Who is signing in"
@@ -285,6 +294,7 @@ export function SignInLayout({
           <p className="mt-4 text-sm text-ink-muted">
             No account yet? Your school sets one up for you.
           </p>
+          {footnote ? <p className="mt-2 text-sm text-ink-muted">{footnote}</p> : null}
 
           {isShowingDemoAccounts && demoAccounts.length > 0 ? (
             <div className="mt-10">
