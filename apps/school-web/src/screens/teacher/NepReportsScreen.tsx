@@ -2,6 +2,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FEATURES, useClassRoster, useHolisticIndexes, type RosterStudent } from '@evolveiq/api-client';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
 import { Avatar, buttonClasses, ChevronRight, EmptyState, ErrorState, FileText, PageHeader } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
+import { useClassFilter } from '../../useClassChoice';
 
 /**
  * NEP reports: each student's Holistic Report Card (the NEP 2020 holistic
@@ -10,7 +12,8 @@ import { Avatar, buttonClasses, ChevronRight, EmptyState, ErrorState, FileText, 
  */
 export function NepReportsScreen() {
   const roster = useClassRoster();
-  const indexes = useHolisticIndexes(FEATURES.holisticIndex ? roster.students.map((student) => student.id) : []);
+  const { classChoice, setClassChoice, students } = useClassFilter(roster);
+  const indexes = useHolisticIndexes(FEATURES.holisticIndex ? students.map((student) => student.id) : []);
   const navigate = useNavigate();
 
   if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
@@ -76,9 +79,10 @@ export function NepReportsScreen() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="NEP reports" subtitle="Each student’s Holistic Report Card, the same one their family sees." />
+      <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} />
       <RecordsTable
         caption="NEP reports for the students you teach"
-        rows={roster.students}
+        rows={students}
         columns={columns}
         getRowId={(student) => student.id}
         searchableText={(student) => `${student.fullName} ${student.className}`}

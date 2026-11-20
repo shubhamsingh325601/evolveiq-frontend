@@ -231,6 +231,58 @@ describe('School app: classes, attendance, care needs and school life', () => {
     expect(within(table).getByText('ADHD')).toBeInTheDocument();
   });
 
+  it('narrows the class overview to the class picked, and the next screen opens on the same class', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Class overview/ })[0]!);
+    expect(await screen.findByRole('region', { name: 'Class 3A' })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Class'), 'cls-4b');
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Class 3A' })).not.toBeInTheDocument());
+    expect(screen.getByRole('region', { name: 'Class 4B' })).toBeInTheDocument();
+
+    // NEP reports remembers 4B: Maya is listed, Lila (3A) is not.
+    await user.click(screen.getAllByRole('link', { name: /NEP reports/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'NEP reports' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Class')).toHaveValue('cls-4b');
+    expect(await screen.findByText('Maya Ahluwalia')).toBeInTheDocument();
+    expect(screen.queryByText('Lila Menon')).not.toBeInTheDocument();
+  });
+
+  it('offers only the picked class’s students when assigning an activity', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('link', { name: /Assign an activity/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Assign an activity' })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Class'), 'cls-3a');
+    const names = within(screen.getByLabelText('Student'))
+      .getAllByRole('option')
+      .map((option) => option.textContent ?? '');
+    expect(names).toEqual(['Lila Menon, 3A', 'Noor Siddiqui, 3A']);
+  });
+
+  it('opens a star on the student’s own class, and keeps what was written when the class changes', async () => {
+    const user = await signInAs('rao@school.test');
+    const table = await screen.findByRole('table', { name: 'Students you teach' });
+    await user.click(await within(table).findByText('Lila Menon'));
+    const star = (await screen.findAllByRole('link', { name: /Give a star/ })).find((link) =>
+      link.getAttribute('href')?.includes('studentId=stu-lila'),
+    )!;
+
+    // The drop-down was last left on 4B; Lila is in 3A, so the form moves there.
+    window.localStorage.setItem('evolveiq.teacher.class', 'cls-4b');
+    await user.click(star);
+    expect(await screen.findByRole('heading', { name: 'Give a star' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Class')).toHaveValue('cls-3a'));
+    expect(screen.getByLabelText('Who is this about')).toHaveValue('stu-lila');
+
+    await user.type(screen.getByPlaceholderText(/In the group task today/), 'Shared her crayons.');
+    await user.selectOptions(screen.getByLabelText('Class'), 'cls-4b');
+    await waitFor(() => expect(['stu-arjun', 'stu-devan', 'stu-maya']).toContain((screen.getByLabelText('Who is this about') as HTMLSelectElement).value));
+    expect(screen.getByPlaceholderText(/In the group task today/)).toHaveValue('Shared her crayons.');
+  });
+
   it('takes today’s register for a class, everyone present to start', async () => {
     const user = await signInAs('rao@school.test');
     await screen.findByRole('heading', { name: 'My students' });

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useMessageInbox, useReplyToParent, useStaffThread, type InboxThread } from '@evolveiq/api-client';
+import { useClassRoster, useMessageInbox, useReplyToParent, useStaffThread, type InboxThread } from '@evolveiq/api-client';
+import { useAuth } from '@evolveiq/auth';
+import { ClassFilter } from '../components/ClassFilter';
+import { ALL_CLASSES, useClassFilter } from '../useClassChoice';
 import {
   ArrowLeft,
   Avatar,
@@ -104,28 +107,45 @@ function InboxRow({ item }: { item: InboxThread }) {
   );
 }
 
-/** Messages from parents. Staff reply in a thread a parent has started; they do not start one. */
+/**
+ * Messages from parents. Staff reply in a thread a parent has started; they do not start one.
+ * A teacher can narrow the inbox to one class; the counsellor has no classes, so no drop-down.
+ */
 export function MessagesScreen() {
   const [params] = useSearchParams();
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'teacher';
   const inbox = useMessageInbox();
+  const roster = useClassRoster({ isEnabled: isTeacher });
+  const { classChoice, setClassChoice, students } = useClassFilter(roster);
   const studentId = params.get('student');
 
   if (studentId) return <Thread studentId={studentId} />;
+
+  const inClass = new Set(students.map((student) => student.id));
+  const threads = (inbox.data?.threads ?? []).filter(
+    (item) => !isTeacher || classChoice === ALL_CLASSES || inClass.has(item.studentId),
+  );
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Messages" subtitle="Notes from parents about their children." />
+      {isTeacher ? <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} /> : null}
       {inbox.isLoading ? <LoadingState label="Loading messages" /> : null}
       {inbox.isError ? <ErrorState onRetry={() => void inbox.refetch()} /> : null}
       {inbox.data ? (
-        inbox.data.threads.length === 0 ? (
+        threads.length === 0 ? (
           <EmptyState
             icon={MessageCircle}
             title="No messages yet"
-            description="When a parent writes to you, it will show up here."
+            description={
+              inbox.data.threads.length > 0
+                ? 'No parent in this class has written yet. Pick “All my classes” to see the rest.'
+                : 'When a parent writes to you, it will show up here.'
+            }
           />
         ) : (
           <ul className="flex flex-col gap-3">
-            {inbox.data.threads.map((item) => (
+            {threads.map((item) => (
               <InboxRow key={item.studentId} item={item} />
             ))}
           </ul>

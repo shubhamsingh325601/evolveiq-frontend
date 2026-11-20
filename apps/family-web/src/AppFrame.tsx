@@ -12,11 +12,12 @@ import {
 } from '@evolveiq/api-client';
 import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
 import { AppLayout, schoolLifeNotifications, type AccountMenuSection } from '@evolveiq/domain';
-import { Megaphone, ShieldCheck } from '@evolveiq/ui';
+import { Download, Megaphone, ShieldCheck } from '@evolveiq/ui';
 import { menuForRole } from './app-menu';
 import { ChildrenSidebarCard } from './components/ChildrenSidebarCard';
 import { LevelSidebarCard } from './components/LevelSidebarCard';
 import { familyNotifications } from './family-notifications';
+import { useInstallPrompt } from './useInstallPrompt';
 import type { FamilyFrameContext } from './useLastChildId';
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
@@ -40,6 +41,7 @@ export function AppFrame() {
   const childOnExplore = useMatch('/parent/explore/:childId')?.params.childId;
   const childOnHealth = useMatch('/parent/health/:childId')?.params.childId;
   const openChildId = childOnDashboard ?? childOnExplore ?? childOnHealth;
+  const { canInstall, install } = useInstallPrompt();
   // Remembered across pages without a child in their path, so Explore and the guide start on them.
   const [lastChildId, setLastChildId] = useState<string>();
   useEffect(() => {
@@ -86,7 +88,24 @@ export function AppFrame() {
           },
         ]
       : [];
-  const accountSections = [...childSections, schoolSection];
+  // Only while the browser offers it: never once installed, and never in Safari (Share → Add to Home Screen).
+  const deviceSections: AccountMenuSection[] = canInstall
+    ? [
+        {
+          title: 'This device',
+          items: [
+            {
+              id: 'install',
+              label: 'Install the app',
+              detail: 'Open EvolvIQ from your home screen',
+              onSelect: () => void install(),
+              icon: Download,
+            },
+          ],
+        },
+      ]
+    : [];
+  const accountSections = [...childSections, schoolSection, ...deviceSections];
 
   return (
     <AppLayout

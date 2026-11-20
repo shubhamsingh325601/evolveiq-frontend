@@ -19,12 +19,15 @@ import {
   Select,
   UsersRound,
 } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
+import { useClassFilter } from '../../useClassChoice';
 
 /** Direct assignment: a teacher can set an activity without waiting for a review. */
 export function AssignActivityScreen() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const roster = useClassRoster();
+  const { classChoice, setClassChoice, students } = useClassFilter(roster, { studentId: searchParams.get('studentId') ?? undefined });
   const [type, setType] = useState<ActivityType | 'all'>('all');
   const [search, setSearch] = useState('');
   const activities = useActivities(type === 'all' ? {} : { type });
@@ -37,7 +40,7 @@ export function AssignActivityScreen() {
   if (roster.isLoading) return <LoadingState label="Loading" />;
   if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
 
-  const chosenStudentId = studentId || roster.students[0]?.id || '';
+  const chosenStudentId = students.some((student) => student.id === studentId) ? studentId : (students[0]?.id ?? '');
   const nameOf = (id: string) => roster.students.find((student) => student.id === id)?.fullName ?? 'the student';
   const needle = search.trim().toLowerCase();
   const library = (activities.data ?? []).filter((activity) => !needle || activity.title.toLowerCase().includes(needle));
@@ -62,10 +65,11 @@ export function AssignActivityScreen() {
           <UsersRound className="size-5 text-iris-500" />
           Who it is for
         </h2>
+        <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} />
         <FormField label="Student">
           <Select value={chosenStudentId} onChange={(event) => setStudentId(event.target.value)}>
-            {roster.students.length === 0 ? <option value="">No students in your classes</option> : null}
-            {roster.students.map((student) => (
+            {students.length === 0 ? <option value="">No students in this class</option> : null}
+            {students.map((student) => (
               <option key={student.id} value={student.id}>
                 {student.fullName}, {student.className}
               </option>

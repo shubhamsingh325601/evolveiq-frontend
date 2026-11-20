@@ -12,6 +12,8 @@ import {
 import { useAuth } from '@evolveiq/auth';
 import { COMPETITION_LEVEL_LABELS, COMPETITION_STATUS_LABELS, formatDayShort, RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
 import { Badge, Button, CalendarDays, ErrorState, PageHeader, Select, StatTile, Trophy, UserCheck, UserX, type BadgeTone } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
+import { useClassFilter } from '../../useClassChoice';
 
 const LEVEL_TONE: Record<Competition['level'], BadgeTone> = {
   national: 'significant',
@@ -43,6 +45,7 @@ export function CompetitionsScreen() {
   const { user } = useAuth();
   const competitions = useCompetitions();
   const roster = useClassRoster();
+  const { classChoice, setClassChoice, students } = useClassFilter(roster);
   const nominate = useNominateStudent();
   const removeNomination = useRemoveNomination();
 
@@ -59,11 +62,17 @@ export function CompetitionsScreen() {
 
   const availableStudents = (competition: Competition) => {
     const taken = new Set(competition.nominations.map((n) => n.studentId));
-    return roster.students.filter((student) => !taken.has(student.id));
+    return students.filter((student) => !taken.has(student.id));
+  };
+  // The student picked for a competition, while they are still on its list (the class drop-down can change it).
+  const chosenFor = (competition: Competition) => {
+    const options = availableStudents(competition);
+    const picked = studentChoice[competition.id];
+    return options.some((student) => student.id === picked) ? picked : options[0]?.id;
   };
 
   const doNominate = async (competition: Competition) => {
-    const studentId = studentChoice[competition.id] || availableStudents(competition)[0]?.id;
+    const studentId = chosenFor(competition);
     if (!studentId) return;
     setRowError(undefined);
     try {
@@ -157,6 +166,8 @@ export function CompetitionsScreen() {
 
       {rowError ? <ErrorState title="That did not work" description={rowError} /> : null}
 
+      <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} />
+
       <RecordsTable
         caption="Competitions at your school"
         rows={list}
@@ -168,7 +179,7 @@ export function CompetitionsScreen() {
         rowActions={(competition) => {
           const options = availableStudents(competition);
           if (options.length === 0) return <span className="text-xs text-ink-faint">No students left to nominate</span>;
-          const chosen = studentChoice[competition.id] || options[0]!.id;
+          const chosen = chosenFor(competition);
           return (
             <span className="inline-flex items-center gap-2">
               <label className="sr-only" htmlFor={`${competition.id}-student`}>

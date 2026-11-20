@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import type {
@@ -109,6 +110,8 @@ export function ObservationForm({
     handleSubmit,
     control,
     watch,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<ObservationFormValues>({
     resolver: zodResolver(observationSchema),
@@ -123,6 +126,18 @@ export function ObservationForm({
       learningBehaviourArea: '',
     },
   });
+
+  // The list can change under the form (a teacher's class drop-down). Keep what was
+  // typed, and move "Who is this about" to someone still listed: the requested
+  // student when they are there, otherwise the first.
+  const studentKey = students.map((option) => option.id).join(',');
+  useEffect(() => {
+    const listed = (id: string | undefined) => id !== undefined && students.some((option) => option.id === id);
+    if (listed(getValues('studentId'))) return;
+    setValue('studentId', listed(defaultStudentId) ? defaultStudentId! : (students[0]?.id ?? ''));
+    // studentKey stands for `students`: the list's identity changes on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentKey, defaultStudentId, getValues, setValue]);
 
   const tone = watch('tone') as ObservationTone | '';
   const isPositive = tone === 'positive';

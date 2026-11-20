@@ -28,18 +28,17 @@ import {
   ClipboardCheck,
   ClipboardList,
   ErrorState,
-  FormField,
   HeartPulse,
   Inbox,
   PageHeader,
   Plus,
-  Select,
   Star,
   StatTile,
   UsersRound,
 } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
 import { GrowthAreaChips } from '../../components/GrowthAreaChips';
-import { ALL_CLASSES, useClassChoice } from '../../useClassChoice';
+import { ALL_CLASSES, useClassFilter } from '../../useClassChoice';
 
 const NAME_LIST = new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' });
 
@@ -53,15 +52,13 @@ export function StudentsScreen() {
   const { user } = useAuth();
   const roster = useClassRoster();
   const classIds = roster.classes.map((detail) => detail.class.id);
-  const [classChoice, setClassChoice] = useClassChoice(classIds);
+  const { classChoice, setClassChoice, classes: shownClasses, students } = useClassFilter(roster);
   const ownObservations = useTeacherObservations();
   const range = monthRange();
   const attendance = useClassesAttendance(classIds, range);
   const health = useClassesHealth(classIds);
   const navigate = useNavigate();
 
-  const shownClasses = classChoice === ALL_CLASSES ? roster.classes : roster.classes.filter((detail) => detail.class.id === classChoice);
-  const students = classChoice === ALL_CLASSES ? roster.students : roster.students.filter((student) => student.classId === classChoice);
   const studentIds = students.map((student) => student.id);
   const growthAreas = useGrowthAreasForStudents(studentIds);
   const stars = useStarsForStudents(studentIds);
@@ -186,18 +183,7 @@ export function StudentsScreen() {
         }
       />
 
-      {roster.classes.length > 1 ? (
-        <FormField label="Class" className="max-w-xs">
-          <Select value={classChoice} onChange={(event) => setClassChoice(event.target.value)}>
-            <option value={ALL_CLASSES}>All my classes · {roster.students.length} students</option>
-            {roster.classes.map((detail) => (
-              <option key={detail.class.id} value={detail.class.id}>
-                {detail.class.name} · {detail.students.length} {detail.students.length === 1 ? 'student' : 'students'}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-      ) : null}
+      <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
         <StatTile

@@ -8,6 +8,8 @@ import {
 } from '@evolveiq/api-client';
 import { BackLink, ObservationForm } from '@evolveiq/domain';
 import { Card, cn, ErrorState, LoadingState, PageHeader, Search, Star, type IconComponent } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
+import { useClassFilter } from '../../useClassChoice';
 
 /** What happens to an observation after a teacher sends it, for each kind. */
 const NEXT_STEPS: { title: string; icon: IconComponent; iconClassName: string; steps: string[] }[] = [
@@ -44,11 +46,12 @@ export function NewObservationScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [submitError, setSubmitError] = useState<string>();
+  const defaultStudentId = searchParams.get('studentId') ?? undefined;
+  const { classChoice, setClassChoice, students } = useClassFilter(roster, { studentId: defaultStudentId });
 
   if (roster.isLoading) return <LoadingState label="Loading" />;
   if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
 
-  const defaultStudentId = searchParams.get('studentId') ?? undefined;
   const requestedTone = searchParams.get('tone');
   const defaultTone = isTone(requestedTone) ? requestedTone : undefined;
 
@@ -71,10 +74,11 @@ export function NewObservationScreen() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-        <Card isPlayful className="p-6 sm:p-8">
+        <Card isPlayful className="flex flex-col gap-6 p-6 sm:p-8">
+          <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} />
           <ObservationForm
             variant="teacher"
-            students={roster.students}
+            students={students}
             {...(defaultStudentId ? { defaultStudentId } : {})}
             {...(defaultTone ? { defaultTone } : {})}
             onSubmit={handleSubmit}

@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient, DEMO_PASSWORD, DEMO_PIN, resetMockStore } from '@evolveiq/api-client';
 import { AuthProvider } from '@evolveiq/auth';
 import { App } from './App';
@@ -363,6 +363,30 @@ describe('Family app', () => {
     await user.click(screen.getAllByRole('button', { name: /Priya Ahluwalia/ })[0]!);
     expect(await screen.findByRole('link', { name: /Privacy & safety/ })).toHaveAttribute('href', '/parent/privacy');
     expect(screen.getByRole('link', { name: /Notice board.*emergency numbers/ })).toHaveAttribute('href', '/parent/notices');
+  });
+
+  it('offers to install the app only while the browser can, and hands over to the browser’s prompt', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+    const openMenu = () => user.click(screen.getAllByRole('button', { name: /Priya Ahluwalia/ })[0]!);
+
+    await openMenu();
+    await screen.findByRole('link', { name: /Privacy & safety/ });
+    expect(screen.queryByRole('button', { name: /Install the app/ })).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    // The browser offers installation (Chrome, Edge, Android).
+    const prompt = vi.fn(() => Promise.resolve());
+    const offer = Object.assign(new Event('beforeinstallprompt'), { prompt, userChoice: Promise.resolve({ outcome: 'accepted' }) });
+    act(() => {
+      window.dispatchEvent(offer);
+    });
+
+    if (!screen.queryByRole('button', { name: /Install the app/ })) await openMenu();
+    await user.click(await screen.findByRole('button', { name: /Install the app/ }));
+    expect(prompt).toHaveBeenCalledTimes(1);
+    // Used once; the browser makes a new offer if it can.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Install the app/ })).not.toBeInTheDocument());
   });
 
   it('lets a parent tell the school about a health need, which reads back as the school will see it', async () => {

@@ -36,8 +36,8 @@ import {
   Input,
   LoadingState,
   PageHeader,
-  Select,
 } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
 import { useClassChoice } from '../../useClassChoice';
 
 /** How far back a register can be corrected (the backend's rule). */
@@ -177,12 +177,14 @@ export function AttendanceScreen() {
   const roster = useClassRoster();
   const classIds = roster.classes.map((detail) => detail.class.id);
   const [classId, setClassId] = useClassChoice(classIds, classIds[0]);
+  // Ask for a register only once the roster has loaded and the class is one of the teacher's.
+  const knownClassId = classIds.includes(classId) ? classId : undefined;
   const today = businessDate();
   const [day, setDay] = useState(today);
-  const register = useClassAttendance(classId, { from: day, to: day });
+  const register = useClassAttendance(knownClassId, { from: day, to: day });
   const month = monthRange(day.slice(0, 7), today);
-  const monthly = useClassAttendance(classId, month);
-  const health = useClassesHealth(classId ? [classId] : []);
+  const monthly = useClassAttendance(knownClassId, month);
+  const health = useClassesHealth(knownClassId ? [knownClassId] : []);
 
   if (roster.isLoading) return <LoadingState label="Loading your classes" />;
   if (roster.isError) return <ErrorState onRetry={roster.refetch} />;
@@ -216,15 +218,7 @@ export function AttendanceScreen() {
       <PageHeader title="Attendance" subtitle="Take today’s register, or correct one from the last 30 days." />
 
       <div className="flex flex-wrap items-end gap-4">
-        <FormField label="Class" className="w-full max-w-xs">
-          <Select value={classId} onChange={(event) => setClassId(event.target.value)}>
-            {roster.classes.map((detail) => (
-              <option key={detail.class.id} value={detail.class.id}>
-                {detail.class.name} · {detail.students.length} {detail.students.length === 1 ? 'student' : 'students'}
-              </option>
-            ))}
-          </Select>
-        </FormField>
+        <ClassFilter classes={roster.classes} value={classId} onChange={setClassId} allowAll={false} />
         <FormField label="Day" className="w-full max-w-[12rem]">
           <Input type="date" value={day} min={addDays(today, -BACKFILL_DAYS)} max={today} onChange={(event) => event.target.value && setDay(event.target.value)} />
         </FormField>

@@ -7,19 +7,23 @@ import {
   type RosterStudent,
 } from '@evolveiq/api-client';
 import { Avatar, Badge, Card, ChevronRight, EmptyState, ErrorState, Inbox, PageHeader, SectionTitle, Sprout, Star, StatTile, UsersRound } from '@evolveiq/ui';
+import { ClassFilter } from '../../components/ClassFilter';
 import { GrowthAreaChips } from '../../components/GrowthAreaChips';
+import { useClassFilter } from '../../useClassChoice';
 
 const ROW =
   'flex items-center gap-3 px-4 py-3 transition-colors hover:bg-iris-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-iris-500';
 
 /**
- * Class overview: one panel per class the teacher teaches, with the numbers
- * that matter today and the students who need a look first.
+ * Class overview: one panel per class the teacher teaches (or the one picked in
+ * the class drop-down), with the numbers that matter today and the students who
+ * need a look first.
  */
 export function ClassOverviewScreen() {
   const roster = useClassRoster();
+  const { classChoice, setClassChoice, classes, students } = useClassFilter(roster);
   const ownObservations = useTeacherObservations();
-  const studentIds = roster.students.map((student) => student.id);
+  const studentIds = students.map((student) => student.id);
   const growthAreas = useGrowthAreasForStudents(studentIds);
   const stars = useStarsForStudents(studentIds);
 
@@ -41,8 +45,10 @@ export function ClassOverviewScreen() {
         <EmptyState icon={UsersRound} title="No classes assigned to you yet" description="Your school admin adds you to classes." />
       ) : null}
 
-      {roster.classes.map((detail) => {
-        const members: RosterStudent[] = roster.students.filter((student) => student.classId === detail.class.id);
+      <ClassFilter classes={roster.classes} value={classChoice} onChange={setClassChoice} className="-mt-4" />
+
+      {classes.map((detail) => {
+        const members: RosterStudent[] = students.filter((student) => student.classId === detail.class.id);
         const starCount = members.reduce((sum, student) => sum + (stars.get(student.id)?.length ?? 0), 0);
         const pending = members.reduce((sum, student) => sum + (pendingByStudent.get(student.id) ?? 0), 0);
         const areaCount = members.reduce((sum, student) => sum + (growthAreas.get(student.id)?.length ?? 0), 0);
