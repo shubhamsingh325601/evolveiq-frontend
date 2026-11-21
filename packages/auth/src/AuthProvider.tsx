@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  changePasswordRequest,
   refreshRequest,
   setSessionBridge,
   signInRequest,
@@ -87,9 +88,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   }, [clearCachedData]);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    // The server ends every session of the account, this one included, and
+    // returns a fresh pair so this device carries on.
+    const tokens = await changePasswordRequest({ currentPassword, newPassword });
+    store.adopt(tokens);
+  }, []);
+
   const value = useMemo<AuthState>(
-    () => ({ user, role: user?.role, isRestoring, signIn, signOut }),
-    [user, isRestoring, signIn, signOut],
+    () => ({ user, role: user?.role, isRestoring, signIn, signOut, changePassword }),
+    [user, isRestoring, signIn, signOut, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

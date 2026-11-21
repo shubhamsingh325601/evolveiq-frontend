@@ -24,7 +24,7 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 
 /** Wraps every signed-in route in the shared sidebar layout. */
 export function AppFrame() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const isParent = user?.role === 'parent';
   const isStudent = user?.role === 'student';
 
@@ -114,6 +114,8 @@ export function AppFrame() {
       sections={menuForRole(user.role)}
       userName={user.fullName}
       onSignOut={signOut}
+
+      onChangePassword={isParent ? changePassword : undefined}
       contextCard={contextCard}
       accountSections={accountSections}
       notificationsKey={user.id}

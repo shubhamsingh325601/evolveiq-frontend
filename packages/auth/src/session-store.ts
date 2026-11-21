@@ -79,6 +79,16 @@ export function createSessionStore({ storage, refresh, lock = (task) => task() }
       write(null);
     },
 
+    /**
+     * New tokens for the same person — after a password change ended every
+     * other session. Other tabs pick them up through storage.
+     */
+    adopt(tokens: Pick<TokenPair, 'accessToken' | 'refreshToken'>): void {
+      if (!current) return;
+      current = { ...current, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+      write(current);
+    },
+
     /** Called when the server ends the session, so the UI can sign out too. */
     onEnded(listener: () => void): void {
       onEnded = listener;

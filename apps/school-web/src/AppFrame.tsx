@@ -29,7 +29,7 @@ const PULSE_FILTERS = {
 } satisfies Record<string, ReviewQueueFilters>;
 
 export function AppFrame() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const isTeacher = user?.role === 'teacher';
   const isPsychologist = user?.role === 'psychologist';
 
@@ -87,6 +87,8 @@ export function AppFrame() {
       sections={menuForRole(user.role, pulse.pending ?? 0, inbox.data?.unreadCount ?? 0)}
       userName={user.fullName}
       onSignOut={signOut}
+
+      onChangePassword={changePassword}
       {...(contextLabel ? { contextLabel } : {})}
       contextCard={contextCard}
       accountSections={accountSections}

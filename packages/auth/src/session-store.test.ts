@@ -145,3 +145,30 @@ describe('session store', () => {
     expect(store.restore()).toBeNull();
   });
 });
+
+// After a password change (21 Nov 2026) the server ends every session and hands this one a new pair.
+describe('session store: adopting new tokens', () => {
+  it('keeps the person, takes the new pair, and leaves it where other tabs will find it', () => {
+    const storage = sharedStorage();
+    const store = createSessionStore({ storage, refresh: vi.fn() });
+    store.start(SESSION);
+
+    store.adopt(pair(5));
+    expect(store.current()).toEqual({ accessToken: 'access-5', refreshToken: 'refresh-5', user: USER });
+    expect(store.accessToken()).toBe('access-5');
+    expect(storage.stored()).toEqual({ accessToken: 'access-5', refreshToken: 'refresh-5', user: USER });
+
+    // Another tab of the same person picks the pair up instead of spending its old token.
+    const otherTab = createSessionStore({ storage, refresh: vi.fn() });
+    otherTab.restore();
+    expect(otherTab.accessToken()).toBe('access-5');
+  });
+
+  it('does nothing when nobody is signed in', () => {
+    const storage = sharedStorage();
+    const store = createSessionStore({ storage, refresh: vi.fn() });
+    store.adopt(pair(5));
+    expect(store.current()).toBeNull();
+    expect(storage.stored()).toBeNull();
+  });
+});

@@ -24,6 +24,7 @@ import {
   HeartHandshake,
   HeartPulse,
   Inbox,
+  KeyRound,
   LayoutGrid,
   PageHeader,
   Plus,
@@ -36,6 +37,7 @@ import { FULL_NAME_FIELD, PIN_FIELD, saveErrorMessage, STUDENT_ID_FIELD } from '
 import { HealthDialog } from '../../components/HealthDialog';
 import { RecordEditor, type RecordEditorField, type RecordValues } from '../../components/RecordEditor';
 import { RemoveAccountDialog } from '../../components/RemoveAccountDialog';
+import { SetPasswordDialog } from '../../components/SetPasswordDialog';
 
 /**
  * Everyone enrolled at the school. A student signs in with a student ID and a
@@ -60,6 +62,8 @@ export function ManageStudentsScreen() {
   const [error, setError] = useState<string>();
   const [rowError, setRowError] = useState<string>();
   const [removing, setRemoving] = useState<User | null>(null);
+  // Forgot password or PIN (21 Nov 2026): a new one set by the admin.
+  const [settingSecretFor, setSettingSecretFor] = useState<User | null>(null);
   const [caringFor, setCaringFor] = useState<User | null>(null);
   const health = useClassesHealth(roster.classes.map((detail) => detail.class.id));
 
@@ -267,6 +271,9 @@ export function ManageStudentsScreen() {
             >
               {student.isActive ? 'Switch off' : 'Switch on'}
             </Button>
+            <Button variant="quiet" size="sm" icon={KeyRound} aria-label={`Set a new PIN for ${student.fullName}`} onClick={() => setSettingSecretFor(student)}>
+              New PIN
+            </Button>
             <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${student.fullName}`} onClick={() => setRemoving(student)}>
               Remove
             </Button>
@@ -313,6 +320,7 @@ export function ManageStudentsScreen() {
       />
 
       <RemoveAccountDialog person={removing} onClose={() => setRemoving(null)} />
+      <SetPasswordDialog person={settingSecretFor} onClose={() => setSettingSecretFor(null)} />
       <HealthDialog student={caringFor} onClose={() => setCaringFor(null)} />
     </div>
   );

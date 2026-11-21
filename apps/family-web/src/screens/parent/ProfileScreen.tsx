@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FEATURES, useChildren } from '@evolveiq/api-client';
 import { ROLE_LABELS, useAuth } from '@evolveiq/auth';
+import { ChangePasswordDialog } from '@evolveiq/domain';
 import {
   Avatar,
   buttonClasses,
   Card,
   ChevronRight,
+  KeyRound,
   LogOut,
   PageHeader,
   SectionTitle,
@@ -13,14 +16,18 @@ import {
   Siren,
   Users,
 } from '@evolveiq/ui';
+import { ChildPinDialog } from '../../components/ChildPinDialog';
 
 const ROW =
   'flex items-center gap-3 px-5 py-4 text-sm font-bold text-ink transition-colors hover:bg-iris-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-iris-500';
 
 /** The Profile tab: who is signed in, their children, and where to manage privacy. */
 export function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const children = useChildren();
+  // Forgotten passwords and PINs (21 Nov 2026): the parent's own, and a child's.
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [pinFor, setPinFor] = useState<{ id: string; fullName: string } | null>(null);
   if (!user) return null;
 
   return (
@@ -38,15 +45,25 @@ export function ProfileScreen() {
       {(children.data ?? []).length > 0 ? (
         <section>
           <SectionTitle>Your children</SectionTitle>
+          <p className="mt-1 text-sm text-ink-muted">If a child forgets their PIN, set a new one here.</p>
           <Card isPlayful className="mt-3 overflow-hidden">
             <ul className="divide-y divide-line-soft">
               {(children.data ?? []).map((child) => (
-                <li key={child.id}>
-                  <Link to={`/parent/children/${child.id}`} className={ROW}>
+                <li key={child.id} className="flex items-center">
+                  <Link to={`/parent/children/${child.id}`} className={`${ROW} min-w-0 flex-1`}>
                     <Avatar name={child.fullName} size="sm" />
-                    <span className="flex-1">{child.fullName}</span>
+                    <span className="flex-1 truncate">{child.fullName}</span>
                     <ChevronRight className="size-4 text-ink-faint" />
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => setPinFor(child)}
+                    aria-label={`Set a new PIN for ${child.fullName}`}
+                    className="mr-3 inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-iris-600 transition-colors hover:bg-iris-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-iris-500"
+                  >
+                    <KeyRound className="size-4" />
+                    New PIN
+                  </button>
                 </li>
               ))}
             </ul>
@@ -81,6 +98,13 @@ export function ProfileScreen() {
                 <ChevronRight className="size-4 text-ink-faint" />
               </Link>
             </li>
+            <li>
+              <button type="button" onClick={() => setIsChangingPassword(true)} className={`${ROW} w-full text-left`}>
+                <KeyRound className="size-5 text-iris-600" />
+                <span className="flex-1">Change password</span>
+                <ChevronRight className="size-4 text-ink-faint" />
+              </button>
+            </li>
           </ul>
         </Card>
       </section>
@@ -89,6 +113,13 @@ export function ProfileScreen() {
         <LogOut />
         Sign out
       </button>
+
+      <ChangePasswordDialog
+        isOpen={isChangingPassword}
+        onClose={() => setIsChangingPassword(false)}
+        onChangePassword={changePassword}
+      />
+      <ChildPinDialog child={pinFor} onClose={() => setPinFor(null)} />
     </div>
   );
 }

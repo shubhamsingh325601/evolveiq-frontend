@@ -6,7 +6,7 @@ import { menuForRole } from './app-menu';
 import { OverviewSidebarCard } from './components/OverviewSidebarCard';
 
 export function AppFrame() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const isSchoolAdmin = user?.role === 'school_admin';
   const isPlatformAdmin = user?.role === 'platform_admin';
 
@@ -50,6 +50,8 @@ export function AppFrame() {
       sections={menuForRole(user.role)}
       userName={user.fullName}
       onSignOut={signOut}
+
+      onChangePassword={changePassword}
       contextLabel={isPlatformAdmin ? 'All schools' : (school.data?.name ?? 'Your school')}
       contextCard={contextCard}
     >

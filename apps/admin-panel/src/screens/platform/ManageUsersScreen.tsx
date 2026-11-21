@@ -23,6 +23,7 @@ import {
   Contact,
   ErrorState,
   HeartHandshake,
+  KeyRound,
   PageHeader,
   Plus,
   Presentation,
@@ -43,6 +44,7 @@ import {
 } from '../../components/account-fields';
 import { RecordEditor, type RecordEditorField, type RecordValues } from '../../components/RecordEditor';
 import { RemoveAccountDialog } from '../../components/RemoveAccountDialog';
+import { SetPasswordDialog } from '../../components/SetPasswordDialog';
 
 const ALL_ROLES: Role[] = ['student', 'parent', 'teacher', 'school_admin', 'psychologist', 'platform_admin'];
 
@@ -73,6 +75,8 @@ export function ManageUsersScreen() {
   const [error, setError] = useState<string>();
   const [rowError, setRowError] = useState<string>();
   const [removing, setRemoving] = useState<User | null>(null);
+  // Forgot password or PIN (21 Nov 2026): a new one set by the admin.
+  const [settingSecretFor, setSettingSecretFor] = useState<User | null>(null);
 
   if (users.isError) return <ErrorState onRetry={() => void users.refetch()} />;
 
@@ -254,6 +258,15 @@ export function ManageUsersScreen() {
               >
                 {person.isActive ? 'Switch off' : 'Switch on'}
               </Button>
+              <Button
+                variant="quiet"
+                size="sm"
+                icon={KeyRound}
+                aria-label={`Set a new ${person.role === 'student' ? 'PIN' : 'password'} for ${person.fullName}`}
+                onClick={() => setSettingSecretFor(person)}
+              >
+                {person.role === 'student' ? 'New PIN' : 'New password'}
+              </Button>
               <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${person.fullName}`} onClick={() => setRemoving(person)}>
                 Remove
               </Button>
@@ -294,6 +307,7 @@ export function ManageUsersScreen() {
       />
 
       <RemoveAccountDialog person={removing} onClose={() => setRemoving(null)} />
+      <SetPasswordDialog person={settingSecretFor} onClose={() => setSettingSecretFor(null)} />
     </div>
   );
 }

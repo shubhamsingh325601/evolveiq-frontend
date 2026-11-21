@@ -11,11 +11,12 @@ import {
 } from '@evolveiq/api-client';
 import { ROLE_LABELS } from '@evolveiq/auth';
 import { RecordsTable, type RecordsTableColumn } from '@evolveiq/domain';
-import { Avatar, Button, buttonClasses, ErrorState, PageHeader, Plus, Trash2, Upload } from '@evolveiq/ui';
+import { Avatar, Button, buttonClasses, ErrorState, KeyRound, PageHeader, Plus, Trash2, Upload } from '@evolveiq/ui';
 import { AccountStatusBadge } from './AccountStatusBadge';
 import { EMAIL_FIELD, FULL_NAME_FIELD, PASSWORD_FIELD, saveErrorMessage } from './account-fields';
 import { RecordEditor, type RecordValues } from './RecordEditor';
 import { RemoveAccountDialog } from './RemoveAccountDialog';
+import { SetPasswordDialog } from './SetPasswordDialog';
 
 /**
  * Teachers and parents differ only in the role they are created with, so both
@@ -57,6 +58,8 @@ export function ManagePeopleScreen({
   const [error, setError] = useState<string>();
   const [rowError, setRowError] = useState<string>();
   const [removing, setRemoving] = useState<User | null>(null);
+  // Forgot password or PIN (21 Nov 2026): a new one set by the admin.
+  const [settingSecretFor, setSettingSecretFor] = useState<User | null>(null);
 
   if (people.isError) return <ErrorState onRetry={() => void people.refetch()} />;
 
@@ -161,6 +164,9 @@ export function ManagePeopleScreen({
             >
               {person.isActive ? 'Switch off' : 'Switch on'}
             </Button>
+            <Button variant="quiet" size="sm" icon={KeyRound} aria-label={`Set a new password for ${person.fullName}`} onClick={() => setSettingSecretFor(person)}>
+              New password
+            </Button>
             <Button variant="danger-quiet" size="sm" icon={Trash2} aria-label={`Remove ${person.fullName}`} onClick={() => setRemoving(person)}>
               Remove
             </Button>
@@ -196,6 +202,7 @@ export function ManagePeopleScreen({
       />
 
       <RemoveAccountDialog person={removing} onClose={() => setRemoving(null)} />
+      <SetPasswordDialog person={settingSecretFor} onClose={() => setSettingSecretFor(null)} />
     </div>
   );
 }

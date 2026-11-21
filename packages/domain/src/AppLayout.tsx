@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { ArrowLeftRight, cn, DawnBackdrop } from '@evolveiq/ui';
+import { ArrowLeftRight, cn, DawnBackdrop, KeyRound } from '@evolveiq/ui';
 import type { AccountMenuSection } from './AccountMenu';
 import { AppBottomNav } from './AppBottomNav';
 import { AppSidebar, type AppSidebarProps } from './AppSidebar';
 import { AppTopBar } from './AppTopBar';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import type { AppNotification } from './NotificationsMenu';
 import { useAccountSwitch } from './useAccountSwitch';
 
@@ -14,6 +15,11 @@ export interface AppLayoutProps
   notifications?: AppNotification[];
   /** Keeps what each person has read apart; usually their user id. */
   notificationsKey?: string;
+  /**
+   * Adults: puts "Change password" in the account menu (`useAuth().changePassword`).
+   * Omitted for students, whose PIN their parent or school sets.
+   */
+  onChangePassword?: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const COLLAPSED_KEY = 'evolveiq.sidebar.collapsed';
@@ -36,13 +42,34 @@ export function AppLayout({
   children,
   notifications,
   notificationsKey,
-  accountSections = [],
+  accountSections: appSections = [],
+  onChangePassword,
   ...shellProps
 }: AppLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(readIsCollapsed);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const accountSwitch = useAccountSwitch();
 
-  // The app's own groups (a parent's children), then whatever the shell offers.
+  // The person's own account comes after the app's groups (a parent's children).
+  const accountSections: AccountMenuSection[] = onChangePassword
+    ? [
+        ...appSections,
+        {
+          title: 'Your account',
+          items: [
+            {
+              id: 'change-password',
+              label: 'Change password',
+              detail: 'Signs you out on other devices',
+              icon: KeyRound,
+              onSelect: () => setIsChangingPassword(true),
+            },
+          ],
+        },
+      ]
+    : appSections;
+
+  // The app's own groups, then whatever the shell offers.
   const sections: AccountMenuSection[] =
     accountSwitch && accountSwitch.accounts.length > 0
       ? [
@@ -104,6 +131,14 @@ export function AppLayout({
       </div>
 
       <AppBottomNav sections={shellProps.sections} className="print:hidden" />
+
+      {onChangePassword ? (
+        <ChangePasswordDialog
+          isOpen={isChangingPassword}
+          onClose={() => setIsChangingPassword(false)}
+          onChangePassword={onChangePassword}
+        />
+      ) : null}
     </div>
   );
 }

@@ -32,3 +32,11 @@ export function refreshRequest(refreshToken: string): Promise<TokenPair> {
 export function signOutRequest(refreshToken: string): Promise<void> {
   return request<void>('POST', ENDPOINTS.auth.logout, { body: { refreshToken } });
 }
+
+/**
+ * A signed-in adult changes their own password. Every session of the account
+ * ends on the server; the pair returned keeps this one going.
+ */
+export function changePasswordRequest(body: { currentPassword: string; newPassword: string }): Promise<TokenPair> {
+  return request<TokenPair>('POST', ENDPOINTS.auth.changePassword, { body });
+}

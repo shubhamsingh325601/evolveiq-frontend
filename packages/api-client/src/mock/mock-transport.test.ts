@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { businessMonth } from '../business-time';
 import { ENDPOINTS } from '../endpoints';
 import type { HttpMethod } from '../http-client';
-import { DEMO_PASSWORD, DEMO_PIN, handleMockRequest, resetMockStore } from './mock-transport';
+import { DEMO_PASSWORD, DEMO_PIN, DEMO_RESET_CODE, handleMockRequest, resetMockStore } from './mock-transport';
 
 /**
  * The mock stands in for evolveiq-backend in the demo and in every app test,
@@ -953,5 +953,67 @@ describe('mock backend: parent and school messages', () => {
     expect((await write({ contactId: 'usr-rao', body: 'x'.repeat(1001) })).status).toBe(400);
     expect((await write({ contactId: 'usr-rao', body: 'Hi' }, (await signIn({ studentId: 'rv-1001' })).accessToken)).status).toBe(403);
     expect((await call('POST', ENDPOINTS.messages.thread('stu-maya'), { token: await tokenFor('rao@school.test'), body: { body: 'Hello' } })).status).toBe(404);
+  });
+});
+
+// Forgot password and setting a new password or PIN (21 Nov 2026), as on the backend.
+describe('mock backend: passwords and PINs', () => {
+  beforeEach(() => resetMockStore());
+
+  it('forgot password: always the same 202, then the demo code sets a new password once', async () => {
+    const session = await signIn({ email: 'rao@school.test' });
+    for (const email of ['rao@school.test', 'nobody@school.test']) {
+      const response = await call('POST', ENDPOINTS.auth.forgotPassword, { body: { email } });
+      expect(response.status).toBe(202);
+      expect(response.body.message).toMatch(/6-digit code/);
+    }
+
+    const wrong = await call('POST', ENDPOINTS.auth.resetPassword, { body: { email: 'rao@school.test', code: '000000', newPassword: 'Brand-New-Password-1' } });
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.error.code).toBe('INVALID_RESET_CODE');
+
+    const reset = await call('POST', ENDPOINTS.auth.resetPassword, { body: { email: 'rao@school.test', code: DEMO_RESET_CODE, newPassword: 'Brand-New-Password-1' } });
+    expect(reset.status).toBe(204);
+    expect((await call('POST', ENDPOINTS.auth.login, { body: { email: 'rao@school.test', password: 'Brand-New-Password-1' } })).status).toBe(200);
+    expect((await call('POST', ENDPOINTS.auth.login, { body: { email: 'rao@school.test', password: DEMO_PASSWORD } })).status).toBe(401);
+    // Every session of the account ended.
+    expect((await call('POST', ENDPOINTS.auth.refresh, { body: { refreshToken: session.refreshToken } })).status).toBe(401);
+    // Used up; and an email that never asked has no code.
+    const again = await call('POST', ENDPOINTS.auth.resetPassword, { body: { email: 'rao@school.test', code: DEMO_RESET_CODE, newPassword: 'Another-Password-2' } });
+    expect(again.body.error.code).toBe('INVALID_RESET_CODE');
+    const neverAsked = await call('POST', ENDPOINTS.auth.resetPassword, { body: { email: 'ritu@school.test', code: DEMO_RESET_CODE, newPassword: 'Another-Password-2' } });
+    expect(neverAsked.body.error.code).toBe('INVALID_RESET_CODE');
+  });
+
+  it('change password: adults only; the current one must match; other sessions end, this one gets new tokens', async () => {
+    const student = await signIn({ studentId: 'RV-1001' });
+    expect((await call('POST', ENDPOINTS.auth.changePassword, { token: student.accessToken, body: { currentPassword: DEMO_PIN, newPassword: 'Brand-New-Password-1' } })).status).toBe(403);
+
+    const parent = await signIn({ email: 'priya@family.test' });
+    const wrong = await call('POST', ENDPOINTS.auth.changePassword, { token: parent.accessToken, body: { currentPassword: 'not-it', newPassword: 'Brand-New-Password-1' } });
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.error.code).toBe('INVALID_CURRENT_PASSWORD');
+
+    const changed = await call('POST', ENDPOINTS.auth.changePassword, { token: parent.accessToken, body: { currentPassword: DEMO_PASSWORD, newPassword: 'Brand-New-Password-1' } });
+    expect(changed.status).toBe(200);
+    expect(changed.body).toMatchObject({ tokenType: 'Bearer' });
+    expect((await call('POST', ENDPOINTS.auth.refresh, { body: { refreshToken: parent.refreshToken } })).status).toBe(401);
+    expect((await call('POST', ENDPOINTS.auth.refresh, { body: { refreshToken: changed.body.refreshToken } })).status).toBe(200);
+  });
+
+  it("admins set a password or PIN within their reach; a parent sets their own child's PIN", async () => {
+    const clara = await tokenFor('clara@school.test');
+    expect((await call('POST', ENDPOINTS.users.setPassword('stu-maya'), { token: clara, body: { pin: '654321' } })).status).toBe(204);
+    expect((await call('POST', ENDPOINTS.auth.login, { body: { studentId: 'RV-1001', pin: '654321' } })).status).toBe(200);
+    expect((await call('POST', ENDPOINTS.users.setPassword('stu-zoe'), { token: clara, body: { pin: '654321' } })).status).toBe(404);
+    expect((await call('POST', ENDPOINTS.users.setPassword('usr-clara'), { token: clara, body: { password: 'Brand-New-Password-1' } })).status).toBe(403);
+    expect((await call('POST', ENDPOINTS.users.setPassword('usr-rao'), { token: clara, body: { pin: '123456' } })).status).toBe(400);
+    expect((await call('POST', ENDPOINTS.users.setPassword('stu-maya'), { token: await tokenFor('rao@school.test'), body: { pin: '123456' } })).status).toBe(403);
+
+    const priya = await tokenFor('priya@family.test');
+    expect((await call('POST', ENDPOINTS.family.childPin('stu-maya'), { token: priya, body: { pin: '777777' } })).status).toBe(204);
+    expect((await call('POST', ENDPOINTS.auth.login, { body: { studentId: 'RV-1001', pin: '777777' } })).status).toBe(200);
+    expect((await call('POST', ENDPOINTS.family.childPin('stu-devan'), { token: priya, body: { pin: '777777' } })).status).toBe(404);
+    expect((await call('POST', ENDPOINTS.family.childPin('stu-maya'), { token: priya, body: { pin: '12' } })).status).toBe(400);
   });
 });

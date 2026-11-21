@@ -62,6 +62,12 @@ import {
 export { DEMO_PASSWORD, DEMO_PIN };
 
 /**
+ * Forgot password with no backend: no email goes anywhere, so the code is
+ * always this one (the sign-in screen says so while the demo is running).
+ */
+export const DEMO_RESET_CODE = '123456';
+
+/**
  * An in-memory stand-in for the backend, used while `VITE_API_BASE_URL` is
  * unset: the demo, and every app-level test.
  *
@@ -78,6 +84,10 @@ let idCounter = 0;
 const revokedRefreshTokens = new Set<string>();
 /** Sessions (refresh-token families) ended by logout or deactivation. */
 const endedFamilies = new Set<string>();
+/** Every session each user has opened, so a new password or PIN can end them all. */
+const familiesByUser = new Map<string, Set<string>>();
+/** Forgot password: who asked for a code (by email), and the tries left on it. */
+const resetRequests = new Map<string, { triesLeft: number }>();
 
 /** Tests reset between cases so one case cannot leak state into the next. */
 export function resetMockStore(): void {
@@ -85,6 +95,8 @@ export function resetMockStore(): void {
   idCounter = 0;
   revokedRefreshTokens.clear();
   endedFamilies.clear();
+  familiesByUser.clear();
+  resetRequests.clear();
 }
 
 const LATENCY_MS = 180;
@@ -123,6 +135,10 @@ const Errors = {
   invalidCredentials: () => new MockHttpError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'),
   invalidRefreshToken: () =>
     new MockHttpError(401, 'INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token.'),
+  invalidResetCode: () =>
+    new MockHttpError(400, 'INVALID_RESET_CODE', 'The code is wrong or has expired. Ask for a new one.'),
+  invalidCurrentPassword: () =>
+    new MockHttpError(400, 'INVALID_CURRENT_PASSWORD', 'Your current password is not correct.'),
   accountDisabled: () => new MockHttpError(403, 'ACCOUNT_DISABLED', 'This account has been deactivated.'),
   forbidden: (message = 'You are not allowed to perform this action.') =>
     new MockHttpError(403, 'FORBIDDEN', message),
@@ -434,6 +450,9 @@ const ACCESS_PREFIX = 'mock-access';
 const REFRESH_PREFIX = 'mock-refresh';
 
 function issueTokens(user: MockUser, familyId = nextId('fam')) {
+  const families = familiesByUser.get(user.id) ?? new Set<string>();
+  families.add(familyId);
+  familiesByUser.set(user.id, families);
   return {
     accessToken: `${ACCESS_PREFIX}.${user.id}.${nextId('t')}`,
     tokenType: 'Bearer' as const,
@@ -494,6 +513,107 @@ function logout(actor: MockUser, body: Body): Result {
   const parsed = parseRefreshToken(body.refreshToken);
   if (!parsed || parsed.userId !== actor.id) throw Errors.invalidRefreshToken();
   endedFamilies.add(parsed.familyId);
+  return { status: 204 };
+}
+
+// ───────────────────────────── Passwords and PINs (21 Nov 2026) ─────────────────────────────
+// Backend: auth/password-reset.service.ts, auth.service.ts changePassword, users set-password,
+// family set-pin. Every way of setting a new one ends all of the person's sessions.
+
+const FORGOT_PASSWORD_MESSAGE =
+  'If an account uses this email, a 6-digit code is on its way. It works for 15 minutes.';
+
+function setSecret(user: MockUser, secret: string): void {
+  user.secret = secret;
+  for (const familyId of familiesByUser.get(user.id) ?? []) endedFamilies.add(familyId);
+}
+
+function newPasswordIssue(value: unknown, name: string, issues: FieldIssue[]): string {
+  const password = typeof value === 'string' ? value : '';
+  if (password.length < 10 || password.length > 128) field(issues, name, 'must be 10–128 characters');
+  return password;
+}
+
+function newPinIssue(value: unknown, issues: FieldIssue[]): string {
+  const pin = typeof value === 'string' ? value : '';
+  if (!/^[0-9]{6}$/.test(pin)) field(issues, 'pin', 'must be exactly 6 digits');
+  return pin;
+}
+
+function activeAdultByEmail(email: unknown): MockUser | undefined {
+  if (typeof email !== 'string') return undefined;
+  const address = email.trim().toLowerCase();
+  return state.users.find((user) => user.email === address && user.isActive && user.role !== 'student');
+}
+
+/** Always the same 202; only an active adult's email gets a (pretend) code. */
+function forgotPassword(body: Body): Result {
+  const issues: FieldIssue[] = [];
+  rejectUnknown(body, ['email'], issues);
+  if (typeof body.email !== 'string' || body.email.length === 0 || body.email.length > 254) field(issues, 'email', 'is required');
+  assertValid(issues);
+  const user = activeAdultByEmail(body.email);
+  if (user?.email) resetRequests.set(user.email, { triesLeft: 5 });
+  return { status: 202, body: { message: FORGOT_PASSWORD_MESSAGE } };
+}
+
+function resetPassword(body: Body): Result {
+  const issues: FieldIssue[] = [];
+  rejectUnknown(body, ['email', 'code', 'newPassword'], issues);
+  if (typeof body.code !== 'string' || !/^[0-9]{6}$/.test(body.code)) field(issues, 'code', 'must be the 6 digits from the email');
+  const newPassword = newPasswordIssue(body.newPassword, 'newPassword', issues);
+  assertValid(issues);
+
+  const user = activeAdultByEmail(body.email);
+  const pending = user?.email ? resetRequests.get(user.email) : undefined;
+  if (!user?.email || !pending || pending.triesLeft <= 0) throw Errors.invalidResetCode();
+  pending.triesLeft -= 1;
+  if (body.code !== DEMO_RESET_CODE) throw Errors.invalidResetCode();
+  resetRequests.delete(user.email);
+  setSecret(user, newPassword);
+  return { status: 204 };
+}
+
+/** This device gets a fresh pair; every other session of the account ends. */
+function changePassword({ actor, body }: Context): Result {
+  const issues: FieldIssue[] = [];
+  rejectUnknown(body, ['currentPassword', 'newPassword'], issues);
+  if (typeof body.currentPassword !== 'string' || body.currentPassword.length === 0) field(issues, 'currentPassword', 'is required');
+  const newPassword = newPasswordIssue(body.newPassword, 'newPassword', issues);
+  assertValid(issues);
+  if (body.currentPassword !== actor.secret) throw Errors.invalidCurrentPassword();
+  setSecret(actor, newPassword);
+  return { body: issueTokens(actor) };
+}
+
+/** An admin, for someone they manage: a password for an adult, a PIN for a student. */
+function setUserPassword({ actor, body }: Context, userId: string): Result {
+  if (userId === actor.id) throw Errors.forbidden('Change your own password from your account menu (POST /auth/change-password).');
+  const issues: FieldIssue[] = [];
+  rejectUnknown(body, ['password', 'pin'], issues);
+  if ((body.password === undefined) === (body.pin === undefined)) {
+    field(issues, 'body', 'Provide either "password" (for an adult) or "pin" (for a student).');
+  }
+  assertValid(issues);
+  const user = managedUser(actor, userId);
+  const isStudent = user.role === 'student';
+  if (isStudent && body.pin === undefined) throw Errors.validation([{ field: 'pin', message: 'is required for a student' }]);
+  if (!isStudent && body.password === undefined) throw Errors.validation([{ field: 'password', message: 'is required for an adult' }]);
+  const secret = isStudent ? newPinIssue(body.pin, issues) : newPasswordIssue(body.password, 'password', issues);
+  assertValid(issues);
+  setSecret(user, secret);
+  return { status: 204 };
+}
+
+/** A parent, for their own child. */
+function setChildPin({ actor, body }: Context, studentId: string): Result {
+  const issues: FieldIssue[] = [];
+  rejectUnknown(body, ['pin'], issues);
+  const pin = newPinIssue(body.pin, issues);
+  assertValid(issues);
+  const student = studentInScope(actor, studentId);
+  if (!student) throw Errors.notFound('Student');
+  setSecret(student, pin);
   return { status: 204 };
 }
 
@@ -2985,6 +3105,9 @@ interface Route {
 const ROUTES: Route[] = [
   { method: 'POST', path: '/auth/register', roles: ADMINS, handle: register },
   { method: 'POST', path: '/auth/logout', roles: ALL, handle: ({ actor, body }) => logout(actor, body) },
+  { method: 'POST', path: '/auth/change-password', roles: ALL.filter((role) => role !== 'student'), handle: changePassword },
+  { method: 'POST', path: '/users/:id/set-password', roles: ADMINS, handle: (c, id) => setUserPassword(c, id ?? '') },
+  { method: 'POST', path: '/family/children/:id/set-pin', roles: ['parent'], handle: (c, id) => setChildPin(c, id ?? '') },
 
   { method: 'POST', path: '/schools', roles: ['platform_admin'], handle: schoolHandlers.create },
   { method: 'GET', path: '/schools', roles: ['platform_admin', 'psychologist'], handle: schoolHandlers.list },
@@ -3115,9 +3238,11 @@ function match(route: Route, method: HttpMethod, segments: string[]): string[] |
 function route(method: HttpMethod, path: string, query: Query, body: Body, headers: Record<string, string>): Result {
   const segments = path.split('?')[0]!.split('/').filter(Boolean);
 
-  // Public: sign-in and token refresh.
+  // Public: sign-in, token refresh and forgot password.
   if (method === 'POST' && path === '/auth/login') return login(body);
   if (method === 'POST' && path === '/auth/refresh') return refresh(body);
+  if (method === 'POST' && path === '/auth/forgot-password') return forgotPassword(body);
+  if (method === 'POST' && path === '/auth/reset-password') return resetPassword(body);
 
   const candidates = ROUTES.map((candidate) => ({ candidate, params: match(candidate, method, segments) })).filter(
     (entry): entry is { candidate: Route; params: string[] } => entry.params !== null,

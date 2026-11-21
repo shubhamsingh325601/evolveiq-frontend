@@ -26,16 +26,23 @@ export function Modal({
   className,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  // The latest onClose, read when Escape is pressed. A dialog that builds its
+  // close handler on every render must not re-run the effect below: that moved
+  // focus off the field being typed in after each key.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKeyDown);
-    dialogRef.current?.focus();
+    dialogRef.current?.focus(); // once, as it opens
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

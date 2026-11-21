@@ -15,6 +15,12 @@ export const ENDPOINTS = {
     logout: '/auth/logout',
     /** Admin-only account creation; there is no self sign-up. */
     register: '/auth/register',
+    /** Forgot password (adults), step 1: email a 6-digit code. Always 202. */
+    forgotPassword: '/auth/forgot-password',
+    /** Forgot password, step 2: the emailed code and a new password. */
+    resetPassword: '/auth/reset-password',
+    /** A signed-in adult changes their own password; returns new tokens for this session. */
+    changePassword: '/auth/change-password',
   },
   schools: {
     list: '/schools',
@@ -25,6 +31,8 @@ export const ENDPOINTS = {
     detail: (userId: string) => `/users/${id(userId)}`,
     deactivate: (userId: string) => `/users/${id(userId)}/deactivate`,
     reactivate: (userId: string) => `/users/${id(userId)}/reactivate`,
+    /** An admin sets a new password (adult) or PIN (student) for someone who forgot theirs. */
+    setPassword: (userId: string) => `/users/${id(userId)}/set-password`,
   },
   parentStudents: {
     list: '/parent-students',
@@ -88,6 +96,8 @@ export const ENDPOINTS = {
     /** POST: a parent writes one. GET: the parent's own observations. */
     observations: '/family/observations',
     childAssignments: (studentId: string) => `/family/children/${id(studentId)}/assignments`,
+    /** A parent sets a new PIN for their own child who forgot it. */
+    childPin: (studentId: string) => `/family/children/${id(studentId)}/set-pin`,
   },
   activities: {
     list: '/activities',

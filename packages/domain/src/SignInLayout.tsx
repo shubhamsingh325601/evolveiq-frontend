@@ -22,6 +22,7 @@ import {
   type IconComponent,
 } from '@evolveiq/ui';
 import { showsDemoAccounts } from './demo-accounts';
+import { ForgotPasswordPanel } from './ForgotPasswordPanel';
 import { HOLISTIC_DIMENSION_COLOR_CLASSES } from './holistic-index';
 import { HOLISTIC_DIMENSION_LABELS } from './labels';
 
@@ -112,6 +113,8 @@ export function SignInLayout({
   const [mode, setMode] = useState<Mode>(isStudentsOnly ? 'student' : 'adult');
   const [identifier, setIdentifier] = useState('');
   const [secret, setSecret] = useState('');
+  // Forgot password replaces the form, on this same screen (21 Nov 2026).
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const isStudent = isStudentsOnly || (allowsStudents && mode === 'student');
 
   const submit = (event: FormEvent) => {
@@ -124,6 +127,14 @@ export function SignInLayout({
     setMode(next);
     setIdentifier('');
     setSecret('');
+  };
+
+  // The new password is set: back to the form, signing in with it straight away.
+  const finishReset = (credentials: { email: string; password: string }) => {
+    setIsForgotPassword(false);
+    setIdentifier(credentials.email);
+    setSecret('');
+    void onSignIn(credentials);
   };
 
   return (
@@ -222,134 +233,153 @@ export function SignInLayout({
       </section>
 
       <section className="flex items-center justify-center px-6 py-10 sm:px-12 lg:min-h-dvh lg:py-12">
-        <div className="w-full max-w-sm">
-          <h1 className="text-4xl font-black tracking-tight text-ink">Sign in</h1>
-          <p className="mt-2 text-base font-medium text-ink-muted">{audienceLine}</p>
-
-          {allowsStudents && !isStudentsOnly ? (
-            <SegmentedControl
-              className="mt-6"
-              label="Who is signing in"
-              value={mode}
-              onChange={switchMode}
-              options={[
-                { value: 'adult' as const, label: adultTabLabel },
-                { value: 'student' as const, label: 'Student' },
-              ]}
+        {isForgotPassword ? (
+          <div className="w-full max-w-sm">
+            <ForgotPasswordPanel
+              initialEmail={identifier}
+              onReset={finishReset}
+              onBack={() => setIsForgotPassword(false)}
             />
-          ) : null}
+          </div>
+        ) : (
+          <div className="w-full max-w-sm">
+            <h1 className="text-4xl font-black tracking-tight text-ink">Sign in</h1>
+            <p className="mt-2 text-base font-medium text-ink-muted">{audienceLine}</p>
 
-          <form onSubmit={submit} className="mt-6 flex flex-col gap-5">
-            {isStudent ? (
-              <>
-                <FormField label="Student ID" hint="It is on the card your school gave you.">
-                  <Input
-                    autoComplete="username"
-                    autoCapitalize="characters"
-                    required
-                    value={identifier}
-                    onChange={(event) => setIdentifier(event.target.value)}
-                    placeholder="RV-1001"
-                  />
-                </FormField>
-                <FormField label="PIN" error={error}>
-                  <Input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="current-password"
-                    maxLength={32}
-                    required
-                    value={secret}
-                    onChange={(event) => setSecret(event.target.value)}
-                  />
-                </FormField>
-              </>
-            ) : (
-              <>
-                <FormField label="Email address">
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={identifier}
-                    onChange={(event) => setIdentifier(event.target.value)}
-                    placeholder="you@school.example"
-                  />
-                </FormField>
-                <FormField label="Password" error={error}>
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={secret}
-                    onChange={(event) => setSecret(event.target.value)}
-                  />
-                </FormField>
-              </>
-            )}
-            <Button type="submit" size="lg" isLoading={isSigningIn}>
-              Sign in
-            </Button>
-          </form>
-          <p className="mt-4 text-sm text-ink-muted">
-            No account yet? Your school sets one up for you.
-          </p>
-          {footnote ? <p className="mt-2 text-sm text-ink-muted">{footnote}</p> : null}
+            {allowsStudents && !isStudentsOnly ? (
+              <SegmentedControl
+                className="mt-6"
+                label="Who is signing in"
+                value={mode}
+                onChange={switchMode}
+                options={[
+                  { value: 'adult' as const, label: adultTabLabel },
+                  { value: 'student' as const, label: 'Student' },
+                ]}
+              />
+            ) : null}
 
-          {isShowingDemoAccounts && demoAccounts.length > 0 ? (
-            <div className="mt-10">
-              <div className="flex items-center gap-3">
-                <span aria-hidden="true" className="h-px flex-1 bg-line" />
-                <p className="text-xs font-semibold text-ink-faint">Or use a test account</p>
-                <span aria-hidden="true" className="h-px flex-1 bg-line" />
+            <form onSubmit={submit} className="mt-6 flex flex-col gap-5">
+              {isStudent ? (
+                <>
+                  <FormField label="Student ID" hint="It is on the card your school gave you.">
+                    <Input
+                      autoComplete="username"
+                      autoCapitalize="characters"
+                      required
+                      value={identifier}
+                      onChange={(event) => setIdentifier(event.target.value)}
+                      placeholder="RV-1001"
+                    />
+                  </FormField>
+                  <FormField label="PIN" error={error}>
+                    <Input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="current-password"
+                      maxLength={32}
+                      required
+                      value={secret}
+                      onChange={(event) => setSecret(event.target.value)}
+                    />
+                  </FormField>
+                  {/* Students have no email: the people who set their PIN set a new one. */}
+                  <p className="-mt-2 text-sm text-ink-muted">Forgot your PIN? Ask your parent or your school to set a new one.</p>
+                </>
+              ) : (
+                <>
+                  <FormField label="Email address">
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={identifier}
+                      onChange={(event) => setIdentifier(event.target.value)}
+                      placeholder="you@school.example"
+                    />
+                  </FormField>
+                  <FormField label="Password" error={error}>
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={secret}
+                      onChange={(event) => setSecret(event.target.value)}
+                    />
+                  </FormField>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="-mt-2 self-start text-sm font-semibold text-iris-600 hover:text-iris-700"
+                  >
+                    Forgot password?
+                  </button>
+                </>
+              )}
+              <Button type="submit" size="lg" isLoading={isSigningIn}>
+                Sign in
+              </Button>
+            </form>
+            <p className="mt-4 text-sm text-ink-muted">
+              No account yet? Your school sets one up for you.
+            </p>
+            {footnote ? <p className="mt-2 text-sm text-ink-muted">{footnote}</p> : null}
+
+            {isShowingDemoAccounts && demoAccounts.length > 0 ? (
+              <div className="mt-10">
+                <div className="flex items-center gap-3">
+                  <span aria-hidden="true" className="h-px flex-1 bg-line" />
+                  <p className="text-xs font-semibold text-ink-faint">Or use a test account</p>
+                  <span aria-hidden="true" className="h-px flex-1 bg-line" />
+                </div>
+                <ul aria-label="Test accounts" className="mt-4 flex flex-col gap-2.5">
+                  {demoAccounts.map((account) => {
+                    const Icon = account.icon;
+                    const signInName = signInNameOf(account.credentials);
+                    return (
+                      <li key={signInName}>
+                        <button
+                          type="button"
+                          disabled={isSigningIn}
+                          onClick={() => void onSignIn(account.credentials)}
+                          className={cn(
+                            'group flex w-full items-center gap-3 rounded-2xl border border-line/70 bg-white/85 px-3.5 py-3 text-left shadow-card transition-[border-color,box-shadow]',
+                            'hover:border-iris-200 hover:shadow-raised disabled:cursor-not-allowed disabled:opacity-60',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
+                          )}
+                        >
+                          {Icon ? (
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-iris-50 text-iris-600 ring-1 ring-inset ring-iris-100">
+                              <Icon className="size-5" />
+                            </span>
+                          ) : (
+                            <Avatar name={account.person} />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold text-ink">{account.role}</span>
+                            {/* What to type comes first, so it is the part that never gets cut off. */}
+                            <span className="block truncate text-xs text-ink-muted">
+                              <span className="font-semibold text-ink">{signInName}</span> · {account.person}
+                            </span>
+                          </span>
+                          <ChevronRight className="size-4 shrink-0 text-ink-faint transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-iris-500" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-4 text-xs leading-5 text-ink-faint">
+                  To type one in instead: adults use the password{' '}
+                  <span className="whitespace-nowrap font-semibold text-ink-muted">{DEMO_PASSWORD}</span>, students the
+                  PIN <span className="whitespace-nowrap font-semibold text-ink-muted">{DEMO_PIN}</span>.{' '}
+                  {isUsingMockBackend
+                    ? 'No backend is connected, so these open the built-in demo.'
+                    : 'They come from the demo seed.'}
+                </p>
               </div>
-              <ul aria-label="Test accounts" className="mt-4 flex flex-col gap-2.5">
-                {demoAccounts.map((account) => {
-                  const Icon = account.icon;
-                  const signInName = signInNameOf(account.credentials);
-                  return (
-                    <li key={signInName}>
-                      <button
-                        type="button"
-                        disabled={isSigningIn}
-                        onClick={() => void onSignIn(account.credentials)}
-                        className={cn(
-                          'group flex w-full items-center gap-3 rounded-2xl border border-line/70 bg-white/85 px-3.5 py-3 text-left shadow-card transition-[border-color,box-shadow]',
-                          'hover:border-iris-200 hover:shadow-raised disabled:cursor-not-allowed disabled:opacity-60',
-                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-iris-500',
-                        )}
-                      >
-                        {Icon ? (
-                          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-iris-50 text-iris-600 ring-1 ring-inset ring-iris-100">
-                            <Icon className="size-5" />
-                          </span>
-                        ) : (
-                          <Avatar name={account.person} />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold text-ink">{account.role}</span>
-                          {/* What to type comes first, so it is the part that never gets cut off. */}
-                          <span className="block truncate text-xs text-ink-muted">
-                            <span className="font-semibold text-ink">{signInName}</span> · {account.person}
-                          </span>
-                        </span>
-                        <ChevronRight className="size-4 shrink-0 text-ink-faint transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-iris-500" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="mt-4 text-xs leading-5 text-ink-faint">
-                To type one in instead: adults use the password{' '}
-                <span className="whitespace-nowrap font-semibold text-ink-muted">{DEMO_PASSWORD}</span>, students the
-                PIN <span className="whitespace-nowrap font-semibold text-ink-muted">{DEMO_PIN}</span>.{' '}
-                {isUsingMockBackend
-                  ? 'No backend is connected, so these open the built-in demo.'
-                  : 'They come from the demo seed.'}
-              </p>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        )}
       </section>
     </div>
   );

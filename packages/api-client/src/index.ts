@@ -19,9 +19,9 @@ export {
 export { LEVEL_TITLES, levelForCompletedCount, XP_PER_ACTIVITY } from './student-level';
 export { achievementBadges } from './achievement-badges';
 export type { AchievementBadgeDefinition, AchievementBadgeInputs } from './achievement-badges';
-export { refreshRequest, signInRequest, signOutRequest } from './session';
+export { changePasswordRequest, refreshRequest, signInRequest, signOutRequest } from './session';
 export type { Credentials, SignInResult, TokenPair } from './session';
-export { DEMO_PASSWORD, DEMO_PIN, resetMockStore } from './mock/mock-transport';
+export { DEMO_PASSWORD, DEMO_PIN, DEMO_RESET_CODE, resetMockStore } from './mock/mock-transport';
 
 export * from './hooks/useClearCachedData';
 export * from './hooks/useActivities';
@@ -38,6 +38,7 @@ export * from './hooks/useStars';
 export * from './hooks/useStreak';
 export * from './hooks/useStudentLevel';
 export * from './hooks/useUsers';
+export * from './hooks/usePasswords';
 
 export * from './hooks/useWellbeing';
 export * from './hooks/useSupportPlans';

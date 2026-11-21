@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createQueryClient, DEMO_PASSWORD, resetMockStore } from '@evolveiq/api-client';
+import { createQueryClient, DEMO_PASSWORD, resetMockStore, signInRequest } from '@evolveiq/api-client';
 import { AuthProvider } from '@evolveiq/auth';
 import { App } from './App';
 
@@ -398,5 +398,47 @@ describe('Admin panel: import, remove, notices, reviews and the wall', () => {
     const confirm = await screen.findByRole('dialog', { name: 'Withdraw “House elocution finals”?' });
     await user.click(within(confirm).getByRole('button', { name: 'Withdraw' }));
     await waitFor(() => expect(screen.queryByText('House elocution finals')).not.toBeInTheDocument());
+  });
+});
+
+// Forgot password or PIN (21 Nov 2026): the admin sets a new one.
+describe('Admin panel: new password or PIN', () => {
+  beforeEach(() => {
+    resetMockStore();
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('a school admin sets a new PIN for a student who forgot theirs', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByText('Maya Ahluwalia');
+
+    await user.click(screen.getByRole('button', { name: 'Set a new PIN for Maya Ahluwalia' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New PIN for Maya Ahluwalia' });
+    await user.type(within(dialog).getByLabelText(/New PIN/), '12a');
+    await user.click(within(dialog).getByRole('button', { name: 'Set PIN' }));
+    expect(within(dialog).getByText('A PIN is exactly 6 digits.')).toBeInTheDocument();
+
+    await user.clear(within(dialog).getByLabelText(/New PIN/));
+    await user.type(within(dialog).getByLabelText(/New PIN/), '654321');
+    await user.click(within(dialog).getByRole('button', { name: 'Set PIN' }));
+    expect(await screen.findByRole('dialog', { name: 'New PIN set' })).toBeInTheDocument();
+    await expect(signInRequest({ studentId: 'RV-1001', pin: '654321' })).resolves.toMatchObject({ user: { id: 'stu-maya' } });
+  });
+
+  it('a school admin sets a new password for a teacher', async () => {
+    const user = await signInAs('clara@school.test');
+    await screen.findByText('Maya Ahluwalia');
+    await user.click(screen.getAllByRole('link', { name: /Teachers/ })[0]!);
+
+    await user.click(await screen.findByRole('button', { name: 'Set a new password for Sunita Rao' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New password for Sunita Rao' });
+    await user.type(within(dialog).getByLabelText(/New password/), 'Rao-New-Password-1');
+    await user.click(within(dialog).getByRole('button', { name: 'Set password' }));
+    expect(await screen.findByRole('dialog', { name: 'New password set' })).toBeInTheDocument();
+    await expect(signInRequest({ email: 'rao@school.test', password: 'Rao-New-Password-1' })).resolves.toMatchObject({ user: { id: 'usr-rao' } });
   });
 });

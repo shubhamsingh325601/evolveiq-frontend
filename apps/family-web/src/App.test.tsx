@@ -3,7 +3,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createQueryClient, DEMO_PASSWORD, DEMO_PIN, resetMockStore } from '@evolveiq/api-client';
+import { createQueryClient, DEMO_PASSWORD, DEMO_PIN, resetMockStore, signInRequest } from '@evolveiq/api-client';
 import { AuthProvider } from '@evolveiq/auth';
 import { App } from './App';
 
@@ -426,5 +426,46 @@ describe('Family app', () => {
   it('tells a student they are Student of the Month on their own home', async () => {
     await signInAsStudent('RV-1002');
     expect(await screen.findByRole('heading', { name: /You are Student of the Month/ })).toBeInTheDocument();
+  });
+});
+
+// Forgotten passwords and PINs (21 Nov 2026).
+describe('Family app: passwords and PINs', () => {
+  beforeEach(() => {
+    resetMockStore();
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("a parent sets a new PIN for their child from Profile, and the child signs in with it", async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+    await user.click(screen.getAllByRole('link', { name: /Profile/ })[0]!);
+
+    await user.click(await screen.findByRole('button', { name: 'Set a new PIN for Maya Ahluwalia' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New PIN for Maya' });
+    await user.type(within(dialog).getByLabelText(/New PIN/), '975310');
+    await user.click(within(dialog).getByRole('button', { name: 'Set PIN' }));
+    expect(await screen.findByRole('dialog', { name: 'New PIN set' })).toBeInTheDocument();
+    await expect(signInRequest({ studentId: 'RV-1001', pin: '975310' })).resolves.toMatchObject({ user: { id: 'stu-maya' } });
+    await expect(signInRequest({ studentId: 'RV-1001', pin: DEMO_PIN })).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });
+  });
+
+  it('a parent can change their own password from Profile', async () => {
+    const user = await signInAsParent();
+    await screen.findByRole('heading', { name: 'Parent Dashboard' });
+    await user.click(screen.getAllByRole('link', { name: /Profile/ })[0]!);
+    await user.click(await screen.findByRole('button', { name: 'Change password' }));
+    expect(await screen.findByRole('dialog', { name: 'Change password' })).toBeInTheDocument();
+  });
+
+  it('a student is told who sets a new PIN, and gets no email reset', async () => {
+    renderApp();
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Student' }));
+    expect(screen.getByText('Forgot your PIN? Ask your parent or your school to set a new one.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Forgot password?' })).not.toBeInTheDocument();
   });
 });

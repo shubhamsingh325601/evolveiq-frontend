@@ -412,3 +412,86 @@ describe('School app: classes, attendance, care needs and school life', () => {
     expect(screen.queryByRole('link', { name: /Competitions/ })).not.toBeInTheDocument();
   });
 });
+
+// Forgot password and change password (21 Nov 2026).
+describe('School app: passwords', () => {
+  beforeEach(() => {
+    resetMockStore();
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('a teacher who forgot their password gets a code, sets a new one and lands signed in', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.type(screen.getByLabelText('Email address'), 'rao@school.test');
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+
+    expect(screen.getByRole('heading', { name: 'Forgot password' })).toBeInTheDocument();
+    // What was typed on the sign-in form carries over.
+    expect(screen.getByLabelText('Email address')).toHaveValue('rao@school.test');
+    await user.click(screen.getByRole('button', { name: 'Send code' }));
+
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Code from the email'), '000000');
+    await user.type(screen.getByLabelText(/^New password$/), 'Brand-New-Password-1');
+    await user.type(screen.getByLabelText('New password again'), 'Brand-New-Password-1');
+    await user.click(screen.getByRole('button', { name: 'Set new password' }));
+    expect(await screen.findByText(/That code is wrong or has expired/)).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('Code from the email'));
+    await user.type(screen.getByLabelText('Code from the email'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Set new password' }));
+    expect(await screen.findByRole('heading', { name: 'My students' })).toBeInTheDocument();
+  });
+
+  it('checks the new password before sending it', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    await user.type(screen.getByLabelText('Email address'), 'rao@school.test');
+    await user.click(screen.getByRole('button', { name: 'Send code' }));
+    await screen.findByRole('heading', { name: 'Check your email' });
+
+    await user.type(screen.getByLabelText('Code from the email'), '123456');
+    await user.type(screen.getByLabelText(/^New password$/), 'short');
+    await user.click(screen.getByRole('button', { name: 'Set new password' }));
+    expect(screen.getByText('Use at least 10 characters.')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText(/^New password$/));
+    await user.type(screen.getByLabelText(/^New password$/), 'Brand-New-Password-1');
+    await user.type(screen.getByLabelText('New password again'), 'Something-Else-2');
+    await user.click(screen.getByRole('button', { name: 'Set new password' }));
+    expect(screen.getByText('The two passwords are not the same.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('a signed-in teacher changes their password from the account menu', async () => {
+    const user = await signInAs('rao@school.test');
+    await screen.findByRole('heading', { name: 'My students' });
+
+    await user.click(screen.getAllByRole('button', { name: 'Account' })[0]!);
+    await user.click(screen.getByRole('button', { name: /Change password/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Change password' });
+
+    await user.type(within(dialog).getByLabelText('Current password'), 'not-my-password');
+    await user.type(within(dialog).getByLabelText(/^New password$/), 'Brand-New-Password-1');
+    await user.type(within(dialog).getByLabelText('New password again'), 'Brand-New-Password-1');
+    await user.click(screen.getByRole('button', { name: 'Change password' }));
+    expect(await within(dialog).findByText(/That is not your current password/)).toBeInTheDocument();
+
+    await user.clear(within(dialog).getByLabelText('Current password'));
+    await user.type(within(dialog).getByLabelText('Current password'), DEMO_PASSWORD);
+    await user.click(screen.getByRole('button', { name: 'Change password' }));
+    expect(await screen.findByRole('dialog', { name: 'Password changed' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    // Still signed in here, with a session the server knows.
+    expect(screen.getByRole('heading', { name: 'My students' })).toBeInTheDocument();
+  });
+});
