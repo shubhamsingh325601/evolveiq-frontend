@@ -11,6 +11,7 @@ const CANVAS = '#F4F3FA';
  * How each build introduces itself: the tab title, and the name under the icon
  * once installed. Parents get family.evolviq.in, children student.evolviq.in
  * (VITE_FAMILY_AUDIENCE, see src/family-audience.ts); unset, one app for both.
+ * The names "Parent EVQ" and "Student EVQ" are the client's (21 Nov 2026).
  */
 const AUDIENCES = {
   both: {
@@ -19,13 +20,13 @@ const AUDIENCES = {
     description: 'Stars, activities and progress from school, for parents and their children.',
   },
   parents: {
-    name: 'EvolvIQ for Parents',
-    shortName: 'EvolvIQ Family',
+    name: 'Parent EVQ',
+    shortName: 'Parent EVQ',
     description: 'Your child’s stars, activities and progress from school.',
   },
   students: {
-    name: 'EvolvIQ',
-    shortName: 'EvolvIQ',
+    name: 'Student EVQ',
+    shortName: 'Student EVQ',
     description: 'Your missions, stars and progress from school.',
   },
 } as const;

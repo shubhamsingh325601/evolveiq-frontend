@@ -97,7 +97,7 @@ export function AppFrame() {
             {
               id: 'install',
               label: 'Install the app',
-              detail: 'Open EvolvIQ from your home screen',
+              detail: 'Open it from your home screen',
               onSelect: () => void install(),
               icon: Download,
             },
